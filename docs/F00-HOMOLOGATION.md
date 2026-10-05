@@ -1,85 +1,120 @@
-# F00 — Homologation Plan
+# F00 — Independent Core Foundation
 
-A F00 existe para impedir que o novo Studio repita o problema de integrar componentes incompatíveis antes de provar o ciclo completo.
+A F00 agora prova que New Fantasy possui contratos próprios antes de avançar para mapa visual, rede real ou gameplay.
+
+## Objetivo
+
+Criar uma fundação mínima que não dependa de OTBM, TFS ou protocolo 10.98 no caminho nativo.
 
 ## Ambiente alvo
 
-- Windows x64 como plataforma primária de desenvolvimento.
-- Git disponível.
-- Toolchain de C++ e dependências definida por cada upstream durante a prova inicial.
-- MariaDB local para homologação.
+- Windows x64 como plataforma primária.
+- C++20 + CMake para o Fantasy Server inicial.
+- Git.
+- PowerShell para gates locais.
+- Referências externas disponíveis opcionalmente em `.upstream/`.
 
-## Ordem de execução
+## 00A — Layout e contratos
 
-### 00A — Server
+1. Validar a estrutura oficial com `scripts/check-layout.ps1`.
+2. Criar `Shared/Protocol/`.
+3. Criar `Shared/Formats/FMAP/`.
+4. Garantir que `fantasy.project.json` use caminhos relativos.
 
-1. Obter `otland/forgottenserver` no SHA registrado em `docs/UPSTREAMS.md`.
-2. Compilar sem alterações Fantasy.
-3. Importar schema limpo.
-4. Iniciar e encerrar de forma controlada.
-5. Registrar comando de build, dependências e hash do binário.
+PASS: layout e manifestos são determinísticos e não exigem arquivos espalhados.
 
-PASS somente se o build for reproduzível e Start/Stop não depender de passos manuais obscuros.
+## 00B — FMAP v0
 
-### 00B — Map Engine
+Criar um formato fonte mínimo contendo:
 
-1. Obter `hampusborgos/rme` no SHA registrado.
-2. Compilar sem modificações Fantasy.
-3. Configurar dados 10.98 compatíveis.
-4. Abrir fixture OTBM.
-5. Alterar um tile/objeto conhecido.
-6. Undo/Redo.
-7. Save As.
-8. Fechar e reabrir.
-9. Confirmar semanticamente a alteração e a preservação do restante.
+- schema/version;
+- world id/name;
+- tile size;
+- region/chunk metadata;
+- posição de spawn de desenvolvimento;
+- tiles/objects semânticos mínimos.
 
-### 00C — Client
+Fixture oficial: `Game/Maps/World/world.fmap.json`.
 
-1. Obter `opentibiabr/otclient` no SHA registrado.
-2. Compilar sem modificações Fantasy.
-3. Configurar protocolo/endpoint 10.98.
-4. Conectar no TFS homologado.
-5. Receber lista/personagem e entrar no mapa.
+PASS: o arquivo valida, pode ser lido novamente e mantém equivalência semântica.
 
-### 00D — End-to-end
+## 00C — Fantasy Protocol v1 mínimo
 
-1. Abrir fixture no RME.
-2. Fazer alteração visível.
-3. Salvar.
-4. Iniciar TFS usando o mapa salvo.
-5. Entrar pelo OTClient.
-6. Confirmar visualmente a alteração.
+Definir em `Shared/Protocol/` pelo menos:
 
-### 00E — Move-folder / relative paths
+- envelope/version;
+- Hello / HelloAck;
+- LoginDev / LoginOk;
+- EnterWorld;
+- MapChunk;
+- EntityAdd;
+- EntityMove;
+- EntityRemove;
+- Disconnect/Error.
 
-Após montar o workspace de teste, mover a raiz para outro caminho e repetir Open/Build/Play sem editar caminhos persistidos.
+Nesta fase o contrato pode ser especificação/schema; rede real entra depois.
 
-### 00F — Freeze
+PASS: IDs, campos e versões não são ambíguos e existem fixtures de mensagens.
+
+## 00D — Fantasy Server skeleton
+
+Criar um executável próprio que:
+
+1. compile em C++20;
+2. informe versão/build;
+3. carregue configuração mínima;
+4. tenha ciclo Start -> Ready -> Stop limpo;
+5. não dependa de código TFS.
+
+PASS: CI compila e executa smoke test.
+
+## 00E — Boundary com referências legadas
+
+TFS 1.4.2, RME 3.7 e OTClient 10.98 podem ser baixados com o script de upstream apenas para:
+
+- comparar comportamento;
+- estudar fixtures;
+- validar importadores/adapters futuros;
+- servir de fallback temporário.
+
+Não copiar código deles para o core nativo durante F00.
+
+## 00F — Freeze dos contratos v0/v1
 
 Registrar:
 
-- commits finais;
-- versões de toolchain;
-- versão MariaDB;
-- asset pack/hash;
+- schema FMAP inicial;
+- versão inicial do Fantasy Protocol;
+- toolchain do servidor;
 - comandos de build;
-- fixtures de teste;
+- fixtures;
 - resultados PASS/FAIL;
-- licenças e obrigações aplicáveis.
+- limitações conhecidas.
 
 ## Critério de saída
 
-F00 somente pode virar **PASS** quando `Server + Database + Client + Map + Assets` forem testados juntos. Sucessos isolados não fecham a fase.
+F00 vira **PASS** somente quando:
 
-## O que não fazer na F00
+```text
+layout PASS
+FMAP fixture PASS
+Protocol contract PASS
+Fantasy Server build PASS
+Fantasy Server smoke PASS
+```
 
-- redesign visual grande;
-- Monster Editor;
-- Quest Editor;
+Não é necessário login real ou cliente gráfico para fechar F00.
+
+## Fora da F00
+
+- UI final do Studio;
+- editor visual completo;
+- banco de produção;
+- combate;
+- monsters/quests;
+- website;
 - VPS;
-- site;
-- migração de assets 15.24;
-- integração com Crystal/Canary;
-- mudanças de gameplay.
+- streaming de chunks em rede;
+- compatibilidade completa com mapas antigos.
 
-A F00 prova a fundação; o produto começa a crescer depois dela.
+A F00 congela a linguagem básica do ecossistema. O produto funcional cresce a partir da F01.
