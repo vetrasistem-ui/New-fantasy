@@ -4,6 +4,7 @@
 #include <limits>
 #include <stdexcept>
 #include <type_traits>
+#include <utility>
 
 namespace fantasy::protocol {
 namespace {
@@ -47,6 +48,14 @@ public:
         bytes_.insert(bytes_.end(), value.begin(), value.end());
     }
 
+    void bytes(const Bytes& value) {
+        if (value.size() > std::numeric_limits<std::uint32_t>::max()) {
+            throw std::runtime_error("Fantasy Protocol byte array too large");
+        }
+        u32(static_cast<std::uint32_t>(value.size()));
+        bytes_.insert(bytes_.end(), value.begin(), value.end());
+    }
+
     Bytes finish() && { return std::move(bytes_); }
 
 private:
@@ -76,6 +85,15 @@ public:
         return value;
     }
 
+    Bytes bytes() {
+        const auto size = static_cast<std::size_t>(u32());
+        if (offset_ + size > bytes_.size()) throw std::runtime_error("Fantasy Protocol byte array truncated");
+        Bytes value(bytes_.begin() + static_cast<std::ptrdiff_t>(offset_),
+                    bytes_.begin() + static_cast<std::ptrdiff_t>(offset_ + size));
+        offset_ += size;
+        return value;
+    }
+
     void requireEnd() const {
         if (offset_ != bytes_.size()) throw std::runtime_error("Fantasy Protocol payload has trailing bytes");
     }
@@ -93,6 +111,12 @@ void requireType(const Frame& frame, MessageType expected) {
 Frame frame(std::uint32_t sequence, MessageType type, Bytes payload) {
     if (payload.size() > kMaxPayloadBytes) throw std::runtime_error("Fantasy Protocol payload exceeds maximum");
     return Frame{kProtocolVersion, type, sequence, std::move(payload)};
+}
+
+MoveDirection readDirection(Reader& reader) {
+    const auto rawDirection = reader.u8();
+    if (!isValidMoveDirection(rawDirection)) throw std::runtime_error("Invalid Fantasy Protocol move direction");
+    return static_cast<MoveDirection>(rawDirection);
 }
 
 } // namespace
@@ -206,10 +230,31 @@ Frame makeFrame(std::uint32_t sequence, const EnterWorld& message) {
     return frame(sequence, MessageType::EnterWorld, std::move(writer).finish());
 }
 
+Frame makeFrame(std::uint32_t sequence, const MapChunk& message) {
+    Writer writer;
+    writer.string(message.regionId);
+    writer.i32(message.chunkX);
+    writer.i32(message.chunkY);
+    writer.i16(message.floor);
+    writer.u32(message.revision);
+    writer.bytes(message.payload);
+    return frame(sequence, MessageType::MapChunk, std::move(writer).finish());
+}
+
 Frame makeFrame(std::uint32_t sequence, const MoveRequest& message) {
     Writer writer;
     writer.u8(static_cast<std::uint8_t>(message.direction));
     return frame(sequence, MessageType::MoveRequest, std::move(writer).finish());
+}
+
+Frame makeFrame(std::uint32_t sequence, const EntityAdd& message) {
+    Writer writer;
+    writer.u64(message.entityId);
+    writer.string(message.entityType);
+    writer.i32(message.x);
+    writer.i32(message.y);
+    writer.i16(message.z);
+    return frame(sequence, MessageType::EntityAdd, std::move(writer).finish());
 }
 
 Frame makeFrame(std::uint32_t sequence, const EntityMove& message) {
@@ -220,6 +265,25 @@ Frame makeFrame(std::uint32_t sequence, const EntityMove& message) {
     writer.i16(message.z);
     writer.u8(static_cast<std::uint8_t>(message.direction));
     return frame(sequence, MessageType::EntityMove, std::move(writer).finish());
+}
+
+Frame makeFrame(std::uint32_t sequence, const EntityRemove& message) {
+    Writer writer;
+    writer.u64(message.entityId);
+    return frame(sequence, MessageType::EntityRemove, std::move(writer).finish());
+}
+
+Frame makeFrame(std::uint32_t sequence, const ErrorMessage& message) {
+    Writer writer;
+    writer.u32(message.code);
+    writer.string(message.message);
+    return frame(sequence, MessageType::Error, std::move(writer).finish());
+}
+
+Frame makeFrame(std::uint32_t sequence, const Disconnect& message) {
+    Writer writer;
+    writer.string(message.reason);
+    return frame(sequence, MessageType::Disconnect, std::move(writer).finish());
 }
 
 Hello decodeHello(const Frame& value) {
@@ -262,13 +326,39 @@ EnterWorld decodeEnterWorld(const Frame& value) {
     return message;
 }
 
+MapChunk decodeMapChunk(const Frame& value) {
+    requireType(value, MessageType::MapChunk);
+    Reader reader(value.payload);
+    MapChunk message;
+    message.regionId = reader.string();
+    message.chunkX = reader.i32();
+    message.chunkY = reader.i32();
+    message.floor = reader.i16();
+    message.revision = reader.u32();
+    message.payload = reader.bytes();
+    reader.requireEnd();
+    return message;
+}
+
 MoveRequest decodeMoveRequest(const Frame& value) {
     requireType(value, MessageType::MoveRequest);
     Reader reader(value.payload);
-    const auto rawDirection = reader.u8();
-    if (!isValidMoveDirection(rawDirection)) throw std::runtime_error("Invalid Fantasy Protocol move direction");
+    MoveRequest message{readDirection(reader)};
     reader.requireEnd();
-    return MoveRequest{static_cast<MoveDirection>(rawDirection)};
+    return message;
+}
+
+EntityAdd decodeEntityAdd(const Frame& value) {
+    requireType(value, MessageType::EntityAdd);
+    Reader reader(value.payload);
+    EntityAdd message;
+    message.entityId = reader.u64();
+    message.entityType = reader.string();
+    message.x = reader.i32();
+    message.y = reader.i32();
+    message.z = reader.i16();
+    reader.requireEnd();
+    return message;
 }
 
 EntityMove decodeEntityMove(const Frame& value) {
@@ -279,9 +369,31 @@ EntityMove decodeEntityMove(const Frame& value) {
     message.x = reader.i32();
     message.y = reader.i32();
     message.z = reader.i16();
-    const auto rawDirection = reader.u8();
-    if (!isValidMoveDirection(rawDirection)) throw std::runtime_error("Invalid Fantasy Protocol move direction");
-    message.direction = static_cast<MoveDirection>(rawDirection);
+    message.direction = readDirection(reader);
+    reader.requireEnd();
+    return message;
+}
+
+EntityRemove decodeEntityRemove(const Frame& value) {
+    requireType(value, MessageType::EntityRemove);
+    Reader reader(value.payload);
+    EntityRemove message{reader.u64()};
+    reader.requireEnd();
+    return message;
+}
+
+ErrorMessage decodeError(const Frame& value) {
+    requireType(value, MessageType::Error);
+    Reader reader(value.payload);
+    ErrorMessage message{reader.u32(), reader.string()};
+    reader.requireEnd();
+    return message;
+}
+
+Disconnect decodeDisconnect(const Frame& value) {
+    requireType(value, MessageType::Disconnect);
+    Reader reader(value.payload);
+    Disconnect message{reader.string()};
     reader.requireEnd();
     return message;
 }
