@@ -5,6 +5,7 @@ Runtime nativo do Fantasy.
 ```text
 Server/
 ├── Core/
+├── Network/
 ├── Modules/
 ├── Config/
 └── Logs/
@@ -12,11 +13,9 @@ Server/
 
 O objetivo é construir **Fantasy Server**, não incorporar TFS como core permanente.
 
-## Estado atual
+## F04 — PASS
 
-**F04 — Fantasy Server World Runtime: PASS.**
-
-O caminho nativo atual é:
+O runtime nativo carrega `Game/Maps/World/world.fmap.json` diretamente e possui:
 
 ```text
 Shared FMAP Core
@@ -30,35 +29,50 @@ Entities / Movement / Walkability
 Tick Scheduler
 ```
 
-O smoke test carrega `Game/Maps/World/world.fmap.json` diretamente, inicializa o runtime, cria uma entidade de desenvolvimento, move essa entidade e encerra o processo de forma limpa.
+Os testes headless cobrem movimento entre chunks, ocupação de tile, tile bloqueado, scheduler e ciclo Start/Stop. Studio e Server consomem a mesma implementação FMAP neutra em `Shared/Formats/FMAP/`.
 
-Os testes headless cobrem movimento entre chunks, ocupação de tile, tile bloqueado, scheduler e ciclo Start/Stop.
+## F05 — primeiro play nativo
 
-O modelo/IO/validação FMAP reutilizável já foi extraído para `Shared/Formats/FMAP/`; Studio e Server consomem a mesma implementação neutra.
-
-## F05 em andamento
-
-A camada `Shared/Protocol/` está sendo transformada do contrato YAML em um codec binário real do Fantasy Protocol v1.
-
-Primeiro fluxo-alvo:
+O Server agora possui o caminho de desenvolvimento:
 
 ```text
-Client: Hello
-Server: HelloAck
-Client: LoginDev
-Server: LoginOk + EnterWorld + MapChunk
-Client: MoveRequest(direction)
-Server: EntityMove(authoritative position)
+TCP loopback
+   ↓
+FrameStream / Fantasy Protocol v1
+   ↓
+DevelopmentSession
+   ↓
+WorldSnapshot
+   ↓
+WorldRuntime
+   ↓
+FMAP
 ```
 
-O cliente envia intenção; posição e estado do mundo continuam sob autoridade do Server.
+No login, o Server envia `LoginOk`, `EnterWorld`, os `MapChunk` do piso/região inicial e `EntityAdd`. O conteúdo dos chunks usa FMCP v1, mantendo grounds/objects semânticos. Movimento é `MoveRequest(direction)` e a resposta é `EntityMove` com posição autoritativa.
 
-## Build / tests
+O executável suporta um modo determinístico de validação em um único cliente:
+
+```powershell
+build/server/Release/fantasy-server.exe --serve-once 7171
+```
+
+Esse modo liga **somente em `127.0.0.1`**, aceita uma sessão, aguarda Disconnect limpo e encerra. `LoginDev` é propositalmente uma autenticação de desenvolvimento e não pode ser usado como endpoint público.
+
+## Build / testes
 
 ```powershell
 cmake -S Server -B build/server
 cmake --build build/server --config Release
 ctest --test-dir build/server -C Release --output-on-failure
+```
+
+O `fantasy-native-play-tests` usa TCP loopback real e exercita Client → Server → FMAP, incluindo reconnect.
+
+Para validar os executáveis Server e Client como dois processos separados:
+
+```powershell
+./scripts/run-native-play.ps1 -Configuration Release
 ```
 
 ## Direção
