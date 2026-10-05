@@ -4,8 +4,15 @@ status: draft
 transport: tcp
 endianness: little
 
-# F00 defines the semantic contract. Binary serialization may still change
-# before v1 is declared stable.
+wire:
+  envelopeBytes: 16
+  payloadLengthExcludesEnvelope: true
+  maxPayloadBytes: 4194304
+  stringEncoding: utf8
+  variableLengthPrefix: uint32
+
+# Fantasy Protocol v1 uses one length-delimited frame per message.
+# Client messages express intent; authoritative world state is emitted by Server.
 envelope:
   fields:
     - { name: magic, type: fixed_ascii, value: FNTY }
@@ -61,6 +68,12 @@ messages:
       - { name: revision, type: uint32 }
       - { name: payload, type: bytes }
 
+  - id: 34
+    name: MoveRequest
+    direction: client_to_server
+    fields:
+      - { name: direction, type: uint8 }
+
   - id: 48
     name: EntityAdd
     direction: server_to_client
@@ -73,7 +86,7 @@ messages:
 
   - id: 49
     name: EntityMove
-    direction: bidirectional
+    direction: server_to_client
     fields:
       - { name: entityId, type: uint64 }
       - { name: x, type: int32 }
@@ -105,3 +118,4 @@ rules:
   versionHandshakeRequired: true
   unknownMessageIsProtocolError: true
   clientCannotAuthoritativelySetPosition: true
+  clientMovementIsIntentOnly: true
