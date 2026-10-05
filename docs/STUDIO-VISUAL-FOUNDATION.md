@@ -1,6 +1,6 @@
 # Fantasy Studio — Visual Foundation
 
-Status: **VISUAL POLISH IN PROGRESS / REMOTE CI PASS**
+Status: **VISUAL POLISH IN PROGRESS / REMOTE CI BASELINE PASS**
 
 Branch: `feature/studio-visual-foundation`
 
@@ -10,23 +10,29 @@ Transform the technical Map Editor shell into the official Fantasy Studio visual
 
 The approved visual direction is the Fantasy Studio styleboard selected by the project owner: deep navy background, cyan/blue accents, compact professional tooling, permanent left navigation, top command bar, central workspace, right inspector and lower console/status area.
 
-This phase establishes the product shell first. It does not replace `MapDocument`, FMAP, Server, Protocol or Client domain logic.
+The product shell comes first. Real 10.98 assets and OTBM content are the next milestone, not a prerequisite for finishing the shell.
 
 ## Current product priority
-
-The project order is now intentionally visual-first:
 
 ```text
 1. Finish the Fantasy Studio visual base
 2. Open a real 10.98 OTBM with real sprites/assets
 3. Use that real map as the working production surface
-4. Then expand editing tools and domain editors
+4. Expand editing tools and domain editors
 5. Persistence/database comes later
 ```
 
 Do not start F06 while the visual base and real-map bridge are still open.
 
-## Visual tokens
+## Approved visual target
+
+The frozen reference contract is documented in:
+
+```text
+docs/STUDIO-VISUAL-TARGET-V1.md
+```
+
+Core tokens:
 
 ```text
 Background       #081220
@@ -43,17 +49,45 @@ Warning          #F59E0B
 Error            #EF4444
 ```
 
-The UI must remain readable and lightweight on the SDL_Renderer3 baseline. The approved appearance is achieved through hierarchy, spacing, borders, compact cards, accent states and restrained glow rather than a heavier renderer.
+The UI remains lightweight on SDL3 + SDL_Renderer3 + Dear ImGui. The approved look is created through hierarchy, compact spacing, restrained borders, active-state cyan and limited identity glow rather than expensive effects.
 
-## Product shell already implemented
+## Current implementation — V3 polish shell
+
+The executable target `fantasy-studio-gui` now points to:
+
+```text
+Studio/UI/StudioAppV3.cpp
+```
+
+`StudioAppV2.cpp` remains temporarily in-tree only as a rollback reference until the Windows visual gate closes.
+
+V3 tightens the visual direction without replacing any map/domain core:
+
+- stronger Fantasy identity in topbar and Home;
+- compact breadcrumb project/module context;
+- right-aligned Save / Undo / Redo and runtime-control grouping;
+- sidebar active-state accent rail and cleaner hierarchy;
+- technical status pill at the bottom of the sidebar;
+- richer but lightweight Home hero;
+- Project Manager cards aligned to the approved proportions;
+- compact Recent Projects rows with generated neutral previews;
+- structured project-stat cards using real FMAP counts;
+- Map toolbar with clear selected tool state;
+- viewport-first Map layout with Inspector, Minimap and Console separation;
+- Items & Assets library tree kept narrow while the grid receives most width;
+- real semantic FMAP keys remain the only current asset-card source;
+- explicit PokeFans / 10.98 source state without loading legacy pixels yet;
+- future modules keep consistent visual shells without fake domain data.
+
+## Product shell
 
 ```text
 Fantasy Studio
 ├── Topbar
-│   ├── Fantasy brand mark + product name
+│   ├── Fantasy mark + product name
 │   ├── project / active module context
 │   ├── Save / Undo / Redo
-│   └── Play / Stop / Build / Settings visual controls
+│   └── Play / Stop / Build / Settings
 ├── Sidebar
 │   ├── Home
 │   ├── Map
@@ -68,7 +102,7 @@ Fantasy Studio
 └── Workspaces
     ├── Home / Project Manager
     ├── Map Editor
-    │   ├── tool strip
+    │   ├── compact tool strip
     │   ├── real FMAP viewport
     │   ├── Inspector tabs
     │   ├── Minimap
@@ -77,103 +111,42 @@ Fantasy Studio
     │   ├── tabs
     │   ├── library tree
     │   ├── search
-    │   └── semantic asset grid from the real FMAP
+    │   └── semantic asset grid
     └── module shells for future domain editors
 ```
 
-## UI-00 — Design tokens — COMPLETE
+## Core-preservation rules
 
-- colors, borders, rounding, spacing and component behavior centralized in `StudioTheme`;
-- SDL3 + SDL_Renderer3 + Dear ImGui preserved;
-- no renderer upgrade and no GPU feature requirement added.
+The visual phase must not:
 
-## UI-01 — Studio shell — COMPLETE
+- create a second map model;
+- bypass `MapDocument` or `EditorOperations`;
+- add OTBM/DAT/SPR/OTB dependencies to the native map core;
+- replace SDL_Renderer3 with a heavier renderer;
+- start F06 persistence;
+- fake final asset pixels just to make the UI look complete.
 
-- fixed topbar;
-- permanent sidebar;
-- active-page state;
-- central workspace bounds;
-- lightweight Fantasy brand mark drawn by the UI layer;
-- no external font/image dependency required for the baseline.
+Save, Paint, Fill, Add Object, Remove Object, Erase, Undo and Redo remain wired to the validated editor core.
 
-## UI-02 — Home / Project Manager — FUNCTIONAL BASE COMPLETE
+## Windows gate after polish
 
-- branded hero area;
-- current-project context;
-- project action cards;
-- real Open Map routing;
-- recent project registry integration when available;
-- real FMAP/project counters.
+Remote CI proved the previous visual baseline on Windows. The polished V3 shell must compile in the same workflow and then receive one real interactive Windows pass before visual acceptance.
 
-No fake project/domain data is inserted.
-
-## UI-03 — Map workspace — FUNCTIONAL BASE COMPLETE
-
-- existing F03 `MapDocument` editor retained;
-- central map viewport;
-- compact visual tool strip;
-- right Inspector with Tile / Item / Object tabs;
-- real Ground/Object editing controls;
-- Minimap;
-- lower Console/status;
-- Save, Undo, Redo and editor operations remain wired to the existing core.
-
-The visual toolbar does not create a second editor core.
-
-## UI-04 — Items & Assets — VISUAL BASE COMPLETE
-
-- Items / Sprites / Textures / Sounds tabs;
-- library tree;
-- search input;
-- FMAP Grounds/Objects categories;
-- preview cards generated from semantic asset keys already present in FMAP;
-- explicit 10.98 / F05.5 source status.
-
-Real sprite pixels are intentionally deferred to the next phase.
-
-## UI-05 — Module shells — COMPLETE
-
-Consistent visual workspaces exist for Monsters, NPCs, Spells, Quests, Systems, Server and Client. They reserve the product structure without pretending the future domain logic exists.
-
-## UI-06 — Visual fidelity polish — IN PROGRESS
-
-Before closing the visual phase, refine the current implementation toward the approved styleboard:
-
-- stronger Fantasy identity in topbar/Home while keeping the UI lightweight;
-- cleaner navy surface hierarchy;
-- cyan edge/accent treatment without excessive glow;
-- more polished sidebar active states;
-- consistent icon/badge language for navigation and map tools;
-- stronger separation between viewport, inspector, minimap and console;
-- Home cards closer to the approved Project Manager proportions;
-- Map toolbar spacing/selection states closer to the styleboard;
-- Items & Assets tree/grid proportions closer to the reference;
-- consistent button sizes, tabs, panels, search fields and status components;
-- keep the layout usable at 1440×900 and lower practical resolutions.
-
-Do not block this polish on OTBM, DAT/SPR/OTB or persistence work.
-
-## UI-07 — Windows interactive visual gate — PENDING AFTER POLISH
-
-Remote CI already passed for the visual branch baseline. The final interactive gate happens only after the polish pass is ready.
-
-Required evidence:
+Interactive acceptance:
 
 ```text
 1. Fantasy Studio opens on real Windows.
-2. Home visually follows the approved styleboard direction.
+2. Home follows the approved visual target.
 3. Sidebar/topbar hierarchy is clear and stable.
-4. Every module can be reached without crash.
-5. Map workspace remains editable through MapDocument/EditorOperations.
+4. Every module is reachable without crash.
+5. Map remains editable through MapDocument/EditorOperations.
 6. Paint / Fill / Add / Remove / Erase / Undo / Redo / Save-Reopen pass.
-7. Items & Assets layout is usable and consistent.
+7. Items & Assets layout is usable and visually consistent.
 8. Studio closes without orphan processes.
 9. Home / Map / Items & Assets screenshots are recorded.
 ```
 
-## What comes immediately after visual PASS
-
-The next milestone is not database work. It is the first real-world production surface:
+## What comes immediately after visual acceptance
 
 ```text
 PokeFans / 10.98 source pack
@@ -182,18 +155,16 @@ DAT + SPR + OTB
         +
 OTBM + houses + spawns
         ↓
-Legacy Asset Bridge + OTBM Importer
+Legacy compatibility layer
         ↓
-FMAP + Fantasy Asset Registry
+Fantasy Asset Registry + map import/open path
         ↓
 Fantasy Studio renders the real map with real sprites
 ```
 
-The first target package already inventoried for F05.5 is the supplied 10.98 set centered on `global_dash.otbm`, the matching house/spawn XMLs and the candidate DAT/SPR/OTB set.
+The Studio is expected to support legacy OTBM + matching DAT/SPR/OTB as an editing/import compatibility surface while keeping Fantasy's native architecture isolated from those formats.
 
 ## After the real map opens correctly
-
-Only after the Studio can open a real OTBM-derived FMAP with real sprites do we expand the rest of the editor surface:
 
 ```text
 real map + real sprites
@@ -207,12 +178,10 @@ Monster / NPC / Spell / Quest / Systems tools
 other game-production systems
 ```
 
-## Non-goals of the visual phase
-
-This phase does not implement:
+## Non-goals of the current visual phase
 
 - DAT/SPR/OTB decoding;
-- OTBM → FMAP conversion;
+- OTBM conversion/open compatibility implementation;
 - persistence/database;
 - complete Items/Monsters/NPC/Spell/Quest editors;
 - production Server/Client controls.
