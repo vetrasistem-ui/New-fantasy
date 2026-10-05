@@ -39,6 +39,18 @@ jobs:
           cmake --version
           git --version
 
+      - name: Configure Fantasy Studio
+        shell: pwsh
+        run: cmake -S Studio -B build/studio
+
+      - name: Build Fantasy Studio
+        shell: pwsh
+        run: cmake --build build/studio --config Release
+
+      - name: Test Fantasy Studio Project Manager
+        shell: pwsh
+        run: ctest --test-dir build/studio -C Release --output-on-failure
+
       - name: Configure Fantasy Server
         shell: pwsh
         run: cmake -S Server -B build/server
