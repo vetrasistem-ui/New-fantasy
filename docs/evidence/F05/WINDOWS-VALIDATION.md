@@ -6,7 +6,7 @@ This file is the evidence ledger for `docs/CODEX-F05-WINDOWS.md`.
 
 ## Current run — official SDL_Renderer3 baseline
 
-Current repository SHA: `621ca7b499330b61f653345590f1897c3b1f76d2`.
+Native code baseline tested: `621ca7b499330b61f653345590f1897c3b1f76d2`.
 Validation date: 2026-10-05 (America/Sao_Paulo).
 Windows 11 Home 10.0.26200; PowerShell x64 7.6.5; Release configuration;
 Intel HD Graphics 5500, driver 20.19.15.4703 (2017-06-08).
@@ -94,7 +94,7 @@ Observed current results:
   `git diff --check` passed; both GUI sources and canonical FMAP match origin/main.
 - C08: F03/F05 marked PASS after all preceding gates passed. Roadmap, result
   evidence and AGENTS priority are updated. F06 is the next documented phase
-  but no F06 implementation is included. Closeout commit/CI: awaiting push.
+  but no F06 implementation is included. Closeout commit/CI are recorded below.
 - Canonical FMAP hash before edits:
   `1442d649ff73ba39881f876a4bde33394df2784c`.
 
@@ -102,6 +102,25 @@ Current local logs remain ignored under `build/validation/Renderer3-*`.
 The generated imgui.ini cache was moved under build/validation after closing
 the last GUI. Canonical FMAP and both GUI sources match origin/main.
 F03/F05 are closed; F06 is not started.
+
+### Closeout commit and remote CI
+
+Published closeout commit:
+`c414819d5c98034dcef1f8e666ad6310b3874908`
+(`test(windows): close F03 and F05 native-play gates`).
+Only documentation and 13 real screenshots differ from the tested baseline;
+the native code and canonical FMAP are unchanged. The working tree was clean
+after publishing and local main matched origin/main.
+
+Foundation Checks [run 218](https://github.com/vetrasistem-ui/New-fantasy/actions/runs/37369516321)
+targets that exact closeout SHA. Remote result: **PENDING / QUEUED**, not PASS.
+The foundation job had no executed steps at the latest check. GitHub's
+[official incident](https://www.githubstatus.com/incidents/3q1yb5m7ltvb)
+reported delays assigning GitHub-hosted runners on 2026-10-05, affecting
+workflow start times across runner configurations; this is consistent with
+the observed queue. No workflow was bypassed, cancelled or rerun.
+This follow-up records the queue/incident only; remote success must be verified
+when a runner executes the workflow. No F06 work is authorized by this record.
 
 Real C03 screenshots under `docs/evidence/F03/windows/`:
 `c03-renderer3-before.jpg`, `c03-renderer3-paint-redo.jpg`,

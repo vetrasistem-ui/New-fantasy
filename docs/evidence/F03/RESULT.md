@@ -135,6 +135,10 @@ The [Windows ledger](../F05/WINDOWS-VALIDATION.md) records all C00–C07 results
 The [startup history](windows/STARTUP-FAILURE.md) preserves the old SDL_GPU
 failures and backup commits as historical evidence. F06 is not implemented.
 
-Closeout commit CI: awaiting push and the exact-SHA Foundation Checks result.
+Published closeout SHA: `c414819d5c98034dcef1f8e666ad6310b3874908`.
+Foundation Checks [run 218](https://github.com/vetrasistem-ui/New-fantasy/actions/runs/37369516321)
+on that exact SHA remains **PENDING / QUEUED** with no executed steps.
+GitHub [reported runner-assignment delays](https://www.githubstatus.com/incidents/3q1yb5m7ltvb)
+on 2026-10-05. All local C00–C07 gates passed; remote CI success is not claimed.
 
 No RME, OTBM or 10.98 code is present in the F03 native path.

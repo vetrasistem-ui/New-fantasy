@@ -30,8 +30,10 @@ F06 PREPARED / NOT STARTED
 **Não desenvolver novas features. Não iniciar F06.**
 
 Os gates C00–C07 de Windows já passaram em 2026-10-05; o fechamento C08
-está documentado nas evidências e aguarda confirmação do CI do commit de
-fechamento. F06 é a próxima prioridade documentada, mas permanece NOT STARTED
+está publicado no commit `c414819d5c98034dcef1f8e666ad6310b3874908`.
+Foundation Checks run 218 permanece PENDING / QUEUED durante o incidente
+de alocação de runners reportado pelo GitHub; confirmar o CI antes de avançar.
+F06 é a próxima prioridade documentada, mas permanece NOT STARTED
 e exige uma nova instrução de execução. Evidência:
 
 ```text

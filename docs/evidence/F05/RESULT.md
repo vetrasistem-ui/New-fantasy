@@ -234,7 +234,11 @@ no GUI/core/gameplay/protocol/network/FMAP code was changed for closeout.
 Full evidence, preserved startup history and backup branches are recorded in
 [WINDOWS-VALIDATION.md](WINDOWS-VALIDATION.md).
 
-Closeout commit CI: awaiting push and the exact-SHA Foundation Checks result.
+Published closeout SHA: `c414819d5c98034dcef1f8e666ad6310b3874908`.
+Foundation Checks [run 218](https://github.com/vetrasistem-ui/New-fantasy/actions/runs/37369516321)
+on that exact SHA remains **PENDING / QUEUED** with no executed steps.
+GitHub [reported runner-assignment delays](https://www.githubstatus.com/incidents/3q1yb5m7ltvb)
+on 2026-10-05. All local C00–C07 gates passed; remote CI success is not claimed.
 
 ## Codex entry point
 
