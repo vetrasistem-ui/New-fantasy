@@ -44,7 +44,7 @@ std::vector<protocol::MapChunk> makeInitialMapSnapshot(
     std::vector<protocol::MapChunk> messages;
     messages.reserve(chunks.size());
     for (const auto* chunk : chunks) {
-        messages.push_back(protocol::makeProtocolMapChunk(regionIt->id, *chunk, revision));
+        messages.push_back(protocol::makeProtocolMapChunk(*regionIt, *chunk, revision));
     }
     return messages;
 }
