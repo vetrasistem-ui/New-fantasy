@@ -1,48 +1,50 @@
-# Upstreams — F00 candidates
+# Upstreams — Reference implementations
 
-Este documento registra as bases externas candidatas. Os SHAs abaixo são pontos reproduzíveis para homologação; ainda não significam aprovação final para incorporação/distribuição.
+Este documento registra projetos externos usados apenas como referência técnica, comparação de comportamento e fallback de desenvolvimento. Eles **não são a arquitetura final** do New Fantasy.
 
-## Server
+## TFS reference
 
 - Repository: `otland/forgottenserver`
 - Release: `v1.4.2`
 - Commit: `31d6e85de2a86fb3f0e36c63509fba75b855b8bd`
 - Protocol family: `10.98`
-- Status: **CANDIDATE — F00 validation required**
+- Role: server behavior oracle / fallback
+- Status: **REFERENCE ONLY**
 
-## Map Engine
+## RME reference
 
 - Repository: `hampusborgos/rme`
 - Release: `v3.7`
 - Commit: `6aceb3c6a311e6e1c0b24a0bf06cf383fb152766`
-- `data/clients.xml` contains 10.98 as a visible/default client and maps it to OTB 57 with OTBM v3.
-- Status: **CANDIDATE — F00 validation + license review required**
+- Legacy map family: 10.98 / OTBM v3
+- Role: map-editing behavior oracle and future legacy import/export validation
+- Status: **REFERENCE ONLY**
 
-## Client
+## Client reference
 
 - Repository: `opentibiabr/otclient`
-- Candidate commit: `396f0b396741bdd4469f27cf9376103930712cff`
-- The upstream compatibility table lists `TFS 1.4.2 (10.98)` as supported.
-- Status: **CANDIDATE — F00 validation + license review required**
+- Commit: `396f0b396741bdd4469f27cf9376103930712cff`
+- Known compatibility: TFS 1.4.2 / 10.98
+- Role: client/protocol behavior oracle and temporary fallback
+- Status: **REFERENCE ONLY**
 
-## Database
+## Boundary rule
 
-- Product family: MariaDB
-- Exact version: **TO BE PINNED during F00**
-- Requirement: clean schema import, test account seed, persistence and restart validation.
+Reference clones live locally under `.upstream/` and remain ignored by Git.
 
-## Asset family
+Do not copy source from these repositories into `Studio/`, `Server/`, `Client/` or `Shared/` unless a later ADR explicitly approves that dependency and its licensing obligations.
 
-- Client data: DAT + SPR 10.98
-- Server item mapping: OTB compatible with the selected TFS/RME combination
-- Final asset pack: **TO BE PINNED during F00**
+The native path remains:
 
-## Rule
+```text
+FMAP → Fantasy Server → Fantasy Protocol → Fantasy Client
+```
 
-Do not update any upstream silently. Changing a pinned SHA requires:
+## Update rule
+
+Changing a pinned reference SHA requires:
 
 1. documented reason;
-2. compatibility rerun;
-3. build/test evidence;
-4. update to this file;
-5. decision entry in `docs/DECISIONS.md` if the change affects the official platform.
+2. comparison rerun if relevant;
+3. update to this file;
+4. ADR only if the change affects architecture rather than reference evidence.
