@@ -50,7 +50,7 @@ foreach ($Region in $Map.regions) {
             Assert-True ($GlobalX -ge $RegionMinX -and $GlobalX -lt $RegionMaxX) "tile resolves outside region X bounds: $GlobalX"
             Assert-True ($GlobalY -ge $RegionMinY -and $GlobalY -lt $RegionMaxY) "tile resolves outside region Y bounds: $GlobalY"
 
-            $Key = "$GlobalZ:$GlobalX:$GlobalY"
+            $Key = "${GlobalZ}:${GlobalX}:${GlobalY}"
             Assert-True (-not $Resolved.ContainsKey($Key)) "two chunks resolve to the same tile coordinate: $Key"
             $Resolved[$Key] = [pscustomobject]@{
                 ChunkX = [int64]$Chunk.x
@@ -75,7 +75,7 @@ foreach ($Region in $Map.regions) {
         $Z = [int64]$Parts[0]
         $X = [int64]$Parts[1]
         $Y = [int64]$Parts[2]
-        $RightKey = "$Z:$($X + 1):$Y"
+        $RightKey = "${Z}:$($X + 1):${Y}"
         if ($Resolved.ContainsKey($RightKey)) {
             $A = $Entry.Value
             $B = $Resolved[$RightKey]
