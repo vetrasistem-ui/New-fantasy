@@ -1,32 +1,30 @@
 # Architecture Decisions
 
-## ADR-001 — One official runtime family
+## ADR-001 — Runtime 10.98 is reference, not destination
 
-**Decision:** New Fantasy 1.0 targets TFS 1.4.2 / protocol 10.98 only.
+**Status:** supersedes the previous decision that made TFS 1.4.2 / 10.98 the final runtime.
 
-**Reason:** reduce compatibility matrix, simplify Studio adapters, client, assets, maps and testing.
+**Decision:** TFS 1.4.2, RME 3.7 and a 10.98-compatible client remain pinned as reference implementations, behavioral oracles and fallback tools during migration only.
 
-**Consequence:** Crystal, Canary and 15.x are out of scope for this repository unless a future major architecture decision changes this explicitly.
+**Reason:** preserve a known-working baseline without forcing the final platform to inherit legacy formats and protocol constraints.
 
 ---
 
-## ADR-002 — RME becomes the Studio foundation
+## ADR-002 — Fantasy Studio is not based on RME code by default
 
-**Decision:** start from a Remere's Map Editor codebase compatible with 10.98 and progressively transform it into Fantasy Studio instead of embedding a separate editor executable.
+**Status:** supersedes the previous plan to transform RME directly into the product.
 
-**Reason:** maps are the most complex editor domain and already have a mature engine, undo/redo, brushes, houses, spawns and OTBM I/O.
+**Decision:** build the Fantasy Studio/Map Engine as our own implementation. RME is used to study expected editing behavior and legacy OTBM interoperability when useful.
 
-**Consequence:** Fantasy-specific features should be layered cleanly around the map core whenever possible.
+**Reason:** allow a native map model, AI-first automation and independent evolution.
 
 ---
 
 ## ADR-003 — Clean fixed folder layout
 
-**Decision:** maps, content, assets, server and client have single official locations.
+**Decision:** maps, content, assets, server, client and shared contracts have single official locations.
 
-**Reason:** prevent the previous project's scattered/duplicated files and manual searching.
-
-**Consequence:** every Studio tool has a default path and must not create alternative storage locations without a new architecture decision.
+**Reason:** prevent scattered/duplicated files and manual searching.
 
 ---
 
@@ -38,26 +36,62 @@
 
 ---
 
-## ADR-005 — Studio and game grow together after F05
+## ADR-005 — Studio and game grow together
 
-**Decision:** do not build the entire Studio before game development starts.
+**Decision:** after the native first-play gate, new editors are built to solve real production needs of the game.
 
-**Reason:** new editors should solve real game-production needs and be validated by actual content.
+**Reason:** avoid building large unused toolsets.
 
 ---
 
 ## ADR-006 — Automation is a first-class interface
 
-**Decision:** GUI, scripts and Codex should converge on shared core operations rather than duplicating logic.
+**Decision:** GUI, scripts and Codex converge on shared domain operations.
 
-**Reason:** enables AI-assisted map/content creation while preserving deterministic validation and undo.
+**Reason:** AI-assisted creation must use the same validated map/content engine as manual editing.
 
 ---
 
-## ADR-007 — Upstream code is pinned and reviewed
+## ADR-007 — External references are pinned and isolated
 
-**Decision:** external bases are pinned to exact SHAs and cannot be silently updated.
+**Decision:** external repositories used as references are pinned to exact SHAs under local `.upstream/` clones and are not silently copied into product folders.
 
-**Reason:** reproducibility and compatibility.
+**Reason:** reproducibility, license clarity and clean-room boundaries.
 
-**Consequence:** incorporation/distribution also requires license review and documentation of obligations.
+---
+
+## ADR-008 — FMAP is the native map source
+
+**Decision:** the Fantasy map source of truth is FMAP, initially represented as versioned structured JSON and later optionally compiled to FMAPC for runtime efficiency.
+
+**Reason:** make maps semantic, chunkable, diff-friendly and much easier for AI to create and modify.
+
+**Consequence:** OTBM becomes legacy import/export/reference only.
+
+---
+
+## ADR-009 — Fantasy Server is a native server
+
+**Decision:** implement Fantasy Server as our own authoritative runtime instead of making a deep fork of TFS the permanent core.
+
+**Reason:** own the map loader, entities, protocol, data model and future gameplay architecture.
+
+**Consequence:** TFS remains a behavioral oracle/fallback during development.
+
+---
+
+## ADR-010 — Fantasy Protocol replaces 10.98
+
+**Decision:** create a versioned Fantasy Protocol shared by Fantasy Server and Fantasy Client.
+
+**Reason:** remove historical protocol limitations and support native map chunks, custom entities, effects, systems and future features without legacy workarounds.
+
+**Migration:** a 10.98 adapter may exist temporarily for comparison; it is not part of the final path.
+
+---
+
+## ADR-011 — Shared contracts are canonical
+
+**Decision:** protocol, FMAP schemas and common data definitions live under `Shared/`.
+
+**Reason:** Server, Client, Studio and Codex must not maintain divergent copies of the same contracts.
