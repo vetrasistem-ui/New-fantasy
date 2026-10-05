@@ -1,20 +1,18 @@
 # Fantasy Studio — Visual Foundation
 
-Status: **IN PROGRESS**
+Status: **IMPLEMENTATION COMPLETE / WINDOWS VISUAL VALIDATION PENDING**
 
 Branch: `feature/studio-visual-foundation`
 
 ## Objective
 
-Transform the current technical Map Editor shell into the official Fantasy Studio visual foundation while preserving the validated FMAP editor behavior and all F00–F05 contracts.
+Transform the technical Map Editor shell into the official Fantasy Studio visual foundation while preserving the validated FMAP editor behavior and all F00–F05 contracts.
 
 The approved visual direction is the dark Fantasy Studio styleboard selected by the project owner: deep navy background, cyan/blue accents, compact professional tooling, permanent left navigation, top command bar, central workspace, right inspector and lower console/status area.
 
-This phase establishes the product shell. It does not replace MapDocument, FMAP, Server, Protocol or Client domain logic.
+This phase establishes the product shell. It does not replace `MapDocument`, FMAP, Server, Protocol or Client domain logic.
 
 ## Visual tokens
-
-Reference palette:
 
 ```text
 Background       #081220
@@ -23,6 +21,7 @@ Panel            #1E293B
 Primary          #0EA5E9
 Primary bright   #22D3EE
 Hover            #3B82F6
+Active           #60A5FA
 Text primary     #E2E8F0
 Text secondary   #94A3B8
 Success          #10B981
@@ -30,16 +29,17 @@ Warning          #F59E0B
 Error            #EF4444
 ```
 
-The UI must remain readable without expensive effects. Glow/shadows are optional polish, not architectural requirements.
+The UI remains readable without expensive effects. The approved look is achieved with color hierarchy, spacing, borders, compact cards and light accent glow rather than a heavier renderer.
 
-## Main shell
+## Implemented product shell
 
 ```text
 Fantasy Studio
 ├── Topbar
-│   ├── product/project identity
+│   ├── Fantasy brand mark + product name
+│   ├── project / active module context
 │   ├── Save / Undo / Redo
-│   └── Play / Stop / Build / Settings
+│   └── Play / Stop / Build / Settings visual controls
 ├── Sidebar
 │   ├── Home
 │   ├── Map
@@ -51,58 +51,111 @@ Fantasy Studio
 │   ├── Systems
 │   ├── Server
 │   └── Client
-└── Workspace
-    ├── active module
-    ├── Inspector
-    └── Console / status
+└── Workspaces
+    ├── Home / Project Manager
+    ├── Map Editor
+    │   ├── tool strip
+    │   ├── real FMAP viewport
+    │   ├── Inspector tabs
+    │   ├── Minimap
+    │   └── Console
+    ├── Items & Assets
+    │   ├── tabs
+    │   ├── library tree
+    │   ├── search
+    │   └── semantic asset grid from the real FMAP
+    └── module shells for future domain editors
 ```
 
-## Delivery stages
+## UI-00 — Design tokens — COMPLETE
 
-### UI-00 — Design tokens
+- colors, borders, rounding, spacing and component behavior centralized in `StudioTheme`;
+- SDL3 + SDL_Renderer3 + Dear ImGui preserved;
+- no renderer upgrade and no GPU feature requirement added.
 
-- centralize ImGui colors, rounding, spacing and component sizing;
-- keep SDL3 + SDL_Renderer3 + Dear ImGui;
-- no renderer upgrade.
-
-### UI-01 — Studio shell
+## UI-01 — Studio shell — COMPLETE
 
 - fixed topbar;
-- fixed sidebar;
+- permanent sidebar;
 - active-page state;
 - central workspace bounds;
-- no domain changes.
+- lightweight vector brand mark drawn by the UI layer;
+- no external font/image dependency required for the baseline.
 
-### UI-02 — Home / Project Manager shell
+## UI-02 — Home / Project Manager — COMPLETE FOR VISUAL FOUNDATION
 
-- current project card;
-- New Project / Open Project / Import Project entry points as UI shells;
-- Open Map action routes to the real Map workspace;
-- recent-project integration may follow using existing ProjectManager APIs.
+- branded hero area;
+- current-project context;
+- New Project / Open Project visual entry points reserved for their real file/dialog flows;
+- real Open Map routing;
+- Recent Projects area consumes the existing `ProjectManager::recentProjects()` registry when available;
+- real world/project counters shown from the loaded FMAP.
 
-### UI-03 — Map workspace
+No fake project/domain data is inserted.
 
-- retain the real F03 MapDocument editor;
+## UI-03 — Map workspace — COMPLETE FOR VISUAL FOUNDATION
+
+- existing F03 `MapDocument` editor retained;
 - central map viewport;
-- right inspector/brushes;
-- minimap/world information;
-- lower console/status;
-- Save, Undo, Redo and editing operations remain wired to the existing core.
+- compact visual tool strip;
+- right Inspector with Tile / Item / Object tabs;
+- Tile tab keeps the real Ground/Object editing controls;
+- Minimap;
+- lower Console/status;
+- Save, Undo, Redo and editor operations remain wired to the existing core.
 
-### UI-04 — Module shells
+The new visual tool strip is presentation/navigation state only where a domain tool has not yet been implemented. It does not invent a second editor core.
 
-Create consistent placeholder workspaces for Items & Assets, Monsters, NPCs, Spells, Quests, Systems, Server and Client. A placeholder must clearly say when the subsystem is not implemented; it must not fake domain functionality.
+## UI-04 — Items & Assets — COMPLETE FOR VISUAL FOUNDATION
 
-### UI-05 — Validation
+- Items / Sprites / Textures / Sounds tabs;
+- library tree;
+- search input;
+- FMAP Grounds/Objects categories;
+- preview cards generated from the real semantic asset keys already present in the current FMAP;
+- explicit 10.98 / F05.5 source status.
 
-- Studio opens on Windows on the SDL_Renderer3 baseline;
-- Home and every sidebar module can be selected;
-- Map page still edits the canonical FMAP through MapDocument;
-- Paint / Fill / Add Object / Remove Object / Erase / Undo / Redo / Save remain functional;
-- Save/Reopen semantics stay unchanged;
-- no absolute paths introduced;
-- F00–F05 automated regressions remain green when runners are available;
-- real Windows screenshots are captured before marking this visual foundation PASS.
+Real sprite pixels are intentionally not loaded here yet; that begins in F05.5 through the shared Fantasy Asset Registry.
+
+## UI-05 — Module shells — COMPLETE
+
+Consistent workspaces exist for:
+
+- Monsters;
+- NPCs;
+- Spells;
+- Quests;
+- Systems;
+- Server;
+- Client.
+
+Each shell states its owning future phase and does not simulate domain data.
+
+## UI-06 — Windows validation — PENDING
+
+The visual implementation must not be marked PASS until a real Windows run proves all of the following:
+
+```text
+1. Release build succeeds.
+2. fantasy-studio-gui opens on the SDL_Renderer3 baseline.
+3. Home matches the approved dark navy/cyan hierarchy.
+4. Every sidebar module is reachable.
+5. Map workspace keeps the real FMAP visible/editable.
+6. Tile selection works.
+7. Paint works.
+8. Fill works.
+9. Add Object works.
+10. Remove Object works.
+11. Erase works.
+12. Undo / Redo work.
+13. Save and reopen preserve semantics.
+14. Items & Assets shows the current FMAP semantic keys.
+15. No orphan process remains after close.
+16. F00–F05 regressions remain green.
+17. Screenshots of Home, Map and Items & Assets are captured.
+```
+
+If remote GitHub runners are still unavailable, perform the Windows local gate first and keep remote CI as `PENDING`, not as a code failure.
 
 ## Non-goals
 
@@ -116,10 +169,10 @@ This phase does not implement:
 - complete Items/Monsters/NPC/Spell/Quest editors;
 - public Server/Client operations.
 
-## Next order
+## Next order after the Windows visual gate
 
 ```text
-Studio Visual Foundation
+Studio Visual Foundation — PASS
         ↓
 F05.5 Legacy Asset Bridge + PokeFans 10.98 migration
         ↓
