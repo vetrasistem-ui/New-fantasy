@@ -100,18 +100,18 @@
 
 ## ADR-012 — Fantasy Studio visual stack uses SDL3 + SDL_GPU + Dear ImGui
 
-**Decision:** the F03 visual editor is built on SDL3 for platform/window/input, SDL_GPU for map/editor rendering, and Dear ImGui for editor panels and tooling UI.
+**Status:** superseded for the 2D baseline by ADR-019. Retained as historical context for the first F03 implementation.
+
+**Decision:** the F03 visual editor was initially built on SDL3 for platform/window/input, SDL_GPU for map/editor rendering, and Dear ImGui for editor panels and tooling UI.
 
 Pinned foundation at decision time:
 
 - SDL `release-3.4.18`, commit `829a65d769d935c4852f8159e964312c0957260a`;
 - Dear ImGui `v1.92.9b`, commit `f1cc2ae15e53a861a874c3034aae6798fde194ab`.
 
-**Reason:** both stacks are C/C++ friendly, cross-platform, permissively licensed, work well with C++20, and Dear ImGui ships maintained SDL3 + SDL_GPU backends. SDL_GPU also avoids coupling the map viewport to a legacy widget toolkit or to SDL_Renderer's more limited graphics path.
+**Reason:** both stacks are C/C++ friendly, cross-platform, permissively licensed, work well with C++20, and Dear ImGui ships maintained SDL3 + SDL_GPU backends.
 
-**Boundary:** SDL/ImGui are visual/platform dependencies only. `MapDocument`, FMAP, project logic and automation remain independent from the GUI. The visual editor may be replaced later without changing the native map data model.
-
-**Dependency policy:** dependencies are fetched/pinned by build configuration or isolated under external dependency folders; their source is not copied into the Fantasy core and their license notices remain preserved.
+**Boundary:** SDL/ImGui are visual/platform dependencies only. `MapDocument`, FMAP, project logic and automation remain independent from the GUI.
 
 ---
 
@@ -163,11 +163,11 @@ Pinned foundation at decision time:
 
 ## ADR-017 — First visual Fantasy Client reuses the approved SDL3 stack
 
-**Decision:** the first native visual client uses the same pinned SDL3 + SDL_GPU + Dear ImGui dependency family as the Studio for its F05 validation UI.
+**Status:** superseded for the 2D baseline by ADR-019.
 
-**Reason:** reuse an already approved/pinned Windows-capable visual foundation and avoid introducing a second throwaway rendering toolkit before the first native-play gate closes.
+**Decision:** the first native visual client initially reused the same pinned SDL3 + SDL_GPU + Dear ImGui dependency family as the Studio for its F05 validation UI.
 
-**Boundary:** Dear ImGui is only the F05 diagnostic/first-play presentation layer. `DevelopmentClient`, Fantasy Protocol, FMCP and gameplay state remain independent from the GUI. Future game UI/rendering may evolve without changing those contracts.
+**Boundary:** Dear ImGui remains only the F05 diagnostic/first-play presentation layer. `DevelopmentClient`, Fantasy Protocol, FMCP and gameplay state remain independent from the GUI.
 
 ---
 
@@ -184,3 +184,17 @@ Pinned foundation at decision time:
 **Security:** F06 does not define public authentication and must not store plaintext passwords. `LoginDev` remains loopback/development-only.
 
 **Activation gate:** no F06 code is implemented until the Windows interactive F03/F05 closeout, evidence update and exact-SHA CI run are green.
+
+---
+
+## ADR-019 — Native 2D baseline uses SDL_Renderer3
+
+**Decision:** Fantasy Studio and the first visual Fantasy Client use SDL3 for window/input, SDL_Renderer3 for the native 2D rendering baseline, and Dear ImGui for tooling/diagnostic UI. SDL_GPU is no longer a baseline requirement and is reserved for an optional advanced backend if future shaders, lighting or effects justify it.
+
+**Reason:** the current product is a top-down 2D tile editor/client. The SDL_GPU path introduced D3D12 Resource Binding Tier and DXIL requirements that were unnecessary for the current visual workload and blocked older but otherwise usable Windows hardware. SDL_Renderer3 keeps the visual layer compact while preserving hardware acceleration and the existing ImGui draw-list based viewport.
+
+**Boundary:** this changes only presentation. FMAP, `MapDocument`, editor operations, Fantasy Protocol, `DevelopmentClient`, WorldRuntime and Server authority remain unchanged. No second map, protocol, Client core or gameplay model may be introduced by the renderer.
+
+**Compatibility principle:** prefer the simplest renderer that correctly renders Fantasy content across a broad hardware range. Advanced rendering is added only when a concrete feature requires it.
+
+**Future:** an explicit renderer abstraction may later expose `Render2D` and optional advanced backends. That future work must not make SDL_GPU mandatory for the basic editor/client.
