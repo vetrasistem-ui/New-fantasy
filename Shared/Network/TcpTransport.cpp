@@ -10,6 +10,9 @@
 #ifndef WIN32_LEAN_AND_MEAN
 #define WIN32_LEAN_AND_MEAN
 #endif
+#ifndef NOMINMAX
+#define NOMINMAX
+#endif
 #include <winsock2.h>
 #include <ws2tcpip.h>
 #else
@@ -76,6 +79,11 @@ sockaddr_in loopbackAddress(std::uint16_t port) {
     return address;
 }
 
+int boundedIoRequest(std::size_t remaining) {
+    const auto maxInt = static_cast<std::size_t>(std::numeric_limits<int>::max());
+    return static_cast<int>((remaining < maxInt) ? remaining : maxInt);
+}
+
 } // namespace
 
 TcpStream::TcpStream(std::uintptr_t nativeHandle) : handle_(nativeHandle) {}
@@ -138,7 +146,7 @@ void TcpStream::sendAll(std::span<const std::uint8_t> bytes) {
     std::size_t offset = 0;
     while (offset < bytes.size()) {
         const std::size_t remaining = bytes.size() - offset;
-        const int request = static_cast<int>(std::min<std::size_t>(remaining, static_cast<std::size_t>(std::numeric_limits<int>::max())));
+        const int request = boundedIoRequest(remaining);
 #ifdef _WIN32
         const int sent = ::send(asNative(handle_), reinterpret_cast<const char*>(bytes.data() + offset), request, 0);
         if (sent == SOCKET_ERROR) throw std::runtime_error(socketError("send"));
@@ -157,7 +165,7 @@ std::vector<std::uint8_t> TcpStream::receiveExact(std::size_t size) {
     std::size_t offset = 0;
     while (offset < size) {
         const std::size_t remaining = size - offset;
-        const int request = static_cast<int>(std::min<std::size_t>(remaining, static_cast<std::size_t>(std::numeric_limits<int>::max())));
+        const int request = boundedIoRequest(remaining);
 #ifdef _WIN32
         const int received = ::recv(asNative(handle_), reinterpret_cast<char*>(result.data() + offset), request, 0);
         if (received == SOCKET_ERROR) throw std::runtime_error(socketError("recv"));
