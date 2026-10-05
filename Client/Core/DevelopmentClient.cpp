@@ -91,6 +91,8 @@ void DevelopmentClient::login(const std::string& characterName) {
                 const auto message = protocol::decodeMapChunk(frame);
                 chunks_.push_back(ReceivedChunk{
                     message.regionId,
+                    message.regionOriginX,
+                    message.regionOriginY,
                     message.revision,
                     protocol::decodeFmapChunkPayload(message)
                 });
