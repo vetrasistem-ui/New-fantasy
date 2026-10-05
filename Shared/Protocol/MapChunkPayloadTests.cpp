@@ -31,8 +31,10 @@ int main() {
         require(region.chunks.size() == 4, "development world chunk count mismatch");
 
         for (const auto& chunk : region.chunks) {
-            const fp::MapChunk message = fp::makeProtocolMapChunk(region.id, chunk, 7);
+            const fp::MapChunk message = fp::makeProtocolMapChunk(region, chunk, 7);
             require(message.regionId == region.id, "region id mismatch");
+            require(message.regionOriginX == region.origin.x && message.regionOriginY == region.origin.y,
+                "region origin mismatch");
             require(message.revision == 7, "revision mismatch");
             require(!message.payload.empty(), "semantic chunk payload cannot be empty");
 
@@ -41,17 +43,19 @@ int main() {
 
             const fp::Frame frame = fp::makeFrame(1, message);
             const fp::MapChunk reopenedMessage = fp::decodeMapChunk(fp::decodeFrame(fp::encodeFrame(frame)));
+            require(reopenedMessage.regionOriginX == region.origin.x && reopenedMessage.regionOriginY == region.origin.y,
+                "full protocol region origin roundtrip mismatch");
             require(fp::decodeFmapChunkPayload(reopenedMessage) == chunk,
                 "full protocol MapChunk roundtrip mismatch");
         }
 
-        fp::MapChunk invalid = fp::makeProtocolMapChunk(region.id, region.chunks.front());
+        fp::MapChunk invalid = fp::makeProtocolMapChunk(region, region.chunks.front());
         invalid.payload.at(0) = 'X';
         bool badMagicRejected = false;
         try { (void)fp::decodeFmapChunkPayload(invalid); } catch (...) { badMagicRejected = true; }
         require(badMagicRejected, "invalid FMCP magic must be rejected");
 
-        fp::MapChunk trailing = fp::makeProtocolMapChunk(region.id, region.chunks.front());
+        fp::MapChunk trailing = fp::makeProtocolMapChunk(region, region.chunks.front());
         trailing.payload.push_back(0xFF);
         bool trailingRejected = false;
         try { (void)fp::decodeFmapChunkPayload(trailing); } catch (...) { trailingRejected = true; }
