@@ -39,6 +39,7 @@ add_library(fantasy-studio-project
 
 add_library(fantasy-map-core
     MapEngine/FmapCore.cpp
+    MapEngine/EditorOperations.cpp
 )
 
 foreach(target fantasy-studio-project fantasy-map-core)
@@ -105,9 +106,18 @@ target_compile_definitions(fantasy-map-core-tests PRIVATE
     FANTASY_REPO_ROOT="${CMAKE_CURRENT_SOURCE_DIR}/.."
 )
 
+add_executable(fantasy-editor-operations-tests
+    MapEngine/EditorOperationsTests.cpp
+)
+target_link_libraries(fantasy-editor-operations-tests PRIVATE fantasy-map-core)
+target_compile_definitions(fantasy-editor-operations-tests PRIVATE
+    FANTASY_REPO_ROOT="${CMAKE_CURRENT_SOURCE_DIR}/.."
+)
+
 enable_testing()
 add_test(NAME fantasy-studio-project-tests COMMAND fantasy-studio-project-tests)
 add_test(NAME fantasy-map-core-tests COMMAND fantasy-map-core-tests)
+add_test(NAME fantasy-editor-operations-tests COMMAND fantasy-editor-operations-tests)
 add_test(
     NAME fantasy-studio-open-project
     COMMAND fantasy-studio --open-project "${CMAKE_CURRENT_SOURCE_DIR}/.."
