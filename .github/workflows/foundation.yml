@@ -16,6 +16,21 @@ jobs:
         shell: pwsh
         run: ./scripts/check-layout.ps1
 
+      - name: Validate FMAP v0
+        shell: pwsh
+        run: ./scripts/validate-fmap.ps1
+
+      - name: Validate Fantasy Protocol v1
+        shell: pwsh
+        run: ./scripts/validate-protocol.ps1
+
+      - name: Record toolchain
+        shell: pwsh
+        run: |
+          Write-Host "OS=$([System.Environment]::OSVersion.VersionString)"
+          cmake --version
+          git --version
+
       - name: Configure Fantasy Server
         shell: pwsh
         run: cmake -S Server -B build/server
