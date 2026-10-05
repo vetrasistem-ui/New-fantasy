@@ -1,3 +1,4 @@
+#include "MapEngine/EditorOperations.hpp"
 #include "MapEngine/FmapCore.hpp"
 #include "Project/ProjectManager.hpp"
 
@@ -18,6 +19,7 @@
 
 namespace fs = std::filesystem;
 using fantasy::studio::ProjectManager;
+using fantasy::studio::map::EditorOperations;
 using fantasy::studio::map::MapDocument;
 using fantasy::studio::map::TileLocator;
 using fantasy::studio::map::loadFmap;
@@ -56,22 +58,6 @@ void copyText(std::array<char, 128>& target, const std::string& value) {
     const std::size_t count = std::min<std::size_t>(target.size() - 1, value.size());
     std::copy_n(value.data(), count, target.data());
     target[count] = '\0';
-}
-
-template <typename Action>
-void runTransaction(MapDocument& document, EditorState& state, const char* label, Action&& action) {
-    try {
-        document.beginTransaction(label);
-        action();
-        document.commit();
-        state.status = std::string(label) + " — PASS";
-    } catch (const std::exception& error) {
-        try {
-            document.rollback();
-        } catch (...) {
-        }
-        state.status = error.what();
-    }
 }
 
 void drawMapViewport(MapDocument& document, EditorState& state) {
@@ -199,23 +185,53 @@ void drawInspector(MapDocument& document, EditorState& state, const fs::path& ma
         ImGui::SeparatorText("Ground brush");
         ImGui::InputText("Ground key", state.groundKey.data(), state.groundKey.size());
         if (ImGui::Button("Paint selected")) {
-            runTransaction(document, state, "Paint ground", [&] {
-                document.setGround(selected, state.groundKey.data());
-            });
+            try {
+                EditorOperations::paintGround(document, selected, state.groundKey.data());
+                state.status = "Paint ground — PASS";
+            } catch (const std::exception& error) {
+                state.status = error.what();
+            }
+        }
+        ImGui::SameLine();
+        if (ImGui::Button("Fill connected")) {
+            try {
+                const std::size_t changed = EditorOperations::fillConnectedGround(
+                    document,
+                    selected,
+                    state.groundKey.data());
+                state.status = "Fill connected — " + std::to_string(changed) + " tile(s)";
+            } catch (const std::exception& error) {
+                state.status = error.what();
+            }
         }
 
         ImGui::SeparatorText("Object brush");
         ImGui::InputText("Object key", state.objectKey.data(), state.objectKey.size());
         if (ImGui::Button("Add object")) {
-            runTransaction(document, state, "Add object", [&] {
-                document.addObject(selected, state.objectKey.data());
-            });
+            try {
+                EditorOperations::addObject(document, selected, state.objectKey.data());
+                state.status = "Add object — PASS";
+            } catch (const std::exception& error) {
+                state.status = error.what();
+            }
         }
         ImGui::SameLine();
         if (ImGui::Button("Remove object")) {
-            runTransaction(document, state, "Remove object", [&] {
-                document.removeObject(selected, state.objectKey.data());
-            });
+            try {
+                EditorOperations::removeObject(document, selected, state.objectKey.data());
+                state.status = "Remove object — PASS";
+            } catch (const std::exception& error) {
+                state.status = error.what();
+            }
+        }
+        ImGui::SameLine();
+        if (ImGui::Button("Erase tile objects")) {
+            try {
+                const std::size_t removed = EditorOperations::eraseObjects(document, selected);
+                state.status = "Erase tile objects — " + std::to_string(removed) + " object(s)";
+            } catch (const std::exception& error) {
+                state.status = error.what();
+            }
         }
     } else {
         ImGui::TextDisabled("Select a tile in the viewport.");
