@@ -23,7 +23,8 @@ void require(bool condition, const std::string& message) {
 int main() {
     try {
         const fs::path repoRoot = fs::weakly_canonical(fs::path(FANTASY_REPO_ROOT));
-        WorldRuntime runtime = WorldRuntime::load(repoRoot / "Game/Maps/World/world.fmap.json");
+        const fs::path mapPath = repoRoot / "Game/Maps/World/world.fmap.json";
+        WorldRuntime runtime = WorldRuntime::load(mapPath);
 
         require(runtime.indexedTileCount() == 64, "development world must index 64 tiles");
         require(runtime.state() == RuntimeState::Stopped, "runtime should start stopped");
@@ -78,6 +79,21 @@ int main() {
         require(runtime.state() == RuntimeState::Stopped, "runtime should stop cleanly");
         require(runtime.entityCount() == 0, "entities should be cleared on stop");
         require(runtime.pendingTaskCount() == 0, "scheduler should be cleared on stop");
+
+        auto blockedWorld = fantasy::fmap::loadFmap(mapPath);
+        blockedWorld.regions.at(0).chunks.at(0).tiles.at(0).tags.push_back("blocked");
+        WorldRuntime blockedRuntime(std::move(blockedWorld));
+        blockedRuntime.start();
+        const MapPosition blockedPosition{96, 96, 7};
+        require(!blockedRuntime.isWalkable(blockedPosition), "blocked-tagged tile must be non-walkable");
+        bool blockedSpawnRejected = false;
+        try {
+            blockedRuntime.spawnEntity("Blocked Spawn", blockedPosition);
+        } catch (...) {
+            blockedSpawnRejected = true;
+        }
+        require(blockedSpawnRejected, "entity spawn on blocked tile must be rejected");
+        blockedRuntime.stop();
 
         std::cout << "WorldRuntimeTests PASS\n";
         return 0;
