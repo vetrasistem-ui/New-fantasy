@@ -53,6 +53,8 @@ int main() {
         for (std::size_t index = 0; index < 4; ++index) {
             const auto message = fp::decodeMapChunk(loginReplies.at(index + 2));
             require(message.regionId == "development", "MapChunk region mismatch");
+            require(message.regionOriginX == 96 && message.regionOriginY == 96,
+                "MapChunk region origin mismatch");
             require(message.chunkX == expectedChunkX[index] && message.chunkY == expectedChunkY[index],
                 "MapChunk deterministic ordering mismatch");
             require(message.floor == 7, "MapChunk floor mismatch");
