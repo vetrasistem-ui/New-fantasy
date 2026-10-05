@@ -1,12 +1,13 @@
 # Fantasy Studio Visual Foundation — Validation Result
 
-Status: **REMOTE CI PASS / WINDOWS INTERACTIVE VALIDATION PENDING**
+Status: **V3 REMOTE CI PASS / WINDOWS INTERACTIVE VISUAL ACCEPTANCE PENDING**
 
 Branch: `feature/studio-visual-foundation`
 
 ## Baseline
 
-- Validation SHA: `3183a71170bcdcaf58cd2941f53ac7b97ab37280`
+- Visual implementation SHA: `68f5eb76030a4bbb7f2b8654498778562258dd84`
+- Visual shell: `Studio/UI/StudioAppV3.cpp`
 - Windows version: **PENDING local interactive gate**
 - GPU / driver: **PENDING local interactive gate**
 - Configuration: `Release`
@@ -14,7 +15,13 @@ Branch: `feature/studio-visual-foundation`
 
 ## Automated / build gate
 
-Remote exact-SHA CI on GitHub Actions: **PASS**
+Remote exact-SHA GitHub Actions for the V3 visual shell: **PASS**
+
+- Run: `#237` / `37384402410`
+- Exact implementation SHA: `68f5eb76030a4bbb7f2b8654498778562258dd84`
+- Result: **SUCCESS**
+
+Validated remotely on Windows:
 
 - [x] project layout/contracts
 - [x] Fantasy Project v2 validator
@@ -22,34 +29,37 @@ Remote exact-SHA CI on GitHub Actions: **PASS**
 - [x] FMAP multi-chunk validator
 - [x] Fantasy Protocol v1 validator
 - [x] project relocation
-- [x] Studio configure/build/tests
+- [x] V3 Studio configure/build/tests
+- [x] Studio Windows artifact published
 - [x] Server configure/build/tests/native play
 - [x] Client configure/build/smoke test
 - [x] two-process native play
-- [x] Studio Windows artifact published
 - [x] native runtime Windows artifact published
 
-Exact-SHA local interactive execution of `./scripts/build-native.ps1 -Configuration Release` is still part of the Windows visual gate below, because it also establishes the local evidence environment.
+The V3 Studio Windows artifact was produced successfully before the remainder of the native regression completed.
 
-## Home
+Documentation/launcher commits after the implementation SHA do not change the V3 executable source. Their current branch runs are ordinary revalidation runs.
+
+## Home — interactive acceptance pending
 
 - [ ] Fantasy Studio window opens
-- [ ] dark navy/cyan theme
-- [ ] brand mark / identity
-- [ ] sidebar
-- [ ] topbar
-- [ ] hero
-- [ ] project cards
-- [ ] project information / real FMAP counts
-- [ ] route to Map
+- [ ] dark navy/cyan hierarchy matches the approved direction
+- [ ] Fantasy brand identity is clear
+- [ ] topbar layout is stable
+- [ ] sidebar active-state rail is clear
+- [ ] hero is visually balanced
+- [ ] three project action cards are aligned
+- [ ] Recent Projects rows are readable
+- [ ] real FMAP project metrics are visible
+- [ ] `Abrir Map Workspace` routes to Map
 
-Evidence:
+Evidence target:
 
 ```text
 docs/evidence/STUDIO-VISUAL/home.png
 ```
 
-## Navigation
+## Navigation — interactive acceptance pending
 
 - [ ] Home
 - [ ] Map
@@ -62,10 +72,10 @@ docs/evidence/STUDIO-VISUAL/home.png
 - [ ] Server
 - [ ] Client
 
-## Map Workspace
+## Map Workspace — interactive acceptance pending
 
-- [ ] tool strip
-- [ ] viewport
+- [ ] compact tool strip
+- [ ] viewport remains dominant
 - [ ] Inspector tabs
 - [ ] Minimap
 - [ ] Console
@@ -81,53 +91,50 @@ docs/evidence/STUDIO-VISUAL/home.png
 - [ ] Reopen / semantic persistence
 - [ ] canonical FMAP restored after validation when required
 
-Evidence:
+Evidence target:
 
 ```text
 docs/evidence/STUDIO-VISUAL/map.png
 ```
 
-## Items & Assets
+## Items & Assets — interactive acceptance pending
 
 - [ ] Items / Sprites / Textures / Sounds tabs
-- [ ] library tree
+- [ ] narrow library tree
+- [ ] wide asset grid
 - [ ] search
 - [ ] Grounds
 - [ ] Objects
 - [ ] semantic cards originate from current FMAP
-- [ ] no DAT/SPR pixels loaded before F05.5
+- [ ] PokeFans / 10.98 is shown only as the next source
+- [ ] no DAT/SPR pixels loaded before the compatibility phase
 
-Evidence:
+Evidence target:
 
 ```text
 docs/evidence/STUDIO-VISUAL/items-assets.png
 ```
 
-## Cleanup / integrity
+## Resolution / cleanup pending
 
+- [ ] 1440x900 target layout accepted
+- [ ] smaller practical window sanity check
 - [ ] Studio closes cleanly
 - [ ] no orphan Studio process
 - [ ] no Server/Client orphan process introduced
 - [ ] `git diff --check` clean
 - [ ] no build/cache/binary legacy files staged
 
-## Remote CI
+## Preferred local command
 
-Status: **PASS**
+```powershell
+./scripts/run-studio-visual.ps1 -Configuration Release -Build
+```
 
-GitHub Actions runners normalized and the visual-foundation branch received a real `windows-latest` runner.
-
-- Run: `#231` / `37380616761`
-- Exact SHA: `3183a71170bcdcaf58cd2941f53ac7b97ab37280`
-- Result: **SUCCESS**
-- Job: `foundation` — **SUCCESS**
-- Studio Windows artifact: published
-- Native runtime Windows artifact: published
-
-The remote workflow proved validators, Studio/Server/Client builds and tests, native play, two-process play and artifact publication on Windows.
+The launcher builds when requested, opens the Studio with the repository root and verifies that the GUI leaves no orphan process after normal close.
 
 ## Final decision
 
-**PENDING WINDOWS INTERACTIVE VISUAL GATE**
+**PENDING WINDOWS INTERACTIVE VISUAL ACCEPTANCE**
 
-Remote CI is closed as PASS. Do not mark the visual foundation fully PASS until the real Windows interactive Home / navigation / Map editing / Items & Assets / Save-Reopen / cleanup gates and screenshots are completed.
+The V3 code/build gate is closed as PASS. The remaining work is visual/ergonomic acceptance on a real Windows display, screenshots, and any small polish corrections discovered there. Only after this acceptance should the project move to opening a real 10.98 OTBM with matching DAT/SPR/OTB and rendering real sprites.
