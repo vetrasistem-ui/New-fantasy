@@ -1,0 +1,57 @@
+# Build outputs
+build/
+out/
+dist/
+*.obj
+*.o
+*.pdb
+*.ilk
+*.exe
+*.dll
+*.lib
+*.a
+
+# IDE
+.vs/
+.vscode/
+.idea/
+*.user
+*.suo
+CMakeSettings.json
+
+# CMake/vcpkg
+CMakeFiles/
+CMakeCache.txt
+cmake_install.cmake
+compile_commands.json
+vcpkg_installed/
+
+# Runtime/logs
+**/Logs/*
+!**/Logs/.gitkeep
+*.log
+*.pid
+
+# Local databases and secrets
+*.db
+*.sqlite
+*.sqlite3
+.env
+.env.*
+!.env.example
+config.lua
+
+# Generated/cache
+.cache/
+tmp/
+temp/
+*.tmp
+*.bak
+
+# Local upstream homologation clones
+.upstream/
+
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini
