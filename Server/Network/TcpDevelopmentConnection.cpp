@@ -9,22 +9,29 @@ ConnectionStats serveDevelopmentConnection(net::TcpStream stream, WorldRuntime& 
     DevelopmentSession session(world);
     ConnectionStats stats;
 
-    while (session.state() != SessionState::Closed) {
-        const protocol::Frame incoming = net::receiveFrame(stream);
-        ++stats.framesReceived;
+    try {
+        while (session.state() != SessionState::Closed) {
+            const protocol::Frame incoming = net::receiveFrame(stream);
+            ++stats.framesReceived;
 
-        const auto replies = session.handle(incoming);
-        for (const auto& reply : replies) {
-            net::sendFrame(stream, reply);
-            ++stats.framesSent;
-        }
+            const auto replies = session.handle(incoming);
+            for (const auto& reply : replies) {
+                net::sendFrame(stream, reply);
+                ++stats.framesSent;
+            }
 
-        if (incoming.messageType == protocol::MessageType::Disconnect && session.state() == SessionState::Closed) {
-            stats.cleanDisconnect = true;
-            break;
+            if (incoming.messageType == protocol::MessageType::Disconnect && session.state() == SessionState::Closed) {
+                stats.cleanDisconnect = true;
+                break;
+            }
         }
+    } catch (...) {
+        session.close();
+        stream.close();
+        throw;
     }
 
+    session.close();
     stream.close();
     return stats;
 }
