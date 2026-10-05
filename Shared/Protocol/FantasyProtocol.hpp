@@ -77,6 +77,8 @@ struct EnterWorld {
 
 struct MapChunk {
     std::string regionId;
+    std::int32_t regionOriginX = 0;
+    std::int32_t regionOriginY = 0;
     std::int32_t chunkX = 0;
     std::int32_t chunkY = 0;
     std::int16_t floor = 0;
@@ -130,8 +132,6 @@ bool isValidMoveDirection(std::uint8_t rawDirection);
 Bytes encodeFrame(const Frame& frame);
 Frame decodeFrame(std::span<const std::uint8_t> bytes);
 
-// Returns nullopt until at least the complete 16-byte envelope is available.
-// Once the envelope is available, returns the exact total frame size expected.
 std::optional<std::size_t> expectedFrameSize(std::span<const std::uint8_t> prefix);
 
 Frame makeFrame(std::uint32_t sequence, const Hello& message);
