@@ -33,7 +33,7 @@ Construir uma plataforma Fantasy própria: Studio, formato de mapa, servidor, pr
 23. `MapChunk` v1 usa o codec compartilhado FMCP v1. O Client resolve tiles com `regionOrigin + chunkOffset + tileLocal`; não inventar uma segunda convenção de coordenadas.
 24. O transporte `LoginDev` da F05 é **somente desenvolvimento/loopback**. Não alterar bind para `0.0.0.0`, IP público ou VPS público sem uma fase explícita de segurança/autenticação.
 25. O Client headless e o Client GUI devem consumir o mesmo `DevelopmentClient`; a GUI não pode implementar protocolo/rede próprios.
-26. SDL3/SDL_GPU/Dear ImGui são dependências visuais. Não mover regras de gameplay, protocolo, mapa ou autoridade para a camada ImGui.
+26. SDL3 + SDL_Renderer3 + Dear ImGui formam o baseline visual 2D. SDL_GPU é opcional/futuro e não deve virar requisito do core, gameplay, protocolo, mapa ou autoridade.
 
 ## Layout essencial
 
