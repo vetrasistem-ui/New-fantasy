@@ -10,6 +10,7 @@ wire:
   maxPayloadBytes: 4194304
   stringEncoding: utf8
   variableLengthPrefix: uint32
+  mapChunkPayload: FMCP-v1
 
 # Fantasy Protocol v1 uses one length-delimited frame per message.
 # Client messages express intent; authoritative world state is emitted by Server.
@@ -62,6 +63,8 @@ messages:
     direction: server_to_client
     fields:
       - { name: regionId, type: string }
+      - { name: regionOriginX, type: int32 }
+      - { name: regionOriginY, type: int32 }
       - { name: chunkX, type: int32 }
       - { name: chunkY, type: int32 }
       - { name: floor, type: int16 }
