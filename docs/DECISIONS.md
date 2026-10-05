@@ -136,3 +136,35 @@ Pinned foundation at decision time:
 **Reason:** TCP provides reliable ordered delivery for the initial top-down RPG runtime while explicit framing prevents the code from depending on TCP packet boundaries. Separating intent from state makes the authoritative-server rule enforceable in the protocol itself.
 
 **Boundary:** transport can be revisited in a future protocol version if real gameplay measurements justify it; v1 code must not silently alter framing or authority semantics.
+
+---
+
+## ADR-015 — MapChunk uses FMCP v1 and carries region origin
+
+**Decision:** Fantasy Protocol v1 `MapChunk` carries `regionId`, `regionOriginX/Y`, FMAP region-local `chunkX/Y`, floor, revision and an independently versioned semantic payload named **FMCP v1**.
+
+**FMCP v1:** the payload preserves FMAP tile-local coordinates, semantic ground/object keys and tags. It does not translate map content to Tibia item IDs or another legacy asset model.
+
+**Reason:** FMAP v0 global tile coordinates are resolved as `regionOrigin + chunkOffset + tileLocal`. Sending region origin in the outer message gives the Client enough information to reconstruct exact world coordinates without coupling it to the Server's complete FMAP file.
+
+**Boundary:** FMCP is versioned independently from the outer Fantasy Protocol frame. A later streaming/compression format may supersede it only through an explicit version/migration decision.
+
+---
+
+## ADR-016 — F05 TCP listener is development-only and loopback-only
+
+**Decision:** the first playable TCP path binds `127.0.0.1` only and uses `LoginDev` solely for local development validation.
+
+**Reason:** F05 exists to prove the native Client → Protocol → Server → FMAP loop, not to prematurely define public multiplayer security and operations.
+
+**Security boundary:** this listener must not be exposed on a public VPS/interface. Public networking requires a later gate with real authentication/session tokens, connection and rate limits, timeouts, abuse controls, production logging/metrics and a deliberate transport-encryption decision.
+
+---
+
+## ADR-017 — First visual Fantasy Client reuses the approved SDL3 stack
+
+**Decision:** the first native visual client uses the same pinned SDL3 + SDL_GPU + Dear ImGui dependency family as the Studio for its F05 validation UI.
+
+**Reason:** reuse an already approved/pinned Windows-capable visual foundation and avoid introducing a second throwaway rendering toolkit before the first native-play gate closes.
+
+**Boundary:** Dear ImGui is only the F05 diagnostic/first-play presentation layer. `DevelopmentClient`, Fantasy Protocol, FMCP and gameplay state remain independent from the GUI. Future game UI/rendering may evolve without changing those contracts.
