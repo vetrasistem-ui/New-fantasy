@@ -48,9 +48,18 @@ Evidência: `docs/evidence/F02/RESULT.md`.
 
 ## F03 — Fantasy Map Editor MVP
 
-Status: **NEXT**
+Status: **IN_PROGRESS**
 
-- definir toolkit/renderização do editor visual;
+Visual foundation frozen by ADR-012:
+
+- SDL3 for platform/window/input;
+- SDL_GPU for viewport rendering;
+- Dear ImGui for editor tooling UI;
+- visual layer edits the existing `MapDocument`, never a second map model.
+
+Remaining gates:
+
+- GUI shell/window clean Start/Stop;
 - viewport 2D;
 - floors;
 - seleção;
@@ -59,6 +68,8 @@ Status: **NEXT**
 - minimap básico;
 - Save/Reopen FMAP;
 - GUI usa as mesmas operações de `MapDocument` expostas à automação.
+
+Evidência em progresso: `docs/evidence/F03/RESULT.md`.
 
 ## F04 — Fantasy Server World Runtime
 
