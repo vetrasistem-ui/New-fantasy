@@ -1,55 +1,92 @@
 # F04 Evidence — Fantasy Server World Runtime
 
-Status: **IN_PROGRESS / FIRST RUNTIME SLICE IMPLEMENTED**
+Status: **PASS**
 
-## Current implementation
+## Native world runtime
 
-`Server/Core/WorldRuntime.*` turns the Fantasy Server skeleton into the first native world runtime slice.
+`Server/Core/WorldRuntime.*` turns Fantasy Server into the first authoritative native world runtime.
 
-Implemented:
+Implemented and validated:
 
-- direct load of the canonical `Game/Maps/World/world.fmap.json`;
+- direct load of canonical `Game/Maps/World/world.fmap.json`;
 - global tile index derived from `region.origin + chunk.offset + tile.local`;
-- duplicate global tile detection;
-- authoritative walkability for missing/blocked tiles;
+- duplicate resolved tile detection;
+- authoritative walkability for missing, `blocked` and `non-walkable` tiles;
 - minimal entity model with generated runtime IDs;
-- spawn validation;
-- occupied-tile rejection;
+- spawn validation and occupied-tile rejection;
 - cardinal movement validation;
-- cross-chunk movement without conversion to OTBM;
+- movement across chunk boundaries without OTBM conversion;
 - deterministic Start → Ready → Tick → Stop lifecycle;
 - deterministic tick scheduler with delayed tasks and cancellation;
 - scheduler/entity cleanup on Stop.
 
-The server smoke path now loads the real FMAP development world, spawns a development entity, moves it, ticks the runtime and shuts down cleanly.
+The server smoke path loads the real FMAP development world, starts the runtime, creates a development entity, moves it, advances the runtime and shuts down cleanly.
 
-## Automated tests
+## Shared FMAP ownership complete
 
-`Server/Core/WorldRuntimeTests.cpp` validates:
+The temporary Server → Studio dependency has been removed.
+
+The canonical reusable C++ FMAP implementation now lives in:
+
+```text
+Shared/Formats/FMAP/
+├── schema-v0.json
+├── FmapCore.hpp
+├── FmapCore.cpp
+├── Json.hpp
+└── README.md
+```
+
+The neutral namespace is `fantasy::fmap`. Both Fantasy Studio and Fantasy Server compile the same `Shared/Formats/FMAP/FmapCore.cpp` implementation. `Studio/MapEngine/FmapCore.hpp` is only a thin compatibility facade and the old Studio-owned `FmapCore.cpp` / `Json.hpp` implementations were removed.
+
+This ownership is frozen by ADR-013.
+
+## Automated evidence
+
+Workflow run **110** for commit `0f2da65eece569074b5268d4e880a13033813696` completed successfully on Windows after the shared FMAP extraction and explicit blocked-tile runtime test.
+
+PASS gates in that run:
+
+- project layout/contracts;
+- Fantasy Project v2;
+- FMAP v0;
+- FMAP multi-chunk semantics;
+- Fantasy Protocol v1 specification validation;
+- project relocation;
+- Fantasy Studio configure/build;
+- complete Studio CTest suite;
+- Windows Studio artifact upload;
+- Fantasy Server configure/build;
+- Fantasy Server smoke test and `fantasy-server-world-tests`.
+
+`Server/Core/WorldRuntimeTests.cpp` proves:
 
 - 64 development tiles are indexed;
-- development spawn resolves to a real walkable tile;
+- development spawn resolves to a walkable tile;
 - duplicate occupancy is rejected;
-- movement from the development spawn works;
+- normal movement works;
 - movement across the `x=99 → x=100` chunk boundary works;
-- diagonal movement is rejected in this F04 slice;
+- unsupported diagonal movement is rejected;
 - missing tiles are non-walkable;
+- a real tile tagged `blocked` is non-walkable and rejects entity spawn;
 - scheduled tasks fire on the intended tick;
 - cancelled tasks do not execute;
 - Stop clears entities and scheduled work.
 
-## Temporary dependency to remove before F04 PASS
+## F04 conclusion
 
-The first F04 slice deliberately reuses the already-tested FMAP C++ implementation currently located in `Studio/MapEngine/FmapCore.cpp` rather than creating a duplicate server parser.
+All F04 technical gates are closed. The native runtime path is now:
 
-This keeps one implementation while the runtime is proven, but the dependency direction is temporary. Before F04 can be declared PASS, the reusable FMAP model/IO/validation layer must be extracted to `Shared/` so both Studio and Server consume the same neutral Fantasy contract without Server depending on Studio source paths.
+```text
+FMAP
+ ↓
+Shared FMAP Core
+ ↓
+Fantasy Server WorldRuntime
+ ↓
+Tiles / Entities / Movement / Walkability / Scheduler
+```
 
-## F04 remaining gates
+No OTBM, TFS runtime or protocol 10.98 is present in this path.
 
-- CI PASS for the new runtime/scheduler tests;
-- extract shared FMAP runtime contract into `Shared/`;
-- prove Studio and Server both use the extracted shared FMAP implementation;
-- add explicit blocked-tile fixture/test rather than relying only on missing-tile walkability;
-- ensure all previous F00–F03 regressions remain green.
-
-No OTBM, TFS runtime or protocol 10.98 is introduced into the native world path.
+The project may advance to **F05 — Fantasy Protocol v1 + First Native Play**.
