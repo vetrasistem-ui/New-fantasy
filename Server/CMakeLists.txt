@@ -6,6 +6,13 @@ set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
+add_library(fantasy-protocol
+    ../Shared/Protocol/FantasyProtocol.cpp
+)
+target_include_directories(fantasy-protocol PUBLIC
+    ${CMAKE_CURRENT_SOURCE_DIR}/..
+)
+
 add_library(fantasy-server-world
     Core/Scheduler.cpp
     Core/WorldRuntime.cpp
@@ -20,7 +27,7 @@ target_include_directories(fantasy-server-world PUBLIC
 add_executable(fantasy-server
     Core/main.cpp
 )
-target_link_libraries(fantasy-server PRIVATE fantasy-server-world)
+target_link_libraries(fantasy-server PRIVATE fantasy-server-world fantasy-protocol)
 
 target_compile_definitions(fantasy-server PRIVATE
     FANTASY_SERVER_VERSION="${PROJECT_VERSION}"
@@ -35,7 +42,12 @@ target_compile_definitions(fantasy-server-world-tests PRIVATE
     FANTASY_REPO_ROOT="${CMAKE_CURRENT_SOURCE_DIR}/.."
 )
 
-foreach(target fantasy-server-world fantasy-server fantasy-server-world-tests)
+add_executable(fantasy-protocol-tests
+    ../Shared/Protocol/FantasyProtocolTests.cpp
+)
+target_link_libraries(fantasy-protocol-tests PRIVATE fantasy-protocol)
+
+foreach(target fantasy-protocol fantasy-server-world fantasy-server fantasy-server-world-tests fantasy-protocol-tests)
     if(MSVC)
         target_compile_options(${target} PRIVATE /W4 /permissive-)
     else()
@@ -46,3 +58,4 @@ endforeach()
 enable_testing()
 add_test(NAME fantasy-server-smoke COMMAND fantasy-server --smoke-test)
 add_test(NAME fantasy-server-world-tests COMMAND fantasy-server-world-tests)
+add_test(NAME fantasy-protocol-tests COMMAND fantasy-protocol-tests)
