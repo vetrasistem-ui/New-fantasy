@@ -50,10 +50,15 @@ int main() {
         requireRoundtrip(3, LoginDev{"Development Hero"}, decodeLoginDev);
         requireRoundtrip(4, LoginOk{0x0102030405060708ull}, decodeLoginOk);
         requireRoundtrip(5, EnterWorld{42, -120, 345, 7}, decodeEnterWorld);
-        requireRoundtrip(6, MoveRequest{MoveDirection::East}, decodeMoveRequest);
-        requireRoundtrip(7, EntityMove{42, 101, 99, 7, MoveDirection::East}, decodeEntityMove);
+        requireRoundtrip(6, MapChunk{"development", 4, 0, 7, 12, Bytes{1, 2, 3, 4, 5}}, decodeMapChunk);
+        requireRoundtrip(7, MoveRequest{MoveDirection::East}, decodeMoveRequest);
+        requireRoundtrip(8, EntityAdd{42, "player", 100, 100, 7}, decodeEntityAdd);
+        requireRoundtrip(9, EntityMove{42, 101, 99, 7, MoveDirection::East}, decodeEntityMove);
+        requireRoundtrip(10, EntityRemove{42}, decodeEntityRemove);
+        requireRoundtrip(11, ErrorMessage{9001, "development error"}, decodeError);
+        requireRoundtrip(12, Disconnect{"test complete"}, decodeDisconnect);
 
-        const Frame moveIntent = makeFrame(8, MoveRequest{MoveDirection::North});
+        const Frame moveIntent = makeFrame(13, MoveRequest{MoveDirection::North});
         require(moveIntent.payload.size() == 1, "MoveRequest must carry direction intent only");
 
         Bytes badMagic = wire;
@@ -89,11 +94,17 @@ int main() {
         try { (void)encodeFrame(oversized); } catch (...) { oversizedRejected = true; }
         require(oversizedRejected, "oversized payload must be rejected");
 
-        Frame invalidDirection = makeFrame(9, MoveRequest{MoveDirection::North});
+        Frame invalidDirection = makeFrame(14, MoveRequest{MoveDirection::North});
         invalidDirection.payload[0] = 255;
         bool invalidDirectionRejected = false;
         try { (void)decodeMoveRequest(invalidDirection); } catch (...) { invalidDirectionRejected = true; }
         require(invalidDirectionRejected, "invalid move direction must be rejected");
+
+        Frame trailing = makeFrame(15, LoginDev{"Hero"});
+        trailing.payload.push_back(0xFF);
+        bool trailingRejected = false;
+        try { (void)decodeLoginDev(trailing); } catch (...) { trailingRejected = true; }
+        require(trailingRejected, "typed payload trailing bytes must be rejected");
 
         std::cout << "FantasyProtocolTests PASS\n";
         return 0;
