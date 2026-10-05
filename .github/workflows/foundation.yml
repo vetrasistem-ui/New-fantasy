@@ -88,6 +88,10 @@ jobs:
         shell: pwsh
         run: ctest --test-dir build/client -C Release --output-on-failure
 
+      - name: Prove two-process native play
+        shell: pwsh
+        run: ./scripts/run-native-play.ps1 -Configuration Release -Port 17171 -Character "CI Hero"
+
       - name: Upload Fantasy native runtime Windows binaries
         uses: actions/upload-artifact@v4
         with:
@@ -96,3 +100,4 @@ jobs:
           path: |
             build/server/Release/fantasy-server.exe
             build/client/Release/fantasy-client.exe
+            build/client/Release/fantasy-client-gui.exe
