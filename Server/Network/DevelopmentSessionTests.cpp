@@ -1,4 +1,5 @@
 #include "Network/DevelopmentSession.hpp"
+#include "Shared/Protocol/MapChunkPayload.hpp"
 
 #include <filesystem>
 #include <iostream>
@@ -36,14 +37,31 @@ int main() {
         require(session.state() == SessionState::AwaitLogin, "session should await login after Hello");
 
         const auto loginReplies = session.handle(fp::makeFrame(2, fp::LoginDev{"Development Hero"}));
-        require(loginReplies.size() == 3, "LoginDev should produce LoginOk + EnterWorld + EntityAdd");
+        require(loginReplies.size() == 7,
+            "LoginDev should produce LoginOk + EnterWorld + 4 MapChunk + EntityAdd");
         const auto loginOk = fp::decodeLoginOk(loginReplies.at(0));
         const auto enterWorld = fp::decodeEnterWorld(loginReplies.at(1));
-        const auto entityAdd = fp::decodeEntityAdd(loginReplies.at(2));
+        const auto entityAdd = fp::decodeEntityAdd(loginReplies.at(6));
         require(loginOk.entityId == enterWorld.entityId && loginOk.entityId == entityAdd.entityId,
             "login replies must reference the same entity");
         require(enterWorld.x == 100 && enterWorld.y == 100 && enterWorld.z == 7,
             "EnterWorld must use FMAP development spawn");
+
+        const std::int32_t expectedChunkX[4]{0, 4, 0, 4};
+        const std::int32_t expectedChunkY[4]{0, 0, 4, 4};
+        std::size_t streamedTiles = 0;
+        for (std::size_t index = 0; index < 4; ++index) {
+            const auto message = fp::decodeMapChunk(loginReplies.at(index + 2));
+            require(message.regionId == "development", "MapChunk region mismatch");
+            require(message.chunkX == expectedChunkX[index] && message.chunkY == expectedChunkY[index],
+                "MapChunk deterministic ordering mismatch");
+            require(message.floor == 7, "MapChunk floor mismatch");
+            require(message.revision == 1, "MapChunk revision mismatch");
+            const auto chunk = fp::decodeFmapChunkPayload(message);
+            streamedTiles += chunk.tiles.size();
+        }
+        require(streamedTiles == 64, "login snapshot must stream all 64 development tiles");
+
         require(session.state() == SessionState::InWorld, "session should enter world after login");
         require(runtime.entityCount() == 1, "runtime should contain logged-in entity");
 
