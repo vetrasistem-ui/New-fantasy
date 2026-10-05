@@ -9,12 +9,12 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 add_library(fantasy-server-world
     Core/Scheduler.cpp
     Core/WorldRuntime.cpp
-    ../Studio/MapEngine/FmapCore.cpp
+    ../Shared/Formats/FMAP/FmapCore.cpp
 )
 
 target_include_directories(fantasy-server-world PUBLIC
     ${CMAKE_CURRENT_SOURCE_DIR}
-    ${CMAKE_CURRENT_SOURCE_DIR}/../Studio
+    ${CMAKE_CURRENT_SOURCE_DIR}/..
 )
 
 add_executable(fantasy-server
