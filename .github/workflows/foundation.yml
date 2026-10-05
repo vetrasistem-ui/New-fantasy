@@ -16,6 +16,10 @@ jobs:
         shell: pwsh
         run: ./scripts/check-layout.ps1
 
+      - name: Validate Fantasy Project v2
+        shell: pwsh
+        run: ./scripts/validate-project.ps1
+
       - name: Validate FMAP v0
         shell: pwsh
         run: ./scripts/validate-fmap.ps1
@@ -23,6 +27,10 @@ jobs:
       - name: Validate Fantasy Protocol v1
         shell: pwsh
         run: ./scripts/validate-protocol.ps1
+
+      - name: Test project relocation
+        shell: pwsh
+        run: ./scripts/test-project-relocation.ps1
 
       - name: Record toolchain
         shell: pwsh
