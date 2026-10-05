@@ -95,3 +95,20 @@
 **Decision:** protocol, FMAP schemas and common data definitions live under `Shared/`.
 
 **Reason:** Server, Client, Studio and Codex must not maintain divergent copies of the same contracts.
+
+---
+
+## ADR-012 — Fantasy Studio visual stack uses SDL3 + SDL_GPU + Dear ImGui
+
+**Decision:** the F03 visual editor is built on SDL3 for platform/window/input, SDL_GPU for map/editor rendering, and Dear ImGui for editor panels and tooling UI.
+
+Pinned foundation at decision time:
+
+- SDL `release-3.4.18`, commit `829a65d769d935c4852f8159e964312c0957260a`;
+- Dear ImGui `v1.92.9b`, commit `f1cc2ae15e53a861a874c3034aae6798fde194ab`.
+
+**Reason:** both stacks are C/C++ friendly, cross-platform, permissively licensed, work well with C++20, and Dear ImGui ships maintained SDL3 + SDL_GPU backends. SDL_GPU also avoids coupling the map viewport to a legacy widget toolkit or to SDL_Renderer's more limited graphics path.
+
+**Boundary:** SDL/ImGui are visual/platform dependencies only. `MapDocument`, FMAP, project logic and automation remain independent from the GUI. The visual editor may be replaced later without changing the native map data model.
+
+**Dependency policy:** dependencies are fetched/pinned by build configuration or isolated under external dependency folders; their source is not copied into the Fantasy core and their license notices remain preserved.
