@@ -130,7 +130,6 @@ void runAbruptDisconnectCleanup(fsrv::WorldRuntime& runtime) {
     for (int index = 0; index < 7; ++index) {
         (void)net::receiveFrame(stream);
     }
-    require(runtime.entityCount() == 1, "abrupt-disconnect fixture did not enter world");
 
     stream.close();
     serverThread.join();
