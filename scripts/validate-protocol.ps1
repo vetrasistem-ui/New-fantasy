@@ -42,8 +42,8 @@ foreach ($Entry in $RequiredEnvelope.GetEnumerator()) {
 Assert-True ($Text -match 'name:\s*magic,\s*type:\s*fixed_ascii,\s*value:\s*FNTY') 'magic must be FNTY'
 
 $MessagePattern = [regex]'(?ms)^  - id:\s*(?<id>\d+)\s*\r?\n    name:\s*(?<name>[A-Za-z][A-Za-z0-9]*)\s*\r?\n    direction:\s*(?<direction>[a-z_]+)\s*\r?\n    fields:\s*\r?\n(?<fields>(?:      - \{[^\r\n]+\}\s*\r?\n)+)'
-$Matches = $MessagePattern.Matches($Text)
-Assert-True ($Matches.Count -gt 0) 'no messages parsed'
+$MessageMatches = $MessagePattern.Matches($Text)
+Assert-True ($MessageMatches.Count -gt 0) 'no messages parsed'
 
 $AllowedDirections = @('client_to_server', 'server_to_client', 'bidirectional')
 $AllowedTypes = @('uint8', 'uint16', 'uint32', 'uint64', 'int16', 'int32', 'string', 'bytes', 'fixed_ascii')
@@ -51,11 +51,11 @@ $Ids = @{}
 $Names = @{}
 $MessageInfo = @{}
 
-foreach ($Match in $Matches) {
-    $Id = [int]$Match.Groups['id'].Value
-    $Name = $Match.Groups['name'].Value
-    $Direction = $Match.Groups['direction'].Value
-    $FieldsBlock = $Match.Groups['fields'].Value
+foreach ($MessageMatch in $MessageMatches) {
+    $Id = [int]$MessageMatch.Groups['id'].Value
+    $Name = $MessageMatch.Groups['name'].Value
+    $Direction = $MessageMatch.Groups['direction'].Value
+    $FieldsBlock = $MessageMatch.Groups['fields'].Value
 
     Assert-True ($Id -ge 0 -and $Id -le 65535) "message '$Name' id out of uint16 range: $Id"
     Assert-True (-not $Ids.ContainsKey($Id)) "duplicate message id: $Id"
@@ -97,6 +97,7 @@ $RequiredMessages = @{
     Error = 254
     Disconnect = 255
 }
+Assert-True ($MessageMatches.Count -ge $RequiredMessages.Count) 'protocol parser found fewer messages than the required v1 set'
 foreach ($Entry in $RequiredMessages.GetEnumerator()) {
     Assert-True ($Names.ContainsKey($Entry.Key)) "required message missing: $($Entry.Key)"
     Assert-True ([int]$Names[$Entry.Key] -eq [int]$Entry.Value) "message '$($Entry.Key)' must use id $($Entry.Value)"
@@ -134,4 +135,4 @@ foreach ($Rule in @('authoritativeServer', 'versionHandshakeRequired', 'unknownM
     Assert-True ($Text -match $RulePattern) "rule '$Rule' must be true"
 }
 
-Write-Host "Fantasy Protocol v1 validation PASS. messages=$($Matches.Count) ids=unique names=unique framing=frozen movement=intent-only mapchunk=FMCP-v1"
+Write-Host "Fantasy Protocol v1 validation PASS. messages=$($MessageMatches.Count) ids=unique names=unique framing=frozen movement=intent-only mapchunk=FMCP-v1"
