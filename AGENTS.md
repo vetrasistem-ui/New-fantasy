@@ -26,6 +26,8 @@ Construir uma plataforma Fantasy própria: Studio, formato de mapa, servidor, pr
 16. Mudanças de protocolo devem atualizar a especificação versionada antes ou junto do código.
 17. Mudanças de FMAP devem manter compatibilidade de schema versionada ou fornecer migração explícita.
 18. Nunca introduzir dependência de OTBM, 10.98, DAT/SPR/OTB ou TFS no core nativo sem justificativa documentada.
+19. A GUI do Map Editor não pode possuir um segundo modelo de mapa: ela deve editar `MapDocument`/FMAP por operações do core.
+20. Ações visuais que alteram o mapa devem ser transações compatíveis com undo/redo desde a primeira implementação.
 
 ## Layout essencial
 
@@ -55,19 +57,28 @@ Projects/
 - se tocar em FMAP: schema/fixture valida e reabre semanticamente igual;
 - se tocar no protocolo: encoder/decoder ou contrato correspondente é testado;
 - se tocar no runtime: Start/Stop não deixa processo órfão;
-- se tocar em conteúdo: referências semânticas são validadas.
+- se tocar em conteúdo: referências semânticas são validadas;
+- se tocar no editor visual: a alteração deve ser reproduzível pelo core sem depender do mouse/UI.
+
+## Fases concluídas
+
+- **F00 — Independent Core Foundation: PASS**
+- **F01 — Project System: PASS**
+- **F02 — Fantasy Map Core: PASS**
 
 ## Prioridade atual
 
-**F00 — Independent Core Foundation.**
+**F03 — Fantasy Map Editor MVP.**
 
 Implementar e provar, nesta ordem:
 
-1. layout limpo + contratos compartilhados;
-2. FMAP v0 experimental;
-3. Fantasy Protocol v1 mínimo;
-4. esqueleto compilável do Fantasy Server;
-5. fixtures e testes básicos;
-6. somente depois iniciar mapa visual, rede real e cliente nativo.
+1. escolher e congelar toolkit/renderização do editor visual;
+2. criar viewport 2D usando o `MapDocument` existente;
+3. seleção e navegação por floor;
+4. ground/object brush via transações do core;
+5. fill/erase;
+6. minimapa básico;
+7. Save/Reopen FMAP;
+8. garantir que GUI, CLI e futura automação usem as mesmas operações.
 
-Não desenvolver editores avançados antes desses contratos estarem estáveis o suficiente para não gerar retrabalho.
+Não iniciar editores avançados de monstros/quests/items antes do Map Editor MVP e do primeiro runtime nativo estarem suficientemente estáveis.
