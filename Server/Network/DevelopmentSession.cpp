@@ -1,4 +1,5 @@
 #include "Network/DevelopmentSession.hpp"
+#include "Network/WorldSnapshot.hpp"
 
 #include <cctype>
 #include <stdexcept>
@@ -103,11 +104,21 @@ std::vector<protocol::Frame> DevelopmentSession::handleLogin(const protocol::Fra
         replies.push_back(protocol::makeFrame(nextSequence(), protocol::EnterWorld{
             id, position.x, position.y, position.z
         }));
+
+        for (const auto& chunk : makeInitialMapSnapshot(world_.world(), position)) {
+            replies.push_back(protocol::makeFrame(nextSequence(), chunk));
+        }
+
         replies.push_back(protocol::makeFrame(nextSequence(), protocol::EntityAdd{
             id, "player", position.x, position.y, position.z
         }));
         return replies;
     } catch (const std::exception& exception) {
+        if (entityId_.has_value()) {
+            world_.removeEntity(*entityId_);
+            entityId_.reset();
+        }
+        state_ = SessionState::AwaitLogin;
         return {error(1102, std::string("development login failed: ") + exception.what())};
     }
 }
