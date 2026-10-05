@@ -1,24 +1,35 @@
 # Fantasy Studio Visual Foundation — Validation Result
 
-Status: **PENDING WINDOWS VALIDATION**
+Status: **REMOTE CI PASS / WINDOWS INTERACTIVE VALIDATION PENDING**
 
 Branch: `feature/studio-visual-foundation`
 
 ## Baseline
 
-- Validation SHA: **PENDING**
-- Windows version: **PENDING**
-- GPU / driver: **PENDING**
+- Validation SHA: `3183a71170bcdcaf58cd2941f53ac7b97ab37280`
+- Windows version: **PENDING local interactive gate**
+- GPU / driver: **PENDING local interactive gate**
 - Configuration: `Release`
 - Renderer baseline: `SDL3 + SDL_Renderer3 + Dear ImGui`
 
 ## Automated / build gate
 
-- [ ] `./scripts/build-native.ps1 -Configuration Release`
-- [ ] Studio compile PASS
-- [ ] Studio CTests PASS
-- [ ] Server regressions PASS
-- [ ] Client regressions PASS
+Remote exact-SHA CI on GitHub Actions: **PASS**
+
+- [x] project layout/contracts
+- [x] Fantasy Project v2 validator
+- [x] FMAP v0 validator
+- [x] FMAP multi-chunk validator
+- [x] Fantasy Protocol v1 validator
+- [x] project relocation
+- [x] Studio configure/build/tests
+- [x] Server configure/build/tests/native play
+- [x] Client configure/build/smoke test
+- [x] two-process native play
+- [x] Studio Windows artifact published
+- [x] native runtime Windows artifact published
+
+Exact-SHA local interactive execution of `./scripts/build-native.ps1 -Configuration Release` is still part of the Windows visual gate below, because it also establishes the local evidence environment.
 
 ## Home
 
@@ -102,15 +113,21 @@ docs/evidence/STUDIO-VISUAL/items-assets.png
 
 ## Remote CI
 
-Status: **PENDING while GitHub runner infrastructure is unavailable/unstable**
+Status: **PASS**
 
-A cancelled/unallocated runner is not counted as a product test failure. Record the first completed exact-SHA remote run here when infrastructure normalizes.
+GitHub Actions runners normalized and the visual-foundation branch received a real `windows-latest` runner.
 
-- Run: **PENDING**
-- Result: **PENDING**
+- Run: `#231` / `37380616761`
+- Exact SHA: `3183a71170bcdcaf58cd2941f53ac7b97ab37280`
+- Result: **SUCCESS**
+- Job: `foundation` — **SUCCESS**
+- Studio Windows artifact: published
+- Native runtime Windows artifact: published
+
+The remote workflow proved validators, Studio/Server/Client builds and tests, native play, two-process play and artifact publication on Windows.
 
 ## Final decision
 
-**PENDING**
+**PENDING WINDOWS INTERACTIVE VISUAL GATE**
 
-Do not mark PASS until every mandatory Windows visual/functional gate above is evidenced.
+Remote CI is closed as PASS. Do not mark the visual foundation fully PASS until the real Windows interactive Home / navigation / Map editing / Items & Assets / Save-Reopen / cleanup gates and screenshots are completed.
