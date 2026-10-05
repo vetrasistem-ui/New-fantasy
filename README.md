@@ -1,37 +1,38 @@
 # New Fantasy
 
-Novo ciclo do Fantasy Studio, reconstruído com uma fundação limpa e compatível com o ecossistema TFS 1.4.2 / protocolo 10.98.
+New Fantasy é o novo ciclo da plataforma Fantasy: Studio, mapa, servidor, protocolo e cliente evoluindo para uma tecnologia própria, preparada desde o início para automação por IA.
 
-## Objetivo
+## Direção oficial
 
-Transformar um Map Editor compatível com 10.98 em um Studio completo capaz de criar, editar, testar e publicar um jogo próprio, mantendo o fluxo familiar do ecossistema OTServer e adicionando ferramentas modernas, automação e suporte ao Codex.
+O destino final **não é** um Remere's modificado, um TFS modificado ou um cliente preso ao protocolo 10.98.
+
+A arquitetura alvo é:
+
+```text
+Fantasy Studio
+      │
+     FMAP
+      │
+Fantasy Server
+      │
+Fantasy Protocol
+      │
+Fantasy Client
+```
+
+TFS 1.4.2, RME 3.7 e um OTClient compatível com 10.98 permanecem fixados somente como **referências técnicas, oráculos de comportamento e fallback de desenvolvimento** durante a transição. Eles não definem o formato final da plataforma.
 
 ## Princípios
 
-- Uma única stack oficial e congelada após homologação.
 - Estrutura de pastas simples, previsível e sem duplicações.
-- Caminhos relativos; nenhum caminho absoluto deve ser salvo no projeto.
-- O mapa principal fica sempre em `Game/Maps/world.otbm`.
-- Cada domínio do jogo tem uma pasta própria.
-- O Studio abre automaticamente a pasta correta para cada ferramenta.
-- A GUI e o Codex devem usar o mesmo núcleo de operações do Studio.
-- Nada de misturar Crystal, Canary, 15.24 ou múltiplas versões de TFS neste ciclo.
-- Primeiro marco: `Open Project -> Play -> servidor inicia -> cliente abre -> personagem entra no mapa`.
-
-## Stack candidata da F00
-
-| Componente | Base candidata |
-| --- | --- |
-| Servidor | The Forgotten Server 1.4.2 / 10.98 |
-| Map Engine | Remere's Map Editor clássico v3.7, compatível com 10.98 |
-| Cliente | OpenTibiaBR OTClient, commit homologado para TFS 1.4.2 / 10.98 |
-| Mapa | OTBM v3 / 10.98 |
-| Assets | DAT + SPR + OTB 10.98 |
-| Scripts | Lua / Revscriptsys |
-| Banco | MariaDB |
-| Plataforma primária | Windows x64 |
-
-Os SHAs candidatos estão em `docs/UPSTREAMS.md`. Nenhuma dependência externa será tratada como base oficial até passar pela F00 de homologação e pela revisão de licença aplicável.
+- Caminhos persistidos sempre relativos à raiz do projeto.
+- `FMAP` é o formato de mapa nativo em desenvolvimento; OTBM é apenas referência/importação legada.
+- `Fantasy Protocol` é o protocolo nativo em desenvolvimento; 10.98 é somente ponte/reference adapter temporário.
+- `Fantasy Server` será implementado como servidor próprio e autoritativo.
+- Studio, CLI, scripts e Codex usam as mesmas operações de domínio.
+- Operações de IA devem ser validáveis, determinísticas e reversíveis.
+- Código externo não entra silenciosamente no produto; referências ficam isoladas em `.upstream/`.
+- O jogo e o Studio crescem juntos depois do primeiro ciclo jogável nativo.
 
 ## Estrutura
 
@@ -46,6 +47,9 @@ New-fantasy/
 │   └── Config/
 ├── Server/
 ├── Client/
+├── Shared/
+│   ├── Protocol/
+│   └── Formats/
 ├── Database/
 ├── Tools/
 ├── Projects/
@@ -53,10 +57,43 @@ New-fantasy/
 └── docs/
 ```
 
-Consulte `docs/ARCHITECTURE.md` e `docs/ROADMAP.md` antes de alterar a estrutura.
+## Formatos próprios
+
+- **FMAP**: fonte de mapa semântica, versionável, organizada por regiões/chunks e amigável para IA.
+- **FMAPC**: formato compilado/runtime futuro, otimizado para carregamento pelo Fantasy Server.
+- **Fantasy Protocol v1**: contrato versionado entre Fantasy Server e Fantasy Client.
+- **Fantasy Data Model**: contratos compartilhados para entidades, itens, criaturas, mapas e conteúdo.
+
+## Referências temporárias
+
+Os SHAs usados como referência estão em `docs/UPSTREAMS.md`:
+
+- TFS 1.4.2 / protocolo 10.98;
+- RME 3.7 / OTBM 10.98;
+- OpenTibiaBR OTClient compatível com TFS 1.4.2.
+
+Esses projetos ajudam a comparar comportamento e validar conceitos, mas não são mais a fundação obrigatória do produto final.
+
+## Primeiro grande marco
+
+```text
+Open Project
+   ↓
+abrir FMAP
+   ↓
+Fantasy Server inicia
+   ↓
+Fantasy Client conecta pelo Fantasy Protocol
+   ↓
+personagem entra
+   ↓
+movimento funciona
+```
+
+Esse marco deve funcionar **sem OTBM e sem protocolo 10.98 no caminho principal**.
 
 ## Estado
 
-**F00 — FOUNDATION / PREPARATION: IN_PROGRESS**
+**F00 — INDEPENDENT CORE FOUNDATION: IN_PROGRESS**
 
-O repositório contém inicialmente o contrato de arquitetura, estrutura limpa, regras para Codex e plano de homologação. O próximo passo técnico é trazer as três bases candidatas para um ambiente de homologação, compilar e executar o gate completo antes de incorporá-las ao produto.
+A F00 agora define e prova os contratos próprios: layout, FMAP inicial, Fantasy Protocol v1 e esqueleto compilável do Fantasy Server. A stack 10.98 continua apenas como referência controlada.
