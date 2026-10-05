@@ -1,6 +1,6 @@
 # Codex — Fantasy Studio Visual Foundation Windows Gate
 
-Status: **READY TO EXECUTE**
+Status: **READY TO EXECUTE AFTER V3 REMOTE BUILD**
 
 Target branch:
 
@@ -8,7 +8,13 @@ Target branch:
 feature/studio-visual-foundation
 ```
 
-Do not start F05.5 or F06 during this gate.
+Visual reference:
+
+```text
+docs/STUDIO-VISUAL-TARGET-V1.md
+```
+
+Do not start OTBM/DAT/SPR integration or F06 during this gate. The goal is to accept the Studio shell first.
 
 ## V00 — Sync and freeze baseline
 
@@ -19,75 +25,66 @@ git status --short
 git rev-parse HEAD
 ```
 
-Expected: clean working tree before validation.
-
-Record the exact SHA in:
+Expected: clean working tree before validation. Record the exact SHA in:
 
 ```text
 docs/evidence/STUDIO-VISUAL/RESULT.md
 ```
 
-## V01 — Full native Release build
-
-Run:
+## V01 — Full native Release regression
 
 ```powershell
 ./scripts/build-native.ps1 -Configuration Release
 ```
 
-This must compile Studio, Server and Client and run the existing tests.
+This must compile Studio, Server and Client and run the existing tests. Do not bypass failures.
 
-If compilation fails, stop and fix only the visual-foundation branch. Do not bypass compile errors and do not start F05.5/F06.
+## V02 — One-command Studio launch
 
-## V02 — Launch Fantasy Studio
-
-Locate the generated GUI executable, normally one of:
-
-```text
-build/studio/Release/fantasy-studio-gui.exe
-build/studio/fantasy-studio-gui.exe
-```
-
-If needed:
+The preferred visual launcher is now:
 
 ```powershell
-Get-ChildItem -Recurse build/studio -Filter fantasy-studio-gui.exe
+./scripts/run-studio-visual.ps1 -Configuration Release
 ```
 
-Launch from repository root with the project root as argument:
+If the Studio binary is missing or you intentionally want to rebuild just the Studio first:
 
 ```powershell
-& <path-to-fantasy-studio-gui.exe> (Get-Location).Path
+./scripts/run-studio-visual.ps1 -Configuration Release -Build
 ```
 
-Gate:
+The script locates `fantasy-studio-gui.exe`, launches it with the repository root as the project argument, and checks that no Studio process remains after normal close.
+
+Required launch behavior:
 
 - window title is `Fantasy Studio`;
-- application opens without renderer error;
-- no SDL_GPU requirement is introduced;
-- initial page is Home.
+- no renderer error;
+- SDL_Renderer3 remains the baseline;
+- initial page is Home;
+- the executable is the V3 visual target wired by `Studio/CMakeLists.txt`.
 
 ## V03 — Home / Project Manager visual gate
 
-Confirm visually:
+Compare Home directly with `docs/STUDIO-VISUAL-TARGET-V1.md` and the approved styleboard.
 
-- dark navy/cyan Fantasy Studio identity;
-- Fantasy brand mark in topbar and hero;
-- permanent sidebar;
-- topbar context;
-- hero banner;
-- project action cards;
-- project information panel;
-- real FMAP counters visible;
+Confirm:
+
+- dark navy/cyan Fantasy identity;
+- compact topbar with brand, project/module breadcrumb and action grouping;
+- permanent sidebar with clear active-state rail;
+- lightweight hero with `FANTASY STUDIO` identity;
+- three equal project-action cards;
+- Recent Projects compact rows;
+- project information panel using real FMAP metrics;
 - `Abrir Map Workspace` routes to Map.
 
-Capture screenshot:
+Capture:
 
 ```text
 docs/evidence/STUDIO-VISUAL/home.png
 ```
 
-Do not alter the reference style direction during validation. Only correct layout defects, clipping, illegible contrast or regressions.
+Only correct real layout defects, clipping, contrast, hierarchy or ergonomic issues. Do not redesign away from the approved target.
 
 ## V04 — Navigation gate
 
@@ -109,26 +106,25 @@ Client
 Required:
 
 - no crash;
-- selected module remains visually obvious;
-- future modules clearly remain shells and do not invent fake functionality.
+- selected module remains obvious;
+- future modules remain honest shells;
+- sidebar does not shift between pages.
 
 ## V05 — Map Workspace visual + functional regression
 
-Open `Map`.
-
-Confirm visual structure:
+Open `Map` and confirm:
 
 ```text
 top command bar
 left sidebar
-map toolbar
-central viewport
+compact map toolbar
+central viewport as dominant area
 right Inspector
 Minimap
 lower Console
 ```
 
-Then repeat the real F03 editor operations on the development fixture:
+Repeat the validated editor operations:
 
 ```text
 select tile
@@ -144,11 +140,9 @@ reopen Studio
 confirm persisted saved state
 ```
 
-Use only the existing `MapDocument` / `EditorOperations` path.
+Use only `MapDocument` / `EditorOperations`. Restore the canonical development FMAP after intentional test edits when required.
 
-Before finishing the gate, restore the canonical development FMAP if the validation intentionally changed fixture content.
-
-Capture screenshot:
+Capture:
 
 ```text
 docs/evidence/STUDIO-VISUAL/map.png
@@ -156,54 +150,60 @@ docs/evidence/STUDIO-VISUAL/map.png
 
 ## V06 — Items & Assets visual gate
 
-Open `Items & Assets`.
-
-Confirm:
+Open `Items & Assets` and confirm:
 
 - tabs `Items / Sprites / Textures / Sounds`;
-- library tree;
+- narrow library tree;
+- wide asset grid;
 - search field;
-- `Grounds` and `Objects` categories;
-- semantic asset cards come from the real current FMAP;
-- no DAT/SPR pixel loading is performed yet;
-- UI clearly identifies F05.5 / PokeFans 10.98 as the next asset source.
+- Grounds / Objects categories;
+- semantic cards originate from the real current FMAP;
+- `PokeFans / 10.98` is presented only as the next legacy source;
+- no DAT/SPR pixels are loaded during this visual gate.
 
-Test search using one semantic key visible in the current fixture.
-
-Capture screenshot:
+Capture:
 
 ```text
 docs/evidence/STUDIO-VISUAL/items-assets.png
 ```
 
-## V07 — Close / cleanup gate
+## V07 — Resolution / layout sanity
+
+Primary target:
+
+```text
+1440 x 900
+```
+
+Also resize to a smaller practical desktop window and confirm:
+
+- topbar remains usable;
+- sidebar stays visible;
+- Map viewport remains reachable;
+- Inspector does not cover the viewport;
+- Items & Assets tree/grid remain usable;
+- no critical control is clipped permanently.
+
+## V08 — Close / cleanup gate
 
 Close the Studio normally.
-
-Verify:
 
 ```powershell
 Get-Process fantasy-studio-gui -ErrorAction SilentlyContinue
 ```
 
-Expected: no process remains.
+Expected: no process remains. Also confirm no Server/Client orphan process was introduced by this visual phase.
 
-Also confirm no Server/Client orphan process was introduced by this visual phase.
-
-## V08 — Repository integrity
-
-Run:
+## V09 — Repository integrity
 
 ```powershell
 git status --short
 git diff --check
 ```
 
-Allowed changes after validation are only the intended evidence/docs and any explicitly reviewed visual fixes.
+Allowed post-validation changes are only intended evidence/docs and reviewed visual fixes. Do not stage build output, local databases, DAT/SPR/OTB/OTBM or absolute-path files.
 
-No build output, local database, DAT/SPR/OTB/OTBM or absolute-path file may be staged.
-
-## V09 — Closeout
+## V10 — Closeout
 
 Update:
 
@@ -212,25 +212,29 @@ docs/evidence/STUDIO-VISUAL/RESULT.md
 docs/STUDIO-VISUAL-FOUNDATION.md
 ```
 
-Mark the visual foundation `PASS` only if:
+Mark Visual Foundation `PASS` only if:
 
 ```text
-Release build PASS
-existing tests PASS
+Release regression PASS
 Home visual PASS
 all navigation PASS
 Map functional regression PASS
 Save/Reopen PASS
 Items & Assets PASS
+resolution sanity PASS
 cleanup PASS
 screenshots recorded
 working tree clean except intended evidence commit
 ```
 
-Remote GitHub CI may remain `PENDING` when runner infrastructure is unavailable. Record that condition separately; do not misclassify a cancelled/unallocated runner as a product test failure.
-
-After this gate is closed, the next implementation phase is:
+After the visual gate is accepted, the next milestone is compatibility with the supplied 10.98 content:
 
 ```text
-F05.5 — Legacy Asset Bridge + PokeFans 10.98 + OTBM -> FMAP
+OTBM + matching DAT/SPR/OTB
+        ↓
+legacy compatibility layer
+        ↓
+real map + real sprites inside Fantasy Studio
 ```
+
+Only after that real-map surface is working do we expand the larger editor/tool set.
