@@ -65,7 +65,7 @@ Implementado e validado automaticamente:
 - mundo de desenvolvimento 8 x 8 / 64 tiles / quatro chunks;
 - semântica multi-chunk e Fill atravessando fronteira de chunk.
 
-O único gate ainda não executado é a sessão visual interativa no Windows com captura de evidência. Esse gate não bloqueia o runtime/protocolo nativo, mas permanece obrigatório antes do fechamento visual definitivo da F03.
+O único gate ainda não executado é a sessão visual interativa no Windows com captura de evidência. Esse gate não bloqueou a construção do runtime/protocolo nativo, mas permanece obrigatório antes do fechamento formal da F03.
 
 Evidência: `docs/evidence/F03/RESULT.md`.
 
@@ -92,33 +92,54 @@ Evidência: `docs/evidence/F04/RESULT.md`.
 
 ## F05 — Fantasy Protocol v1 + First Native Play
 
-Status: **IN_PROGRESS**
+Status: **AUTOMATED TECHNICAL PASS / INTERACTIVE WINDOWS CLOSEOUT PENDING**
 
 Objetivo: ligar Fantasy Server e Fantasy Client pelo protocolo próprio até um personagem entrar no FMAP e andar.
 
-Gates:
+Implementado e comprovado automaticamente no Windows:
 
 - codec binário do envelope v1;
-- framing TCP;
+- framing TCP real;
 - `Hello` / `HelloAck` e version handshake;
 - `LoginDev` / `LoginOk`;
 - `EnterWorld`;
-- `MapChunk`;
+- `MapChunk` + FMCP v1;
 - `EntityAdd` / `EntityMove` / `EntityRemove`;
-- Fantasy Client mínimo conecta ao Fantasy Server;
+- Fantasy Client headless conecta ao Fantasy Server;
+- Fantasy Client GUI mínimo usa o mesmo core;
 - movimento é solicitado pelo Client e validado/autorizado pelo Server;
 - personagem entra no mapa FMAP e anda sem OTBM e sem protocolo 10.98;
 - disconnect/reconnect básico e encerramento limpo;
-- testes de codec, framing e sessão de desenvolvimento.
+- integração TCP loopback real;
+- primeiro play com Server e Client em processos separados;
+- pacote Windows de Studio e runtime nativo.
 
-**Primeiro grande marco: F05 PASS sem OTBM e sem protocolo 10.98 no caminho principal.**
+O fechamento formal ainda exige o roteiro interativo real de `docs/CODEX-F05-WINDOWS.md`: Studio visual, Client visual, movimento, reconnect, cleanup e screenshots/evidência.
+
+**Primeiro grande marco: o caminho técnico nativo já funciona sem OTBM e sem protocolo 10.98; F05 só muda para PASS depois do gate visual real.**
+
+Evidência: `docs/evidence/F05/RESULT.md`.
 
 ## F06 — Persistence / Database
 
-- contas e personagens;
-- save/load de posição;
-- migrations;
-- reconnect/restart validation.
+Status: **PREPARED / NOT STARTED**
+
+A implementação permanece bloqueada até F03/F05 serem formalmente PASS.
+
+Plano preparado:
+
+- `PersistenceService` / store interface independente de SQL;
+- primeiro adapter SQLite para desenvolvimento/CI determinístico;
+- migrations append-only;
+- contas locais de desenvolvimento;
+- personagens;
+- save/load de posição autoritativa;
+- restart/reconnect persistence validation;
+- sem public auth, inventário, skills ou website nesta fase.
+
+Plano detalhado: `docs/F06-PERSISTENCE-PLAN.md`.
+
+Execução Codex após F05: `docs/CODEX-AFTER-F05.md`.
 
 ## F07 — Item / Inventory Core
 
