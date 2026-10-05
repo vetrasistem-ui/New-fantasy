@@ -21,7 +21,7 @@ Evidência: `docs/evidence/F00/RESULT.md`.
 
 ## F01 — Project System
 
-Status: **IN_PROGRESS**
+Status: **PASS**
 
 - `fantasy.project.json` como manifesto real;
 - schema/validator do manifesto;
@@ -31,17 +31,26 @@ Status: **IN_PROGRESS**
 - nenhum módulo procura recursos principais manualmente;
 - mover projeto para outro disco/pasta e reabrir sem alteração persistida.
 
+Evidência: `docs/evidence/F01/RESULT.md`.
+
 ## F02 — Fantasy Map Core
+
+Status: **PASS**
 
 - estruturas World / Region / Chunk / Tile / Object;
 - leitura e escrita FMAP;
 - semantic asset keys;
 - validação;
-- transactions/undo;
-- fixtures determinísticas.
+- transactions/undo/redo/rollback;
+- fixtures determinísticas e roundtrip semântico.
+
+Evidência: `docs/evidence/F02/RESULT.md`.
 
 ## F03 — Fantasy Map Editor MVP
 
+Status: **NEXT**
+
+- definir toolkit/renderização do editor visual;
 - viewport 2D;
 - floors;
 - seleção;
@@ -49,7 +58,7 @@ Status: **IN_PROGRESS**
 - fill/erase;
 - minimap básico;
 - Save/Reopen FMAP;
-- GUI usa as mesmas operações expostas à automação.
+- GUI usa as mesmas operações de `MapDocument` expostas à automação.
 
 ## F04 — Fantasy Server World Runtime
 
