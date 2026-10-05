@@ -65,40 +65,51 @@ Implementado e validado automaticamente:
 - mundo de desenvolvimento 8 x 8 / 64 tiles / quatro chunks;
 - semântica multi-chunk e Fill atravessando fronteira de chunk.
 
-O único gate ainda não executado é a sessão visual interativa no Windows com captura de evidência. Esse gate não bloqueia o início da F04, mas permanece obrigatório antes do fechamento visual definitivo da F03.
+O único gate ainda não executado é a sessão visual interativa no Windows com captura de evidência. Esse gate não bloqueia o runtime/protocolo nativo, mas permanece obrigatório antes do fechamento visual definitivo da F03.
 
 Evidência: `docs/evidence/F03/RESULT.md`.
 
 ## F04 — Fantasy Server World Runtime
 
-Status: **IN_PROGRESS**
+Status: **PASS**
 
-Objetivo: transformar o Fantasy Server de skeleton em runtime autoritativo mínimo que consome FMAP nativamente.
+Gates concluídos:
 
-Gates:
-
-- carregar `world.fmap.json` diretamente;
-- construir índice global de tiles a partir de Region/Chunk/Tile;
-- resolver movimento atravessando fronteiras de chunks;
-- player/entity model mínimo;
-- walkability autoritativa;
-- impedir ocupação de tile por duas entidades;
+- carregamento direto de `world.fmap.json`;
+- FMAP C++ neutro extraído para `Shared/Formats/FMAP/` e consumido por Studio + Server;
+- índice global Region / Chunk / Tile;
+- detecção de coordenadas resolvidas duplicadas;
+- entity/player model mínimo;
+- walkability autoritativa para tile ausente/bloqueado;
+- ocupação exclusiva de tile;
+- movimento cardinal e travessia entre chunks;
 - ciclo Start / Ready / Tick / Stop;
-- scheduler básico;
-- smoke test e testes headless do mundo;
-- remover dependência temporária do Server sobre código localizado em `Studio/MapEngine`, extraindo o contrato/runtime FMAP comum para `Shared/` antes de F04 PASS.
+- scheduler determinístico com atraso/cancelamento;
+- smoke test e testes headless do runtime;
+- regressões F00–F03 verdes no workflow Windows.
 
-Evidência em progresso: `docs/evidence/F04/RESULT.md`.
+Evidência: `docs/evidence/F04/RESULT.md`.
 
 ## F05 — Fantasy Protocol v1 + First Native Play
 
-- framing/version handshake;
-- auth de desenvolvimento;
-- enter world;
-- map chunk;
-- add/move/remove entity;
-- Fantasy Client mínimo conecta;
-- personagem entra em FMAP e anda.
+Status: **IN_PROGRESS**
+
+Objetivo: ligar Fantasy Server e Fantasy Client pelo protocolo próprio até um personagem entrar no FMAP e andar.
+
+Gates:
+
+- codec binário do envelope v1;
+- framing TCP;
+- `Hello` / `HelloAck` e version handshake;
+- `LoginDev` / `LoginOk`;
+- `EnterWorld`;
+- `MapChunk`;
+- `EntityAdd` / `EntityMove` / `EntityRemove`;
+- Fantasy Client mínimo conecta ao Fantasy Server;
+- movimento é solicitado pelo Client e validado/autorizado pelo Server;
+- personagem entra no mapa FMAP e anda sem OTBM e sem protocolo 10.98;
+- disconnect/reconnect básico e encerramento limpo;
+- testes de codec, framing e sessão de desenvolvimento.
 
 **Primeiro grande marco: F05 PASS sem OTBM e sem protocolo 10.98 no caminho principal.**
 
