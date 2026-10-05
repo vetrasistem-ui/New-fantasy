@@ -173,10 +173,12 @@ fmap::Chunk decodeFmapChunkPayload(const MapChunk& message) {
     return chunk;
 }
 
-MapChunk makeProtocolMapChunk(const std::string& regionId, const fmap::Chunk& chunk, std::uint32_t revision) {
-    if (regionId.empty()) throw std::runtime_error("MapChunk region id cannot be empty");
+MapChunk makeProtocolMapChunk(const fmap::Region& region, const fmap::Chunk& chunk, std::uint32_t revision) {
+    if (region.id.empty()) throw std::runtime_error("MapChunk region id cannot be empty");
     return MapChunk{
-        regionId,
+        region.id,
+        region.origin.x,
+        region.origin.y,
         chunk.x,
         chunk.y,
         chunk.floor,
