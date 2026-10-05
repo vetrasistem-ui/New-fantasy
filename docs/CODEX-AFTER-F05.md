@@ -1,8 +1,46 @@
 # Codex — After F05 Closeout
 
-Status: **DO NOT EXECUTE UNTIL F03 AND F05 ARE FORMALLY PASS**
+Status: **F03/F05 PASS — EXECUTE F05.5 BEFORE F06**
 
-This file defines the next ordered implementation contract so the project can continue immediately after the Windows visual closeout without re-planning F06 from scratch.
+F03 and F05 are formally closed. Before F06 persistence begins, execute the visual bootstrap described in:
+
+```text
+docs/F05.5-LEGACY-ASSET-BRIDGE.md
+```
+
+## Immediate priority — F05.5 Legacy Asset Bridge
+
+Use a user/project-provided DAT + SPR + OTB set to put real sprites into the Fantasy Map Editor and Fantasy Client without turning legacy formats into Fantasy's domain contract.
+
+Required boundary:
+
+```text
+DAT + SPR + OTB
+       ↓
+Legacy Asset Bridge
+       ↓
+Fantasy Asset Registry
+       ↓
+semantic keys
+       ↓
+Studio + Client
+```
+
+Rules:
+
+- FMAP remains semantic and independent;
+- Studio and Client consume the same registry;
+- do not persist legacy IDs, texture paths, offsets or cache data as FMAP domain state;
+- do not add OTBM, TFS runtime or protocol 10.98 dependencies to the native path;
+- keep DAT/SPR/OTB parsing isolated in the bridge;
+- legacy binary files remain user/project supplied when redistribution is not authorized;
+- preserve all F00–F05 regressions.
+
+Follow every gate in `docs/F05.5-LEGACY-ASSET-BRIDGE.md` and record visual Windows evidence before marking F05.5 PASS.
+
+---
+
+# F06 — Persistence / Database (after F05.5)
 
 Primary design reference:
 
@@ -12,20 +50,16 @@ docs/F06-PERSISTENCE-PLAN.md
 
 ## Entry condition
 
-Do not start this sequence unless all are true:
+Do not start F06 unless all are true:
 
 ```text
 F03 = PASS
 F05 = PASS
+F05.5 = PASS
 docs/evidence/F05/WINDOWS-VALIDATION.md complete
-final F05 regression = PASS
-GitHub Actions green on the exact closeout SHA
+F05.5 visual validation complete
 working tree clean
 ```
-
-If any condition is false, return to `docs/CODEX-NEXT.md` / `docs/CODEX-F05-WINDOWS.md`.
-
----
 
 # P00 — Freeze F06 baseline
 
@@ -44,9 +78,7 @@ Create/update F06 evidence with starting SHA:
 docs/evidence/F06/RESULT.md
 ```
 
-Do not change protocol/FMCP/FM﻿AP semantics during P00.
-
----
+Do not change protocol/FMCP/FMAP semantics during P00.
 
 # P01 — Persistence contract only
 
@@ -81,8 +113,6 @@ Rules:
 
 Gate: compile + unit tests with an in-memory/fake store before adding SQLite.
 
----
-
 # P02 — Migration runner
 
 Add append-only migrations under:
@@ -103,8 +133,6 @@ migration failure → startup fails cleanly
 ```
 
 Do not proceed if migration handling can leave a partial schema without a detectable failure.
-
----
 
 # P03 — SQLite adapter
 
@@ -128,8 +156,6 @@ No inventory/skills/quests in F06.
 
 Gate: fresh temporary DB + reopen existing DB + transaction rollback tests.
 
----
-
 # P04 — Character persistence service
 
 Connect account/character domain logic to the store.
@@ -144,17 +170,9 @@ character create/load
 validated saved position
 ```
 
-Add explicit handling for:
-
-- duplicate normalized names;
-- missing character;
-- invalid saved position;
-- stale revision/save conflict;
-- database error.
+Add explicit handling for duplicate normalized names, missing character, invalid saved position, stale revision/save conflict and database error.
 
 Do not hide persistence errors by spawning a fake successful character.
-
----
 
 # P05 — Session integration
 
@@ -170,23 +188,9 @@ load/create persisted character
 WorldRuntime add entity at saved position
 ```
 
-On movement, WorldRuntime remains authoritative.
-
-On clean Disconnect:
-
-```text
-current authoritative position
-   ↓
-save transaction
-   ↓
-entity cleanup
-```
-
-Abrupt disconnect must use one documented cleanup/save policy.
+WorldRuntime remains authoritative. On clean Disconnect, save the current authoritative position transactionally before entity cleanup. Abrupt disconnect must use one documented cleanup/save policy.
 
 Do not convert `LoginDev` into public authentication.
-
----
 
 # P06 — Restart persistence integration test
 
@@ -204,11 +208,7 @@ login same character
 position == previously saved tile
 ```
 
-This must use a temporary database and must not rely on a developer's machine state.
-
-Also prove reconnect without restart.
-
----
+This must use a temporary database and must not rely on a developer's machine state. Also prove reconnect without restart.
 
 # P07 — Failure and integrity tests
 
@@ -224,11 +224,7 @@ normalized duplicate character name
 corrupt/unavailable DB open
 ```
 
-Expected behavior must be explicit and deterministic.
-
-No silent fallback to spawn unless the policy is documented and tested.
-
----
+Expected behavior must be explicit and deterministic. No silent fallback to spawn unless the policy is documented and tested.
 
 # P08 — Full regression and F06 closeout
 
@@ -245,7 +241,7 @@ Then run the new persistence/restart integration gate.
 
 Required before F06 PASS:
 
-- F00–F05 regressions remain green;
+- F00–F05.5 regressions remain green;
 - persistence tests green;
 - database files are ignored/not staged;
 - no absolute paths persisted;
@@ -264,11 +260,9 @@ README.md
 
 Then advance to F07 — Item / Inventory Core.
 
----
-
 # Mandatory implementation discipline
 
-For every P-stage:
+For every stage:
 
 ```text
 implement smallest slice
@@ -284,4 +278,4 @@ commit with one clear scope
 continue
 ```
 
-Never combine database foundation, inventory, auth, website and public multiplayer in one phase.
+Never combine asset bridge, database foundation, inventory, auth, website and public multiplayer in one phase.
