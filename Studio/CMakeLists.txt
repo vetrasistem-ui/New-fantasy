@@ -8,8 +8,8 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 
 include(FetchContent)
 
-# ADR-012: pinned visual/platform dependencies for the native Fantasy editor.
-# Exact tag -> commit mappings are recorded in docs/UPSTREAMS.md.
+# Native 2D baseline: SDL3 for platform/input, SDL_Renderer3 for rendering,
+# Dear ImGui for editor tooling. Exact dependency pins are in docs/UPSTREAMS.md.
 set(SDL_SHARED OFF CACHE BOOL "" FORCE)
 set(SDL_STATIC ON CACHE BOOL "" FORCE)
 set(SDL_TEST_LIBRARY OFF CACHE BOOL "" FORCE)
@@ -61,7 +61,7 @@ add_library(fantasy-imgui STATIC
     ${imgui_SOURCE_DIR}/imgui_tables.cpp
     ${imgui_SOURCE_DIR}/imgui_widgets.cpp
     ${imgui_SOURCE_DIR}/backends/imgui_impl_sdl3.cpp
-    ${imgui_SOURCE_DIR}/backends/imgui_impl_sdlgpu3.cpp
+    ${imgui_SOURCE_DIR}/backends/imgui_impl_sdlrenderer3.cpp
 )
 
 target_include_directories(fantasy-imgui PUBLIC
