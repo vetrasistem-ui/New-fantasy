@@ -1,0 +1,96 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "fantasy://formats/fmap/schema-v0.json",
+  "title": "Fantasy Map Format v0",
+  "type": "object",
+  "required": ["format", "version", "world", "developmentSpawn", "regions"],
+  "properties": {
+    "format": { "const": "FMAP" },
+    "version": { "const": 0 },
+    "world": {
+      "type": "object",
+      "required": ["id", "name", "tileSize"],
+      "properties": {
+        "id": { "type": "string", "minLength": 1 },
+        "name": { "type": "string", "minLength": 1 },
+        "tileSize": { "type": "integer", "minimum": 1 }
+      },
+      "additionalProperties": false
+    },
+    "developmentSpawn": { "$ref": "#/$defs/position" },
+    "regions": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/region" }
+    }
+  },
+  "additionalProperties": false,
+  "$defs": {
+    "position": {
+      "type": "object",
+      "required": ["x", "y", "z"],
+      "properties": {
+        "x": { "type": "integer" },
+        "y": { "type": "integer" },
+        "z": { "type": "integer" }
+      },
+      "additionalProperties": false
+    },
+    "size": {
+      "type": "object",
+      "required": ["width", "height"],
+      "properties": {
+        "width": { "type": "integer", "minimum": 1 },
+        "height": { "type": "integer", "minimum": 1 }
+      },
+      "additionalProperties": false
+    },
+    "region": {
+      "type": "object",
+      "required": ["id", "origin", "size", "chunks"],
+      "properties": {
+        "id": { "type": "string", "minLength": 1 },
+        "origin": { "$ref": "#/$defs/position" },
+        "size": { "$ref": "#/$defs/size" },
+        "chunks": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/chunk" }
+        }
+      },
+      "additionalProperties": false
+    },
+    "chunk": {
+      "type": "object",
+      "required": ["x", "y", "floor", "tiles"],
+      "properties": {
+        "x": { "type": "integer" },
+        "y": { "type": "integer" },
+        "floor": { "type": "integer" },
+        "tiles": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/tile" }
+        }
+      },
+      "additionalProperties": false
+    },
+    "tile": {
+      "type": "object",
+      "required": ["x", "y", "ground"],
+      "properties": {
+        "x": { "type": "integer" },
+        "y": { "type": "integer" },
+        "ground": { "type": "string", "minLength": 1 },
+        "objects": {
+          "type": "array",
+          "items": { "type": "string", "minLength": 1 },
+          "default": []
+        },
+        "tags": {
+          "type": "array",
+          "items": { "type": "string", "minLength": 1 },
+          "default": []
+        }
+      },
+      "additionalProperties": false
+    }
+  }
+}
