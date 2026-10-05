@@ -1,6 +1,25 @@
-# FMAP v0 — Coordinate Semantics
+# FMAP v0 — Coordinate Semantics and Shared Core
 
-This document freezes the coordinate rule used by the native Fantasy map path during F03.
+This document freezes the coordinate rule used by the native Fantasy map path and the ownership of the reusable FMAP implementation.
+
+## Shared ownership
+
+FMAP is a platform contract, not a Studio-only implementation.
+
+The neutral C++ implementation now lives in:
+
+```text
+Shared/Formats/FMAP/
+├── schema-v0.json
+├── FmapCore.hpp
+├── FmapCore.cpp
+├── Json.hpp
+└── README.md
+```
+
+`Fantasy Studio` and `Fantasy Server` compile the same `Shared/Formats/FMAP/FmapCore.cpp`. The Studio keeps only a compatibility facade at `Studio/MapEngine/FmapCore.hpp` so editor code can continue using its existing namespace while the shared implementation remains owned by `fantasy::fmap`.
+
+No second FMAP parser/serializer should be created in Server or Client.
 
 ## Coordinate spaces
 
@@ -48,6 +67,7 @@ A tile at `chunk(0,0) / tile(3,2)` is therefore directly adjacent to a tile at `
 5. Chunks may be sparse in FMAP v0. Missing tiles are not implicitly created.
 6. Editing operations that depend on adjacency, such as Fill, must resolve neighbours in region-local/global tile space and therefore may cross chunk boundaries.
 7. Chunk storage is an implementation detail. Gameplay/map semantics must not change when an equivalent tile is moved between chunks while preserving its resolved global position.
+8. Studio and Server must consume the same shared FMAP model/IO implementation.
 
 ## Why v0 uses offsets instead of chunk indexes
 
@@ -55,4 +75,4 @@ It keeps the first native format independent from a hard-coded chunk dimension w
 
 ## Test fixture
 
-`Game/Maps/World/multichunk-fixture.fmap.json` is the canonical F03 fixture for verifying cross-chunk behaviour. It contains four chunks and a connected grass area that crosses from chunk offset `0,0` into `4,0`.
+`Game/Maps/World/multichunk-fixture.fmap.json` is the canonical cross-chunk fixture. It contains four chunks and a connected grass area that crosses from chunk offset `0,0` into `4,0`.
