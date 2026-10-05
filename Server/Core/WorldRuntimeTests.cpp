@@ -38,6 +38,15 @@ int main() {
 
         const auto player = runtime.spawnEntity("Development Player", spawn);
         require(runtime.entity(player) != nullptr, "spawned entity missing");
+
+        bool occupiedSpawnRejected = false;
+        try {
+            runtime.spawnEntity("Duplicate Spawn", spawn);
+        } catch (...) {
+            occupiedSpawnRejected = true;
+        }
+        require(occupiedSpawnRejected, "occupied spawn tile must reject another entity");
+
         require(runtime.moveEntity(player, 1, 0), "player should move east from spawn");
         require(runtime.entity(player)->position.x == 101, "east movement position mismatch");
 
@@ -49,13 +58,26 @@ int main() {
         require(!runtime.moveEntity(walker, 1, 1), "diagonal movement is not enabled in F04 slice");
         require(!runtime.isWalkable(MapPosition{5000, 5000, 7}), "missing tile must not be walkable");
 
+        bool scheduled = false;
+        runtime.scheduleAfter(2, [&scheduled] { scheduled = true; });
+        require(runtime.pendingTaskCount() == 1, "scheduled task should be pending");
         runtime.tick();
+        require(!scheduled, "scheduled task fired too early");
         runtime.tick();
+        require(scheduled, "scheduled task did not fire on due tick");
+        require(runtime.pendingTaskCount() == 0, "completed scheduled task should be removed");
         require(runtime.tickCount() == 2, "runtime tick counter mismatch");
+
+        bool cancelledRan = false;
+        const auto cancelledTask = runtime.scheduleAfter(1, [&cancelledRan] { cancelledRan = true; });
+        require(runtime.cancelTask(cancelledTask), "scheduled task should cancel successfully");
+        runtime.tick();
+        require(!cancelledRan, "cancelled task must not run");
 
         runtime.stop();
         require(runtime.state() == RuntimeState::Stopped, "runtime should stop cleanly");
         require(runtime.entityCount() == 0, "entities should be cleared on stop");
+        require(runtime.pendingTaskCount() == 0, "scheduler should be cleared on stop");
 
         std::cout << "WorldRuntimeTests PASS\n";
         return 0;
