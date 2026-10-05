@@ -13,8 +13,18 @@ namespace fantasy::client {
 
 struct ReceivedChunk {
     std::string regionId;
+    std::int32_t regionOriginX = 0;
+    std::int32_t regionOriginY = 0;
     std::uint32_t revision = 0;
     fmap::Chunk chunk;
+
+    fmap::Position globalPosition(const fmap::Tile& tile) const {
+        return fmap::Position{
+            regionOriginX + chunk.x + tile.x,
+            regionOriginY + chunk.y + tile.y,
+            chunk.floor
+        };
+    }
 };
 
 class DevelopmentClient {
