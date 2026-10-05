@@ -1,0 +1,128 @@
+{
+  "format": "FMAP",
+  "version": 0,
+  "world": {
+    "id": "multichunk-fixture",
+    "name": "Multi Chunk Fixture",
+    "tileSize": 32
+  },
+  "developmentSpawn": {
+    "x": 102,
+    "y": 102,
+    "z": 7
+  },
+  "regions": [
+    {
+      "id": "crossing",
+      "origin": {
+        "x": 100,
+        "y": 100,
+        "z": 7
+      },
+      "size": {
+        "width": 8,
+        "height": 8
+      },
+      "chunks": [
+        {
+          "x": 0,
+          "y": 0,
+          "floor": 7,
+          "tiles": [
+            {
+              "x": 2,
+              "y": 2,
+              "ground": "terrain.grass.basic",
+              "objects": ["nature.flower.blue"],
+              "tags": ["development-spawn"]
+            },
+            {
+              "x": 3,
+              "y": 2,
+              "ground": "terrain.grass.basic",
+              "objects": [],
+              "tags": []
+            },
+            {
+              "x": 2,
+              "y": 3,
+              "ground": "terrain.grass.basic",
+              "objects": [],
+              "tags": []
+            }
+          ]
+        },
+        {
+          "x": 4,
+          "y": 0,
+          "floor": 7,
+          "tiles": [
+            {
+              "x": 0,
+              "y": 2,
+              "ground": "terrain.grass.basic",
+              "objects": [],
+              "tags": []
+            },
+            {
+              "x": 1,
+              "y": 2,
+              "ground": "terrain.grass.basic",
+              "objects": ["nature.tree.oak.small"],
+              "tags": []
+            },
+            {
+              "x": 0,
+              "y": 3,
+              "ground": "terrain.stone.basic",
+              "objects": [],
+              "tags": []
+            }
+          ]
+        },
+        {
+          "x": 0,
+          "y": 4,
+          "floor": 7,
+          "tiles": [
+            {
+              "x": 2,
+              "y": 0,
+              "ground": "terrain.water.shallow",
+              "objects": [],
+              "tags": []
+            },
+            {
+              "x": 3,
+              "y": 0,
+              "ground": "terrain.water.shallow",
+              "objects": [],
+              "tags": []
+            }
+          ]
+        },
+        {
+          "x": 4,
+          "y": 4,
+          "floor": 7,
+          "tiles": [
+            {
+              "x": 0,
+              "y": 0,
+              "ground": "terrain.dirt.basic",
+              "objects": [],
+              "tags": []
+            },
+            {
+              "x": 1,
+              "y": 0,
+              "ground": "terrain.dirt.basic",
+              "objects": ["nature.rock.small"],
+              "tags": []
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
