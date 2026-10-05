@@ -1,39 +1,57 @@
 # F05 Evidence — Fantasy Protocol v1 + First Native Play
 
-Status: **IN_PROGRESS / CODEC + AUTHORITATIVE SESSION PASS**
+Status: **AUTOMATED TECHNICAL PASS / INTERACTIVE WINDOWS CLOSEOUT PENDING**
 
-## Protocol contract frozen for the first native play
+F05 is **not yet formally closed**. Repository-side implementation and automated Windows CI are working, including real loopback TCP and a two-process first-play. The remaining gates are interactive Windows validation/evidence described in `docs/CODEX-F05-WINDOWS.md`.
 
-`Shared/Protocol/protocol-v1.yaml` fixes the v1 TCP framing contract:
+## Native path under test
 
-- 16-byte little-endian envelope;
-- magic `FNTY`;
+```text
+Fantasy Client
+   ↓
+Shared TCP transport / FrameStream
+   ↓
+Fantasy Protocol v1
+   ↓
+Fantasy Server
+   ↓
+DevelopmentSession
+   ↓
+WorldRuntime
+   ↓
+FMAP
+```
+
+No OTBM, TFS runtime, protocol 10.98, DAT/SPR/OTB or OTClient participates in this path.
+
+## Protocol contract
+
+`Shared/Protocol/protocol-v1.yaml` freezes the first-play v1 contract:
+
+- transport: TCP;
+- 16-byte little-endian `FNTY` envelope;
 - protocol version `uint16`;
 - message type `uint16`;
-- payload length `uint32` excluding the envelope;
+- payload length `uint32` excluding envelope;
 - sequence `uint32`;
 - maximum payload 4 MiB;
-- UTF-8 strings and variable-length fields prefixed by `uint32`.
+- UTF-8 variable fields prefixed by `uint32`;
+- `MapChunk` semantic payload: FMCP v1.
 
-Movement is explicitly authoritative:
+Movement remains explicitly authoritative:
 
 ```text
 Client -> MoveRequest(direction)
-Server validates WorldRuntime
+Server -> WorldRuntime validation
 Server -> EntityMove(entityId, x, y, z, direction)
 ```
 
-The client has no message that can authoritatively set its absolute position. ADR-014 freezes these rules for protocol v1.
+The Client has no message that can authoritatively set absolute position.
 
-## Shared C++ codec
+## Shared C++ protocol codec
 
-`Shared/Protocol/FantasyProtocol.*` implements:
+`Shared/Protocol/FantasyProtocol.*` implements encode/decode and validation for:
 
-- envelope encode/decode;
-- frame-size inspection for TCP stream buffering;
-- protocol/magic/message-type validation;
-- maximum payload validation;
-- little-endian serialization;
 - `Hello` / `HelloAck`;
 - `LoginDev` / `LoginOk`;
 - `EnterWorld`;
@@ -43,11 +61,45 @@ The client has no message that can authoritatively set its absolute position. AD
 - `Error`;
 - `Disconnect`.
 
-`Shared/Protocol/FantasyProtocolTests.cpp` covers framing bytes, endian ordering, partial envelope behavior, bad magic/version/type rejection, truncation, payload limits, typed message roundtrips, trailing payload rejection and invalid movement direction rejection.
+Automated tests cover framing bytes, endian order, partial envelope, bad magic/version/type, truncation, payload limit, typed roundtrips, trailing bytes and invalid movement direction.
 
-## Authoritative development session
+## FMCP v1 — semantic map payload
 
-`Server/Network/DevelopmentSession.*` adds a socket-independent state machine above the F04 `WorldRuntime`:
+`Shared/Protocol/MapChunkPayload.*` encodes one FMAP chunk without falling back to legacy item IDs.
+
+The outer `MapChunk` carries:
+
+```text
+regionId
+regionOriginX
+regionOriginY
+chunkX
+chunkY
+floor
+revision
+payload
+```
+
+FMCP v1 carries each tile's:
+
+```text
+tile-local x/y
+ground semantic key
+object semantic keys
+tags
+```
+
+The Client reconstructs global coordinates using:
+
+```text
+regionOrigin + chunkOffset + tileLocal
+```
+
+The development fixture streams 4 chunks / 64 semantic tiles.
+
+## Authoritative Server session
+
+`Server/Network/DevelopmentSession.*` implements:
 
 ```text
 AwaitHello
@@ -56,36 +108,115 @@ AwaitLogin
    ↓ LoginDev
 InWorld
    ↓ MoveRequest
-WorldRuntime validates movement
+WorldRuntime validates
    ↓
 EntityMove authoritative reply
 ```
 
-The session also validates monotonically increasing client sequence numbers, rejects unsupported protocol versions, creates the player entity at the FMAP development spawn, returns `LoginOk + EnterWorld + EntityAdd`, and removes the entity on clean disconnect.
+It also:
 
-`Server/Network/DevelopmentSessionTests.cpp` proves Hello/HelloAck, development login, entity creation, authoritative movement, replayed-sequence rejection, disconnect cleanup and requested-protocol mismatch handling.
+- rejects unsupported protocol versions;
+- enforces monotonically increasing client sequence numbers;
+- spawns the development player at the FMAP development spawn;
+- sends `LoginOk + EnterWorld + MapChunk(s) + EntityAdd`;
+- removes the entity on clean Disconnect;
+- rolls back login state if snapshot/login construction fails.
 
-## Automated evidence
+## Real TCP transport
 
-Workflow run **134**, commit `e5b2425a20c4d6c6a4cf4800831933d6136b29a5`, completed successfully on Windows with the protocol/session slice included.
+`Shared/Network/` provides the shared TCP/FrameStream layer used by Server and Client.
 
-PASS in that run:
+F05 listener behavior is intentionally limited:
 
-- all project/FM﻿AP/protocol validators;
-- Studio configure/build/tests;
-- Server configure/build;
-- F04 world runtime tests;
-- Fantasy Protocol codec tests;
-- DevelopmentSession tests;
-- server smoke test.
+- loopback only (`127.0.0.1`);
+- one development connection in `--serve-once` mode;
+- `LoginDev` only;
+- not public authentication and not the final 24/7 server mode.
 
-## Remaining F05 gates
+`Server/Network/TcpDevelopmentConnection.*` cleans up the server entity on both clean and abrupt transport disconnects.
 
-- define/encode the semantic tile payload carried by `MapChunk`;
-- make login send the FMAP chunks needed by the player;
-- add TCP stream buffering/transport around the already-tested frame/session layers;
-- create the minimal Fantasy Client;
-- prove Client → TCP → Server → FMAP world entry and movement;
-- validate disconnect/reconnect over the real transport.
+## Native Fantasy Client
 
-No OTBM or protocol 10.98 is used by this F05 path.
+`Client/Core/DevelopmentClient.*` performs:
+
+- handshake;
+- development login;
+- EnterWorld;
+- MapChunk/FMCP reconstruction;
+- EntityAdd validation;
+- MoveRequest;
+- authoritative EntityMove application;
+- clean Disconnect.
+
+Two executables exist:
+
+```text
+fantasy-client.exe      # headless / automation
+fantasy-client-gui.exe  # first visual native-play gate
+```
+
+The visual Client renders semantic tiles using deterministic placeholder colors and sends movement only through the same Client core.
+
+## Integration coverage
+
+`Tests/Integration/NativePlayTests.cpp` proves through real loopback TCP:
+
+- handshake;
+- login;
+- spawn at `100,100,7`;
+- 4 chunks / 64 tiles reconstructed;
+- region-origin coordinate resolution;
+- authoritative movement;
+- clean Disconnect cleanup;
+- second independent connection/reconnect;
+- abrupt TCP disconnect cleanup.
+
+The workflow also executes `scripts/run-native-play.ps1`, which starts the real `fantasy-server.exe --serve-once` and `fantasy-client.exe` as separate processes.
+
+## Automated Windows evidence
+
+Workflow **run 191**, commit `1b9257f3fdcc186e235380f7a2c1bc7671fd227d`, completed successfully on Windows after fixing the WinSock `min/max` macro conflict.
+
+That run passed:
+
+- layout/contracts;
+- Fantasy Project v2;
+- FMAP v0;
+- FMAP multi-chunk validation;
+- Fantasy Protocol/FМCP validation;
+- relocation test;
+- Studio configure/build/all CTests;
+- Server configure/build/all CTests;
+- `fantasy-native-play-tests`;
+- Client configure/build/CTest;
+- real two-process native play;
+- Windows artifact packaging for Studio and native runtime.
+
+This proves the **automated technical path** on Windows. It does not replace interactive visual evidence.
+
+## Remaining gates before F05 can be marked PASS
+
+Only Windows real-machine closeout remains:
+
+1. execute the ordered handoff in `docs/CODEX-F05-WINDOWS.md`;
+2. close the pending F03 visual Studio gate;
+3. run `fantasy-client-gui.exe` against the real Server;
+4. visually confirm four chunks / 64 tiles and player marker;
+5. visually confirm server-authoritative arrow-key movement;
+6. repeat visual connection/reconnect;
+7. confirm no orphan Server/Client processes;
+8. record screenshots and `docs/evidence/F05/WINDOWS-VALIDATION.md`;
+9. rerun full regression on the final SHA;
+10. only then change F05 to `PASS` and advance priority to F06.
+
+## Codex entry point
+
+```text
+docs/CODEX-NEXT.md
+```
+
+The complete ordered Windows execution contract is:
+
+```text
+docs/CODEX-F05-WINDOWS.md
+```
