@@ -1,8 +1,11 @@
 # F05 Evidence — Fantasy Protocol v1 + First Native Play
 
-Status: **AUTOMATED TECHNICAL PASS / INTERACTIVE WINDOWS CLOSEOUT PENDING**
+Status: **PASS — REAL WINDOWS FIRST PLAY, RECONNECT AND FINAL REGRESSION COMPLETE**
 
-F05 is **not yet formally closed**. Repository-side implementation and automated Windows CI are working, including real loopback TCP and a two-process first-play. The remaining gates are interactive Windows validation/evidence described in `docs/CODEX-F05-WINDOWS.md`.
+F05 is formally closed after C00–C07 in `docs/CODEX-F05-WINDOWS.md` passed on
+a real Windows machine, including interactive Studio/Client, authoritative
+movement/rejection, reconnect, cleanup and final regression. F06 remains
+NOT STARTED; this closeout adds evidence/documentation only.
 
 ## Native path under test
 
@@ -194,20 +197,44 @@ That run passed:
 
 This proves the **automated technical path** on Windows. It does not replace interactive visual evidence.
 
-## Remaining gates before F05 can be marked PASS
+## Real Windows closeout — 2026-10-05
 
-Only Windows real-machine closeout remains:
+Tested official baseline: `621ca7b499330b61f653345590f1897c3b1f76d2`.
+Windows 11 Home 10.0.26200; Intel HD Graphics 5500; Release;
+SDL3 + SDL_Renderer3 + Dear ImGui (ADR-019).
 
-1. execute the ordered handoff in `docs/CODEX-F05-WINDOWS.md`;
-2. close the pending F03 visual Studio gate;
-3. run `fantasy-client-gui.exe` against the real Server;
-4. visually confirm four chunks / 64 tiles and player marker;
-5. visually confirm server-authoritative arrow-key movement;
-6. repeat visual connection/reconnect;
-7. confirm no orphan Server/Client processes;
-8. record screenshots and `docs/evidence/F05/WINDOWS-VALIDATION.md`;
-9. rerun full regression on the final SHA;
-10. only then change F05 to `PASS` and advance priority to F06.
+- C01/C07 full native builds: PASS, validators and 13 CTests (Studio 5,
+  Server 6, Client 2), including native TCP integration.
+- C02 headless sessions: PASS on 17171 and 17172, spawn 100,100,7,
+  4 chunks / 64 tiles, East 101,100,7, clean Disconnect and exit 0.
+- C03 real Studio: PASS, all requested operations and Save/Reopen;
+  real screenshots in F03 evidence; canonical FMAP restored.
+- C04 real GUI on 17173: PASS, map/object/player markers and authoritative
+  coordinates. Physical arrows were operator-confirmed: East 101,100,7,
+  West 99,100,7, South 100,101,7, North 100,99,7 from the spawn area.
+  Codex captured the live East state and bounds rejection at 103,100,7 with
+  Server error 2001; position remained on the last valid tile.
+- C05 new visual session on 17174: PASS, reset to spawn, map received again,
+  physical Right produced 101,100,7, captured in the live GUI.
+- C04/C05 closing the GUI: PASS; clean_disconnect=true, state=STOPPED,
+  Client/Server and scripts exit 0; no orphan processes/active session sockets.
+- C07 headless final session on 17175: PASS, spawn to East and clean shutdown;
+  unchanged FMAP/GUI sources, git diff --check passed, zero Fantasy processes.
+
+Real screenshots: [C04 initial](windows/c04-renderer3-initial.jpg),
+[C04 East](windows/c04-renderer3-east-confirmed.jpg),
+[C04 rejected movement](windows/c04-renderer3-rejected.jpg),
+[C05 reconnect initial](windows/c05-renderer3-initial.jpg),
+[C05 reconnect East](windows/c05-renderer3-east.jpg).
+
+All listeners stayed 127.0.0.1-only. No legacy runtime/format participated.
+Computer Use arrow injection translated Right to Keypad 6; physical arrows
+were used instead. Temporary diagnostics/capture-option trials were removed;
+no GUI/core/gameplay/protocol/network/FMAP code was changed for closeout.
+Full evidence, preserved startup history and backup branches are recorded in
+[WINDOWS-VALIDATION.md](WINDOWS-VALIDATION.md).
+
+Closeout commit CI: awaiting push and the exact-SHA Foundation Checks result.
 
 ## Codex entry point
 

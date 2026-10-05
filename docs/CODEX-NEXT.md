@@ -19,9 +19,9 @@ Fases:
 F00 PASS
 F01 PASS
 F02 PASS
-F03 TECHNICAL PASS — falta gate visual interativo Windows
+F03 PASS — gate visual real e Save/Reopen concluídos
 F04 PASS
-F05 AUTOMATED TECHNICAL PASS — falta fechamento Windows real
+F05 PASS — first play visual, reconnect e cleanup concluídos
 F06 PREPARED / NOT STARTED
 ```
 
@@ -29,13 +29,24 @@ F06 PREPARED / NOT STARTED
 
 **Não desenvolver novas features. Não iniciar F06.**
 
-A missão é executar, corrigir apenas o necessário e documentar os gates reais de Windows descritos em:
+Os gates C00–C07 de Windows já passaram em 2026-10-05; o fechamento C08
+está documentado nas evidências e aguarda confirmação do CI do commit de
+fechamento. F06 é a próxima prioridade documentada, mas permanece NOT STARTED
+e exige uma nova instrução de execução. Evidência:
+
+```text
+docs/evidence/F05/WINDOWS-VALIDATION.md
+docs/evidence/F03/RESULT.md
+docs/evidence/F05/RESULT.md
+```
+
+O roteiro reproduzível dos gates concluídos está em:
 
 ```text
 docs/CODEX-F05-WINDOWS.md
 ```
 
-Esse arquivo é o contrato de execução completo. Seguir exatamente a ordem:
+Esse arquivo preserva o contrato de execução completo e a ordem validada:
 
 ```text
 C00  checkout limpo / SHA

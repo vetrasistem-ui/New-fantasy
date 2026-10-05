@@ -1,15 +1,15 @@
 # F03 Evidence — Fantasy Map Editor MVP
 
-Status: **IN_PROGRESS / TECHNICAL GATES PASS — INTERACTIVE WINDOWS VALIDATION PENDING**
+Status: **PASS — AUTOMATED AND REAL WINDOWS INTERACTIVE GATES COMPLETE**
 
 ## Visual foundation frozen
 
-ADR-012 selects the native visual stack:
+ADR-019 supersedes the earlier SDL_GPU baseline and selects the native 2D stack:
 
 - SDL3 `release-3.4.18` / commit `829a65d769d935c4852f8159e964312c0957260a`;
-- SDL_GPU for viewport rendering;
+- SDL_Renderer3 for viewport rendering;
 - Dear ImGui `v1.92.9b` / commit `f1cc2ae15e53a861a874c3034aae6798fde194ab`;
-- official Dear ImGui SDL3 + SDL_GPU backends.
+- official Dear ImGui SDL3 + SDL_Renderer3 backends.
 
 This stack is deliberately isolated from the map domain. The GUI edits the existing `MapDocument`; it does not own a second map representation.
 
@@ -20,7 +20,7 @@ This stack is deliberately isolated from the map domain. The GUI edits the exist
 - opens the current Fantasy project through `ProjectManager`;
 - loads the canonical FMAP directly;
 - SDL3 native window;
-- SDL_GPU device/render pass;
+- SDL_Renderer3 rendering;
 - Dear ImGui editor panels;
 - 2D tile viewport;
 - floor up/down;
@@ -35,7 +35,7 @@ This stack is deliberately isolated from the map domain. The GUI edits the exist
 - FMAP Save / Ctrl+S;
 - World panel;
 - basic region minimap with development-spawn marker;
-- clean GPU/SDL/ImGui shutdown path.
+- clean renderer/SDL/ImGui shutdown path.
 
 The visible Paint, Fill, Add Object, Remove Object and Erase controls now call `EditorOperations`; the GUI no longer reimplements those domain mutations. This is the same operation layer intended for future CLI/Codex automation.
 
@@ -106,19 +106,35 @@ Workflow run **83** (`48820b38a7b1f9dbd52c02637743f4133d2dbff5`) passed complete
 - basic minimap implementation: **PASS (build-level)**;
 - Save/Reopen semantic roundtrip: **PASS (headless)**.
 
-## Only remaining gate before F03 PASS
+## Real Windows interactive evidence — 2026-10-05
 
-A real interactive Windows session must still prove the user-facing path:
+C03 passed from the beginning on official SDL_Renderer3 baseline
+`621ca7b499330b61f653345590f1897c3b1f76d2`, Windows 11 Home 10.0.26200,
+Intel HD Graphics 5500. The old Tier 2/DXIL initialization failures did not recur.
 
-1. launch `fantasy-studio-gui.exe`;
-2. inspect the 8 × 8 four-chunk world visually;
-3. select tiles and exercise Paint / Fill / Add / Remove / Erase / Undo / Redo;
-4. Save FMAP;
-5. close the application;
-6. reopen it;
-7. confirm the saved visual state is preserved;
-8. capture visual evidence.
+The real Studio displayed the four chunks / 64 tiles. Tile selection, Paint,
+Undo, Redo, Fill across the two upper chunks (17 tiles), Add Object,
+Remove Object, Erase and Save all passed. Closing and reopening preserved the
+grass Paint at 97,97,7, the filled sand area and empty objects at 98,97,7;
+both the reopened visual state and saved FMAP semantics were checked.
+Studio exited 0, and the canonical development map was restored to hash
+`1442d649ff73ba39881f876a4bde33394df2784c`.
 
-Until that interactive run is performed, F03 remains IN_PROGRESS even though the automated technical gates pass.
+Real captures: [before edits](windows/c03-renderer3-before.jpg),
+[Paint/Redo](windows/c03-renderer3-paint-redo.jpg),
+[Fill](windows/c03-renderer3-fill.jpg),
+[Add Object](windows/c03-renderer3-add-object.jpg),
+[Remove Object](windows/c03-renderer3-remove-object.jpg),
+[Erase](windows/c03-renderer3-erase.jpg),
+[Save](windows/c03-renderer3-save.jpg),
+[Save/Reopen](windows/c03-renderer3-save-reopen.jpg).
+
+C07 passed the full native build, all validators, 13 CTests and the final
+headless two-process play, with no fixture changes or orphan processes.
+The [Windows ledger](../F05/WINDOWS-VALIDATION.md) records all C00–C07 results.
+The [startup history](windows/STARTUP-FAILURE.md) preserves the old SDL_GPU
+failures and backup commits as historical evidence. F06 is not implemented.
+
+Closeout commit CI: awaiting push and the exact-SHA Foundation Checks result.
 
 No RME, OTBM or 10.98 code is present in the F03 native path.

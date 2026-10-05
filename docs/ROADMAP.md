@@ -48,11 +48,11 @@ Evidência: `docs/evidence/F02/RESULT.md`.
 
 ## F03 — Fantasy Map Editor MVP
 
-Status: **TECHNICAL PASS / INTERACTIVE WINDOWS VISUAL CHECK PENDING**
+Status: **PASS**
 
 Implementado e validado automaticamente:
 
-- SDL3 + SDL_GPU + Dear ImGui;
+- SDL3 + SDL_Renderer3 + Dear ImGui (ADR-019);
 - janela/editor nativo;
 - viewport 2D;
 - floors;
@@ -65,7 +65,9 @@ Implementado e validado automaticamente:
 - mundo de desenvolvimento 8 x 8 / 64 tiles / quatro chunks;
 - semântica multi-chunk e Fill atravessando fronteira de chunk.
 
-O único gate ainda não executado é a sessão visual interativa no Windows com captura de evidência. Esse gate não bloqueou a construção do runtime/protocolo nativo, mas permanece obrigatório antes do fechamento formal da F03.
+A sessão visual real no Windows passou em 2026-10-05: quatro chunks, seleção,
+Paint, Undo/Redo, Fill entre chunks, Add/Remove Object, Erase e Save/Reopen com
+persistência confirmada e screenshots reais. O FMAP canônico foi restaurado.
 
 Evidência: `docs/evidence/F03/RESULT.md`.
 
@@ -92,7 +94,7 @@ Evidência: `docs/evidence/F04/RESULT.md`.
 
 ## F05 — Fantasy Protocol v1 + First Native Play
 
-Status: **AUTOMATED TECHNICAL PASS / INTERACTIVE WINDOWS CLOSEOUT PENDING**
+Status: **PASS**
 
 Objetivo: ligar Fantasy Server e Fantasy Client pelo protocolo próprio até um personagem entrar no FMAP e andar.
 
@@ -114,9 +116,13 @@ Implementado e comprovado automaticamente no Windows:
 - primeiro play com Server e Client em processos separados;
 - pacote Windows de Studio e runtime nativo.
 
-O fechamento formal ainda exige o roteiro interativo real de `docs/CODEX-F05-WINDOWS.md`: Studio visual, Client visual, movimento, reconnect, cleanup e screenshots/evidência.
+O roteiro C00–C07 de `docs/CODEX-F05-WINDOWS.md` passou em 2026-10-05: Studio
+visual, Client visual, movimento autoritativo e rejeição no limite, reconnect,
+cleanup, screenshots reais e regressão completa. Evidência detalhada:
+`docs/evidence/F05/WINDOWS-VALIDATION.md`.
 
-**Primeiro grande marco: o caminho técnico nativo já funciona sem OTBM e sem protocolo 10.98; F05 só muda para PASS depois do gate visual real.**
+**Primeiro grande marco concluído: primeiro play nativo visual confirmado sem
+OTBM e sem protocolo 10.98.**
 
 Evidência: `docs/evidence/F05/RESULT.md`.
 
@@ -124,7 +130,8 @@ Evidência: `docs/evidence/F05/RESULT.md`.
 
 Status: **PREPARED / NOT STARTED**
 
-A implementação permanece bloqueada até F03/F05 serem formalmente PASS.
+F03/F05 passaram. F06 é a próxima prioridade documentada; sua implementação
+não faz parte deste fechamento e permanece NOT STARTED.
 
 Plano preparado:
 

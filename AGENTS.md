@@ -80,12 +80,18 @@ Projects/
 - **F00 — Independent Core Foundation: PASS**
 - **F01 — Project System: PASS**
 - **F02 — Fantasy Map Core: PASS**
-- **F03 — Fantasy Map Editor MVP: TECHNICAL PASS; interactive Windows visual check pending**
+- **F03 — Fantasy Map Editor MVP: PASS**
 - **F04 — Fantasy Server World Runtime: PASS**
+- **F05 — Fantasy Protocol v1 + First Native Play: PASS**
 
 ## Prioridade atual
 
-**F05 — Fantasy Protocol v1 + First Native Play.**
+**F06 — Persistence / Database: próxima fase, NOT STARTED.**
+
+F03/F05 foram fechadas após C00–C07 no Windows real, com screenshots,
+Save/Reopen, movimento/rejeição autoritativos, reconnect e cleanup.
+Evidência: `docs/evidence/F05/WINDOWS-VALIDATION.md`.
+Este fechamento não inicia nem implementa F06.
 
 A fundação implementada inclui:
 
@@ -100,7 +106,7 @@ A fundação implementada inclui:
 9. `fantasy-client-gui.exe` como primeiro visual nativo, consumindo o mesmo Client core;
 10. scripts reproduzíveis de build e primeiro play.
 
-## Ordem obrigatória para fechar F05
+## Gates de fechamento da F05 concluídos
 
 1. manter validators/contracts verdes;
 2. build/test completo do Studio, Server e Client;
