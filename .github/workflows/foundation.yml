@@ -1,0 +1,17 @@
+name: Foundation Checks
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  layout:
+    runs-on: windows-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Validate project layout
+        shell: pwsh
+        run: ./scripts/check-layout.ps1
