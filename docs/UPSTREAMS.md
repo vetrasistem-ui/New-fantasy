@@ -28,23 +28,23 @@ Este documento registra projetos externos usados como referência técnica, comp
 - Role: client/protocol behavior oracle and temporary fallback
 - Status: **REFERENCE ONLY**
 
-## SDL3 — approved F03 dependency
+## SDL3 — approved visual/platform dependency
 
 - Repository: `libsdl-org/SDL`
 - Release: `release-3.4.18`
 - Commit: `829a65d769d935c4852f8159e964312c0957260a`
 - License: zlib
-- Role: window/input/platform layer and SDL_GPU graphics abstraction for Fantasy Studio
-- Status: **APPROVED DEPENDENCY — ADR-012**
+- Role: window/input/platform layer and SDL_GPU graphics abstraction for Fantasy Studio and the F05 native visual Client
+- Status: **APPROVED DEPENDENCY — ADR-012 / ADR-017**
 
-## Dear ImGui — approved F03 dependency
+## Dear ImGui — approved tooling/first-play UI dependency
 
 - Repository: `ocornut/imgui`
 - Release: `v1.92.9b`
 - Commit: `f1cc2ae15e53a861a874c3034aae6798fde194ab`
 - License: MIT
-- Role: editor panels/tooling UI using official SDL3 + SDL_GPU backends
-- Status: **APPROVED DEPENDENCY — ADR-012**
+- Role: Studio editor panels and the F05 diagnostic/first-play Client UI using official SDL3 + SDL_GPU backends
+- Status: **APPROVED DEPENDENCY — ADR-012 / ADR-017**
 
 ## Boundary rule
 
@@ -60,7 +60,7 @@ The native gameplay path remains:
 FMAP → Fantasy Server → Fantasy Protocol → Fantasy Client
 ```
 
-The visual Studio dependencies do not define the map/server/protocol data model.
+Visual/platform dependencies do not define the map/server/protocol data model.
 
 ## Update rule
 
