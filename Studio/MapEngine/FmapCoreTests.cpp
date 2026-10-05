@@ -18,8 +18,30 @@ void require(bool condition, const std::string& message) {
     if (!condition) throw std::runtime_error(message);
 }
 
-Tile& firstTile(World& world) {
-    return world.regions.at(0).chunks.at(0).tiles.at(0);
+Tile& requireTile(World& world, const TileLocator& locator) {
+    for (auto& region : world.regions) {
+        if (region.id != locator.regionId) continue;
+        for (auto& chunk : region.chunks) {
+            if (chunk.x != locator.chunkX || chunk.y != locator.chunkY || chunk.floor != locator.floor) continue;
+            for (auto& tile : chunk.tiles) {
+                if (tile.x == locator.tileX && tile.y == locator.tileY) return tile;
+            }
+        }
+    }
+    throw std::runtime_error("test tile not found");
+}
+
+const Tile& requireTile(const World& world, const TileLocator& locator) {
+    for (const auto& region : world.regions) {
+        if (region.id != locator.regionId) continue;
+        for (const auto& chunk : region.chunks) {
+            if (chunk.x != locator.chunkX || chunk.y != locator.chunkY || chunk.floor != locator.floor) continue;
+            for (const auto& tile : chunk.tiles) {
+                if (tile.x == locator.tileX && tile.y == locator.tileY) return tile;
+            }
+        }
+    }
+    throw std::runtime_error("test tile not found");
 }
 
 } // namespace
@@ -32,6 +54,7 @@ int main() {
 
         require(world.info.id == "fantasy-world", "world id mismatch");
         require(world.regions.size() == 1, "expected one fixture region");
+        require(world.regions.at(0).chunks.size() == 4, "main world should exercise four chunks");
         require(isSemanticAssetKey("terrain.grass.basic"), "valid semantic key rejected");
         require(!isSemanticAssetKey("12345"), "numeric-only legacy style key should be rejected");
         require(validateWorld(world).empty(), "fixture should be semantically valid");
@@ -47,31 +70,31 @@ int main() {
         require(reopened == world, "FMAP semantic roundtrip mismatch");
 
         MapDocument document(world);
-        const TileLocator locator{"development", 0, 0, 7, 4, 4};
-        const std::string originalGround = firstTile(document.world()).ground;
+        const TileLocator locator{"development", 4, 4, 7, 0, 0};
+        const std::string originalGround = requireTile(document.world(), locator).ground;
 
         document.beginTransaction("decorate spawn");
         document.setGround(locator, "terrain.stone.basic");
         document.addObject(locator, "nature.flower.blue");
         document.commit();
 
-        require(firstTile(document.world()).ground == "terrain.stone.basic", "ground mutation failed");
-        require(firstTile(document.world()).objects.size() == 1, "object add failed");
+        require(requireTile(document.world(), locator).ground == "terrain.stone.basic", "ground mutation failed");
+        require(requireTile(document.world(), locator).objects.size() == 1, "object add failed");
         require(document.canUndo(), "undo should be available after commit");
 
         document.undo();
-        require(firstTile(document.world()).ground == originalGround, "undo ground failed");
-        require(firstTile(document.world()).objects.empty(), "undo object failed");
+        require(requireTile(document.world(), locator).ground == originalGround, "undo ground failed");
+        require(requireTile(document.world(), locator).objects.empty(), "undo object failed");
         require(document.canRedo(), "redo should be available after undo");
 
         document.redo();
-        require(firstTile(document.world()).ground == "terrain.stone.basic", "redo ground failed");
-        require(firstTile(document.world()).objects.at(0) == "nature.flower.blue", "redo object failed");
+        require(requireTile(document.world(), locator).ground == "terrain.stone.basic", "redo ground failed");
+        require(requireTile(document.world(), locator).objects.at(0) == "nature.flower.blue", "redo object failed");
 
         document.beginTransaction("temporary edit");
         document.removeObject(locator, "nature.flower.blue");
         document.rollback();
-        require(firstTile(document.world()).objects.at(0) == "nature.flower.blue", "rollback failed");
+        require(requireTile(document.world(), locator).objects.at(0) == "nature.flower.blue", "rollback failed");
 
         bool rejected = false;
         try {
