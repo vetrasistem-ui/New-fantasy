@@ -64,6 +64,20 @@ New-fantasy/
 - **Fantasy Protocol v1**: contrato versionado entre Fantasy Server e Fantasy Client.
 - **Fantasy Data Model**: contratos compartilhados para entidades, itens, criaturas, mapas e conteúdo.
 
+## Núcleo já funcional
+
+O Fantasy Studio já possui:
+
+- Project Manager nativo em C++20;
+- New/Open/Recent Project;
+- Open Main Map sem busca manual;
+- caminhos relativos e teste de relocation;
+- modelo nativo `World / Region / Chunk / Tile`;
+- leitura e escrita FMAP;
+- validação semântica de assets;
+- transações de mapa com commit, rollback, undo e redo;
+- roundtrip FMAP validado automaticamente.
+
 ## Referências temporárias
 
 Os SHAs usados como referência estão em `docs/UPSTREAMS.md`:
@@ -96,6 +110,10 @@ Esse marco deve funcionar **sem OTBM e sem protocolo 10.98 no caminho principal*
 
 **F00 — INDEPENDENT CORE FOUNDATION: PASS**
 
-**F01 — PROJECT SYSTEM: IN_PROGRESS**
+**F01 — PROJECT SYSTEM: PASS**
 
-F00 já prova por CI o layout, FMAP v0, Fantasy Protocol v1 draft e o build/smoke do Fantasy Server próprio. A fase atual transforma `fantasy.project.json` em um sistema real de projeto com resolução central de caminhos relativos, abertura direta do mapa principal e portabilidade de pasta/disco.
+**F02 — FANTASY MAP CORE: PASS**
+
+**F03 — FANTASY MAP EDITOR MVP: NEXT**
+
+A próxima decisão técnica é a fundação visual/renderização do editor. A GUI deverá operar o mesmo `MapDocument` já usado pelos testes e, futuramente, pela automação/Codex.
