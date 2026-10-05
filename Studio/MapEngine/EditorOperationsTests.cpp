@@ -18,14 +18,6 @@ void require(bool condition, const std::string& message) {
     if (!condition) throw std::runtime_error(message);
 }
 
-const Tile& findTileLocal(const World& world, std::int32_t x, std::int32_t y) {
-    for (const auto& region : world.regions)
-        for (const auto& chunk : region.chunks)
-            for (const auto& tile : chunk.tiles)
-                if (tile.x == x && tile.y == y) return tile;
-    throw std::runtime_error("test tile not found");
-}
-
 const Tile& findTileGlobal(
     const World& world,
     const std::string& regionId,
@@ -47,33 +39,33 @@ const Tile& findTileGlobal(
     throw std::runtime_error("global test tile not found");
 }
 
-void testOriginalFixture(const fs::path& repoRoot) {
+void testMainWorld(const fs::path& repoRoot) {
     MapDocument document(loadFmap(repoRoot / "Game/Maps/World/world.fmap.json"));
-    const TileLocator spawn{"development", 0, 0, 7, 4, 4};
+    const TileLocator spawn{"development", 4, 4, 7, 0, 0};
 
     const std::size_t filled = EditorOperations::fillConnectedGround(document, spawn, "terrain.stone.basic");
-    require(filled == 2, "fixture should fill two connected grass tiles");
-    require(findTileLocal(document.world(), 4, 4).ground == "terrain.stone.basic", "spawn tile fill failed");
-    require(findTileLocal(document.world(), 5, 4).ground == "terrain.stone.basic", "neighbor tile fill failed");
+    require(filled == 2, "main world should fill the two-tile grass patch");
+    require(findTileGlobal(document.world(), "development", 7, 100, 100).ground == "terrain.stone.basic", "spawn tile fill failed");
+    require(findTileGlobal(document.world(), "development", 7, 101, 100).ground == "terrain.stone.basic", "neighbor tile fill failed");
 
     document.undo();
-    require(findTileLocal(document.world(), 4, 4).ground == "terrain.grass.basic", "fill undo failed at spawn");
-    require(findTileLocal(document.world(), 5, 4).ground == "terrain.grass.basic", "fill undo failed at neighbor");
+    require(findTileGlobal(document.world(), "development", 7, 100, 100).ground == "terrain.grass.basic", "fill undo failed at spawn");
+    require(findTileGlobal(document.world(), "development", 7, 101, 100).ground == "terrain.grass.basic", "fill undo failed at neighbor");
     document.redo();
-    require(findTileLocal(document.world(), 4, 4).ground == "terrain.stone.basic", "fill redo failed");
+    require(findTileGlobal(document.world(), "development", 7, 100, 100).ground == "terrain.stone.basic", "fill redo failed");
 
     EditorOperations::addObject(document, spawn, "nature.flower.blue");
     EditorOperations::addObject(document, spawn, "nature.rock.small");
-    require(findTileLocal(document.world(), 4, 4).objects.size() == 2, "object setup failed");
+    require(findTileGlobal(document.world(), "development", 7, 100, 100).objects.size() == 2, "object setup failed");
 
     const std::size_t erased = EditorOperations::eraseObjects(document, spawn);
     require(erased == 2, "eraser should remove two objects");
-    require(findTileLocal(document.world(), 4, 4).objects.empty(), "eraser did not clear tile objects");
+    require(findTileGlobal(document.world(), "development", 7, 100, 100).objects.empty(), "eraser did not clear tile objects");
 
     document.undo();
-    require(findTileLocal(document.world(), 4, 4).objects.size() == 2, "eraser undo failed");
+    require(findTileGlobal(document.world(), "development", 7, 100, 100).objects.size() == 2, "eraser undo failed");
     document.redo();
-    require(findTileLocal(document.world(), 4, 4).objects.empty(), "eraser redo failed");
+    require(findTileGlobal(document.world(), "development", 7, 100, 100).objects.empty(), "eraser redo failed");
 
     bool rejected = false;
     try {
@@ -117,7 +109,7 @@ void testMultiChunkFill(const fs::path& repoRoot) {
 int main() {
     try {
         const fs::path repoRoot = fs::weakly_canonical(fs::path(FANTASY_REPO_ROOT));
-        testOriginalFixture(repoRoot);
+        testMainWorld(repoRoot);
         testMultiChunkFill(repoRoot);
         std::cout << "EditorOperationsTests PASS\n";
         return 0;
