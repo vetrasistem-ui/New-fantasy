@@ -1,7 +1,7 @@
 #pragma once
 
 #include "Core/Scheduler.hpp"
-#include "MapEngine/FmapCore.hpp"
+#include "Shared/Formats/FMAP/FmapCore.hpp"
 
 #include <cstddef>
 #include <cstdint>
@@ -12,9 +12,9 @@
 
 namespace fantasy::server {
 
-using MapPosition = fantasy::studio::map::Position;
-using MapTile = fantasy::studio::map::Tile;
-using MapWorld = fantasy::studio::map::World;
+using MapPosition = fantasy::fmap::Position;
+using MapTile = fantasy::fmap::Tile;
+using MapWorld = fantasy::fmap::World;
 
 struct Entity {
     std::uint64_t id = 0;
