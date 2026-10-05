@@ -1,9 +1,11 @@
 # FMCP v1 — Fantasy MapChunk semantic payload
 
-`Fantasy Protocol` message `MapChunk` owns chunk identity:
+`Fantasy Protocol` message `MapChunk` owns chunk identity and enough region metadata for the client to resolve global tile positions:
 
 ```text
 regionId
+regionOriginX
+regionOriginY
 chunkX
 chunkY
 floor
@@ -43,8 +45,9 @@ byte[byteLength] UTF-8
 
 ## Semantics
 
-- `chunkX`, `chunkY`, `floor` are **not duplicated inside FMCP**; they come from the outer `MapChunk` message.
-- `tileX/tileY` retain FMAP v0 chunk-local coordinate meaning.
+- `regionOriginX/Y`, `chunkX/Y` and `floor` are **not duplicated inside FMCP**; they come from the outer `MapChunk` message.
+- FMAP v0 keeps `chunkX/Y` as region-local offsets and `tileX/Y` as chunk-local offsets.
+- The client resolves a tile globally using `global = regionOrigin + chunkOffset + tileLocal`.
 - Grounds and objects remain semantic keys such as `terrain.grass.basic` and `nature.tree.oak.small`; the network does not replace them with legacy Tibia item IDs.
 - Tags are preserved because they may affect rendering/gameplay metadata.
 - F05 initial login sends the complete containing FMAP region on the player's floor. Later interest-management/streaming may send only nearby chunks without changing FMCP v1.
