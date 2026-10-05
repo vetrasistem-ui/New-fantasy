@@ -28,7 +28,8 @@ Construir uma plataforma Fantasy própria: Studio, formato de mapa, servidor, pr
 18. Nunca introduzir dependência de OTBM, 10.98, DAT/SPR/OTB ou TFS no core nativo sem justificativa documentada.
 19. A GUI do Map Editor não pode possuir um segundo modelo de mapa: ela deve editar `MapDocument`/FMAP por operações do core.
 20. Ações visuais que alteram o mapa devem ser transações compatíveis com undo/redo desde a primeira implementação.
-21. O Server não deve manter uma segunda implementação divergente do FMAP. A dependência temporária em `Studio/MapEngine/FmapCore` durante a abertura da F04 deve ser removida antes de F04 PASS, extraindo o contrato/runtime comum apropriado para `Shared/`.
+21. Studio e Server devem consumir o FMAP neutro de `Shared/Formats/FMAP/`; não criar parser/serializer FMAP paralelo.
+22. Mensagens do cliente expressam intenção. Estado autoritativo de posição/entidades é emitido pelo Server; o cliente nunca envia posição absoluta como verdade.
 
 ## Layout essencial
 
@@ -67,21 +68,23 @@ Projects/
 - **F01 — Project System: PASS**
 - **F02 — Fantasy Map Core: PASS**
 - **F03 — Fantasy Map Editor MVP: TECHNICAL PASS; interactive Windows visual check pending**
+- **F04 — Fantasy Server World Runtime: PASS**
 
 ## Prioridade atual
 
-**F04 — Fantasy Server World Runtime.**
+**F05 — Fantasy Protocol v1 + First Native Play.**
 
 Implementar e provar, nesta ordem:
 
-1. carregar o FMAP oficial diretamente no Fantasy Server;
-2. indexar Region / Chunk / Tile em coordenadas globais sem duplicidade;
-3. criar entity/player model mínimo;
-4. validar walkability no servidor;
-5. validar movimento autoritativo inclusive atravessando chunks;
-6. implementar ciclo Start / Ready / Tick / Stop;
-7. criar scheduler mínimo e testes;
-8. extrair o contrato/runtime FMAP reutilizável para `Shared/`, eliminando a dependência de código do Studio no Server;
-9. manter todos os gates F00–F03 verdes.
+1. congelar framing binário do Fantasy Protocol v1;
+2. separar comandos/intenção do cliente de eventos/estado autoritativo do Server;
+3. criar codec compartilhado e testes de endian/framing/limites;
+4. implementar `Hello` / `HelloAck` e version handshake;
+5. implementar `LoginDev` / `LoginOk` e `EnterWorld`;
+6. serializar MapChunk a partir do FMAP;
+7. ligar TCP Server + Client mínimo;
+8. enviar MoveRequest e receber EntityMove autoritativo;
+9. provar personagem entrando no FMAP e andando sem OTBM/10.98;
+10. manter todos os gates anteriores verdes.
 
-Não iniciar rede/protocolo jogável da F05 antes de o runtime mínimo da F04 estar suficientemente estável.
+Não iniciar persistência da F06 antes do primeiro play nativo da F05 estar funcional.
