@@ -1,6 +1,6 @@
 # F03 Evidence — Fantasy Map Editor MVP
 
-Status: **IN_PROGRESS / STRONG PARTIAL PASS**
+Status: **IN_PROGRESS / TECHNICAL GATES PASS — INTERACTIVE WINDOWS VALIDATION PENDING**
 
 ## Visual foundation frozen
 
@@ -15,7 +15,7 @@ This stack is deliberately isolated from the map domain. The GUI edits the exist
 
 ## Native editor shell implemented
 
-`Studio/UI/EditorApp.cpp` now provides the first real Fantasy map editor application:
+`Studio/UI/EditorApp.cpp` provides the first real Fantasy map editor application:
 
 - opens the current Fantasy project through `ProjectManager`;
 - loads the canonical FMAP directly;
@@ -29,17 +29,21 @@ This stack is deliberately isolated from the map domain. The GUI edits the exist
 - tile selection;
 - semantic ground brush;
 - semantic object add/remove;
+- connected ground Fill;
+- Erase Tile Objects;
 - Undo / Redo;
 - FMAP Save / Ctrl+S;
 - World panel;
 - basic region minimap with development-spawn marker;
 - clean GPU/SDL/ImGui shutdown path.
 
+The visible Paint, Fill, Add Object, Remove Object and Erase controls now call `EditorOperations`; the GUI no longer reimplements those domain mutations. This is the same operation layer intended for future CLI/Codex automation.
+
 The viewport currently renders semantic grounds as deterministic placeholder colors. Real Fantasy sprites/assets belong to the later asset pipeline and are not required to prove the native editor architecture.
 
 ## Shared editor operations
 
-`Studio/MapEngine/EditorOperations.*` adds reusable transactional commands above `MapDocument`:
+`Studio/MapEngine/EditorOperations.*` provides reusable transactional commands above `MapDocument`:
 
 - paint ground;
 - add object;
@@ -47,11 +51,11 @@ The viewport currently renders semantic grounds as deterministic placeholder col
 - connected 4-neighbour ground fill;
 - erase all objects from a tile.
 
-Fill and eraser operations are covered by headless undo/redo tests so they can be called by GUI, CLI or future Codex automation without reimplementing map behavior.
+Fill and eraser operations are covered by headless undo/redo tests so GUI, CLI and future Codex automation can share map behavior.
 
 ### Cross-chunk behaviour
 
-FMAP v0 multi-chunk coordinate semantics are now frozen in `Shared/Formats/FMAP/README.md`:
+FMAP v0 multi-chunk coordinate semantics are frozen in `Shared/Formats/FMAP/README.md`:
 
 ```text
 global tile = region.origin + chunk.offset + tile.local
@@ -61,11 +65,15 @@ global tile = region.origin + chunk.offset + tile.local
 
 `Game/Maps/World/multichunk-fixture.fmap.json` is the canonical F03 multi-chunk fixture. It contains four chunks and a connected ground area crossing a chunk boundary.
 
-`fillConnectedGround` now resolves adjacency in region-local tile space, so a fill operation crosses chunk boundaries correctly while remaining one transaction. Undo and Redo cover the entire cross-chunk edit.
+`fillConnectedGround` resolves adjacency in region-local tile space, so a fill operation crosses chunk boundaries correctly while remaining one transaction. Undo and Redo cover the entire cross-chunk edit.
+
+## Main development world
+
+`Game/Maps/World/world.fmap.json` is now an 8 × 8 development area with 64 tiles split across four chunks. It contains multiple semantic grounds and objects so the default Studio project exercises multi-chunk rendering rather than the original two-tile fixture.
 
 ## Automated evidence
 
-Workflow run **77** (`70cf98b39f3062cec4e7ba6a03703c86154cd899`) passed on Windows:
+Workflow run **83** (`48820b38a7b1f9dbd52c02637743f4133d2dbff5`) passed completely on Windows after the GUI was moved onto the shared editor operation layer:
 
 - layout/contracts: PASS;
 - Fantasy Project v2: PASS;
@@ -75,11 +83,11 @@ Workflow run **77** (`70cf98b39f3062cec4e7ba6a03703c86154cd899`) passed on Windo
 - project relocation: PASS;
 - SDL3 + Dear ImGui dependency configure: PASS;
 - Fantasy Studio build, including `fantasy-studio-gui.exe`: PASS;
-- Studio CTest suite, including cross-chunk fill + undo/redo: PASS;
+- Studio CTest suite, including FMAP roundtrip and cross-chunk Fill + Undo/Redo: PASS;
 - Windows Studio binaries artifact upload: PASS;
 - Fantasy Server build/smoke regression: PASS.
 
-## Gates already demonstrated
+## Gates demonstrated
 
 - visual toolkit/rendering choice: **PASS**;
 - native GUI target compiles on Windows: **PASS**;
@@ -88,19 +96,29 @@ Workflow run **77** (`70cf98b39f3062cec4e7ba6a03703c86154cd899`) passed on Windo
 - floor controls: **PASS (build-level)**;
 - pan/zoom: **PASS (build-level)**;
 - tile selection: **PASS (build-level)**;
-- ground/object brush uses native transactions: **PASS (build-level + headless domain tests)**;
-- fill/erase domain operations reversible: **PASS (headless)**;
+- ground/object brush uses shared native operations: **PASS (build-level + headless tests)**;
+- Fill/Erase visible GUI controls use shared operations: **PASS (build-level + headless domain tests)**;
+- fill/erase operations reversible: **PASS (headless)**;
 - cross-chunk coordinate semantics: **PASS**;
-- cross-chunk connected fill: **PASS (headless)**;
+- cross-chunk connected Fill: **PASS (headless)**;
 - multi-chunk fixture validation: **PASS**;
+- 64-tile / four-chunk main development world: **PASS (validation + build)**;
 - basic minimap implementation: **PASS (build-level)**;
 - Save/Reopen semantic roundtrip: **PASS (headless)**.
 
-## Still required before F03 PASS
+## Only remaining gate before F03 PASS
 
-- perform a real interactive Windows launch of `fantasy-studio-gui.exe` and capture visual evidence;
-- wire the already-tested fill/eraser commands into visible GUI controls;
-- validate interactive Save → close → reopen in the GUI;
-- validate viewport behaviour interactively with the multi-chunk fixture or a larger generated map.
+A real interactive Windows session must still prove the user-facing path:
+
+1. launch `fantasy-studio-gui.exe`;
+2. inspect the 8 × 8 four-chunk world visually;
+3. select tiles and exercise Paint / Fill / Add / Remove / Erase / Undo / Redo;
+4. Save FMAP;
+5. close the application;
+6. reopen it;
+7. confirm the saved visual state is preserved;
+8. capture visual evidence.
+
+Until that interactive run is performed, F03 remains IN_PROGRESS even though the automated technical gates pass.
 
 No RME, OTBM or 10.98 code is present in the F03 native path.
