@@ -1,24 +1,34 @@
 {
-  "schemaVersion": 1,
+  "schemaVersion": 2,
   "name": "New Fantasy",
-  "protocol": "10.98",
+  "protocol": "fantasy-v1",
   "paths": {
     "studio": "Studio",
     "game": "Game",
-    "mainMap": "Game/Maps/world.otbm",
+    "mainMap": "Game/Maps/World/world.fmap.json",
     "content": "Game/Content",
     "assets": "Game/Assets",
     "scripts": "Game/Scripts",
     "config": "Game/Config",
     "server": "Server",
     "client": "Client",
+    "shared": "Shared",
+    "protocolSpec": "Shared/Protocol/protocol-v1.yaml",
+    "mapSchema": "Shared/Formats/FMAP/schema-v0.json",
     "database": "Database",
     "tools": "Tools",
     "projects": "Projects"
   },
   "runtime": {
-    "serverBase": "TFS-1.4.2",
-    "mapFormat": "OTBM-v3",
-    "assetFamily": "DAT-SPR-OTB-10.98"
+    "server": "FantasyServer",
+    "mapFormat": "FMAP-v0",
+    "protocol": "FantasyProtocol-v1",
+    "authoritativeServer": true
+  },
+  "references": {
+    "tfs": "1.4.2 / 10.98",
+    "rme": "3.7 / OTBM-v3",
+    "otclient": "10.98-compatible",
+    "role": "reference-only"
   }
 }
