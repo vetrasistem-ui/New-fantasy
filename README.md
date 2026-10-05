@@ -33,6 +33,7 @@ TFS 1.4.2, RME 3.7 e um OTClient compatível com 10.98 permanecem fixados soment
 - Operações de IA devem ser validáveis, determinísticas e reversíveis.
 - Código externo não entra silenciosamente no produto; referências ficam isoladas em `.upstream/`.
 - O jogo e o Studio crescem juntos depois do primeiro ciclo jogável nativo.
+- O baseline visual 2D prioriza simplicidade e compatibilidade: SDL3 + SDL_Renderer3 + Dear ImGui; SDL_GPU é opcional para recursos avançados futuros.
 
 ## Estrutura
 
@@ -78,7 +79,7 @@ New-fantasy/
 - FMAP `World / Region / Chunk / Tile`;
 - leitura/escrita/validação;
 - transactions, rollback, undo e redo;
-- editor visual SDL3 + SDL_GPU + Dear ImGui;
+- editor visual SDL3 + SDL_Renderer3 + Dear ImGui;
 - viewport 2D, floors, pan/zoom, brushes, Fill, Erase, minimapa e Save/Reopen.
 
 ### Fantasy Server
