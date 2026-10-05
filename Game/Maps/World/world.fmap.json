@@ -1,0 +1,51 @@
+{
+  "format": "FMAP",
+  "version": 0,
+  "world": {
+    "id": "fantasy-world",
+    "name": "Fantasy World",
+    "tileSize": 32
+  },
+  "developmentSpawn": {
+    "x": 100,
+    "y": 100,
+    "z": 7
+  },
+  "regions": [
+    {
+      "id": "development",
+      "origin": {
+        "x": 96,
+        "y": 96,
+        "z": 7
+      },
+      "size": {
+        "width": 16,
+        "height": 16
+      },
+      "chunks": [
+        {
+          "x": 0,
+          "y": 0,
+          "floor": 7,
+          "tiles": [
+            {
+              "x": 4,
+              "y": 4,
+              "ground": "terrain.grass.basic",
+              "objects": [],
+              "tags": ["development-spawn"]
+            },
+            {
+              "x": 5,
+              "y": 4,
+              "ground": "terrain.grass.basic",
+              "objects": ["nature.tree.oak.small"],
+              "tags": []
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
