@@ -2,27 +2,34 @@
 
 ## F00 — Independent Core Foundation
 
-Status: **IN_PROGRESS**
+Status: **PASS**
 
 Objetivo: congelar os contratos próprios antes de construir sistemas grandes.
 
-Gates:
+Gates concluídos:
 
 - layout limpo e caminhos relativos validados;
 - `Shared/Protocol/` criado com Fantasy Protocol v1 mínimo;
 - `Shared/Formats/FMAP/` criado com FMAP v0 experimental;
-- `Game/Maps/World/world.fmap.json` válido;
-- Fantasy Server skeleton compila e executa;
+- `Game/Maps/World/world.fmap.json` validado estrutural e semanticamente;
+- IDs, nomes, tipos e direções do Fantasy Protocol validados automaticamente;
+- Fantasy Server skeleton compila e executa como C++20;
 - referências 10.98 ficam isoladas em `.upstream/`;
 - nenhuma dependência de OTBM/TFS entra no caminho nativo.
 
+Evidência: `docs/evidence/F00/RESULT.md`.
+
 ## F01 — Project System
 
+Status: **IN_PROGRESS**
+
 - `fantasy.project.json` como manifesto real;
+- schema/validator do manifesto;
+- resolução central de caminhos relativos;
 - New/Open/Recent Project;
-- caminhos relativos;
 - Open Main Map direto;
-- mover projeto para outro disco e reabrir.
+- nenhum módulo procura recursos principais manualmente;
+- mover projeto para outro disco/pasta e reabrir sem alteração persistida.
 
 ## F02 — Fantasy Map Core
 
