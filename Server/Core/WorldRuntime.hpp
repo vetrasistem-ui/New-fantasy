@@ -52,6 +52,7 @@ public:
 
     std::uint64_t spawnEntity(std::string name, const MapPosition& position);
     const Entity* entity(std::uint64_t id) const;
+    bool removeEntity(std::uint64_t id);
     bool moveEntity(std::uint64_t id, std::int32_t dx, std::int32_t dy);
 
 private:
