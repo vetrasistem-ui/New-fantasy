@@ -45,7 +45,9 @@ fantasy-client.exe      # headless / testes / automação
 fantasy-client-gui.exe  # primeiro visual nativo F05
 ```
 
-O cliente visual usa SDL3 + SDL_GPU + Dear ImGui apenas como camada de apresentação F05. Ele desenha os tiles semânticos recebidos com cores determinísticas provisórias e o player na posição enviada pelo servidor. As setas enviam intenções de movimento; o Client nunca define sua posição de forma autoritativa.
+O cliente visual usa SDL3 + SDL_Renderer3 + Dear ImGui apenas como camada de apresentação F05. Ele desenha os tiles semânticos recebidos com cores determinísticas provisórias e o player na posição enviada pelo servidor. As setas enviam intenções de movimento; o Client nunca define sua posição de forma autoritativa.
+
+`SDL_Renderer3` é o baseline 2D oficial. `SDL_GPU` fica reservado para um backend avançado futuro, sem alterar `DevelopmentClient`, protocolo, FMCP ou autoridade do Server.
 
 ## Build / testes
 
