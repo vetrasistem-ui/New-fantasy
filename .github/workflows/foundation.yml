@@ -24,6 +24,10 @@ jobs:
         shell: pwsh
         run: ./scripts/validate-fmap.ps1
 
+      - name: Validate FMAP multi-chunk semantics
+        shell: pwsh
+        run: ./scripts/validate-fmap-multichunk.ps1
+
       - name: Validate Fantasy Protocol v1
         shell: pwsh
         run: ./scripts/validate-protocol.ps1
