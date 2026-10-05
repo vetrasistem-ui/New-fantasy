@@ -8,11 +8,11 @@
 namespace fantasy::server {
 
 WorldRuntime WorldRuntime::load(const std::filesystem::path& fmapPath) {
-    return WorldRuntime(fantasy::studio::map::loadFmap(fmapPath));
+    return WorldRuntime(fantasy::fmap::loadFmap(fmapPath));
 }
 
 WorldRuntime::WorldRuntime(MapWorld world) : world_(std::move(world)) {
-    fantasy::studio::map::requireValidWorld(world_);
+    fantasy::fmap::requireValidWorld(world_);
     rebuildTileIndex();
 }
 
