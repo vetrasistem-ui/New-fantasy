@@ -94,6 +94,8 @@ Esse marco deve funcionar **sem OTBM e sem protocolo 10.98 no caminho principal*
 
 ## Estado
 
-**F00 — INDEPENDENT CORE FOUNDATION: IN_PROGRESS**
+**F00 — INDEPENDENT CORE FOUNDATION: PASS**
 
-A F00 agora define e prova os contratos próprios: layout, FMAP inicial, Fantasy Protocol v1 e esqueleto compilável do Fantasy Server. A stack 10.98 continua apenas como referência controlada.
+**F01 — PROJECT SYSTEM: IN_PROGRESS**
+
+F00 já prova por CI o layout, FMAP v0, Fantasy Protocol v1 draft e o build/smoke do Fantasy Server próprio. A fase atual transforma `fantasy.project.json` em um sistema real de projeto com resolução central de caminhos relativos, abertura direta do mapa principal e portabilidade de pasta/disco.
