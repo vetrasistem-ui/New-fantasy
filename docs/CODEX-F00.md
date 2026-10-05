@@ -1,51 +1,55 @@
-# Codex Task — F00 Compatibility Homologation
+# Codex Task — F00 Independent Core Foundation
 
 ## Goal
 
-Prove the pinned 10.98 stack end-to-end before importing/modifying upstream code as Fantasy.
+Prove the first native Fantasy contracts without using OTBM, TFS or protocol 10.98 in the product path.
 
 ## Read first
 
 - `AGENTS.md`
-- `docs/UPSTREAMS.md`
-- `docs/F00-HOMOLOGATION.md`
 - `docs/ARCHITECTURE.md`
+- `docs/DECISIONS.md`
+- `docs/F00-HOMOLOGATION.md`
+- `docs/UPSTREAMS.md`
 
 ## Hard constraints
 
-- Do not change pinned SHAs just to make the test pass.
-- Do not introduce Crystal, Canary or 15.x assets/protocol.
-- Do not redesign the UI during F00.
-- Do not copy third-party source into tracked product folders before license review is recorded.
-- Do not use absolute project paths in committed files.
+- Do not copy TFS, RME or OTClient source into product folders.
+- Do not make OTBM the source of truth.
+- Do not make protocol 10.98 the native protocol.
+- Do not use absolute project paths.
+- Keep F00 small: contracts + server skeleton + validation only.
 
 ## Procedure
 
 1. Run `scripts/check-layout.ps1`.
-2. Run `scripts/bootstrap-upstreams.ps1`.
-3. Record environment/toolchain versions.
-4. Build TFS candidate unmodified.
-5. Prepare local MariaDB and import the upstream schema.
-6. Build RME candidate unmodified and validate a 10.98 OTBM fixture: Open -> Edit -> Undo -> Redo -> Save As -> Reopen.
-7. Build OTClient candidate unmodified and configure it for the TFS 10.98 test endpoint.
-8. Connect, select a test character and enter the game.
-9. Modify one visible map tile/object in RME, save, restart runtime if required, enter again and visually confirm the change.
-10. Move the test workspace root and rerun the relevant open/build/play path without editing committed absolute paths.
+2. Validate `fantasy.project.json` and `Game/Maps/World/world.fmap.json`.
+3. Review `Shared/Formats/FMAP/schema-v0.json`; add deterministic validation tests without expanding scope unnecessarily.
+4. Review `Shared/Protocol/protocol-v1.yaml`; ensure message IDs and field names are unique/consistent.
+5. Configure and build the native server:
+   - `cmake -S Server -B build/server`
+   - `cmake --build build/server --config Release`
+6. Run:
+   - `ctest --test-dir build/server -C Release --output-on-failure`
+7. Add the smallest useful F00 tests for FMAP/header and protocol contract consistency.
+8. Do not implement gameplay, production networking, database or UI in F00.
+
+## Optional reference work
+
+`scripts/bootstrap-upstreams.ps1` may be used to obtain pinned TFS/RME/OTClient references under `.upstream/`. They are comparison material only.
 
 ## Evidence to commit
 
-Create `docs/evidence/F00/RESULT.md` containing:
+Create `docs/evidence/F00/RESULT.md` with:
 
 - date;
 - OS/toolchain versions;
-- exact upstream SHAs;
-- exact commands used;
-- build result for each component;
-- database result;
-- RME roundtrip result;
-- login/play result;
-- end-to-end map visibility result;
-- move-folder result;
-- blockers and exact error output references.
+- layout validation result;
+- FMAP validation result;
+- protocol contract validation result;
+- server configure/build result;
+- smoke-test result;
+- exact commands;
+- blockers/known limitations.
 
-Do not mark F00 PASS if any end-to-end gate is unverified.
+F00 is PASS only when every native foundation gate is verified.
