@@ -2,7 +2,7 @@
 
 #include "imgui.h"
 #include "imgui_impl_sdl3.h"
-#include "imgui_impl_sdlgpu3.h"
+#include "imgui_impl_sdlrenderer3.h"
 #include <SDL3/SDL.h>
 
 #include <algorithm>
@@ -171,30 +171,14 @@ int runVisualClient(const std::string& host, std::uint16_t port, const std::stri
         throw std::runtime_error("SDL_CreateWindow failed: " + error);
     }
 
-    SDL_GPUDevice* gpu = SDL_CreateGPUDevice(
-        SDL_GPU_SHADERFORMAT_SPIRV | SDL_GPU_SHADERFORMAT_DXIL |
-        SDL_GPU_SHADERFORMAT_MSL | SDL_GPU_SHADERFORMAT_METALLIB,
-        true,
-        nullptr);
-    if (gpu == nullptr) {
+    SDL_Renderer* renderer = SDL_CreateRenderer(window, nullptr);
+    if (renderer == nullptr) {
         const std::string error = SDL_GetError();
         SDL_DestroyWindow(window);
         SDL_Quit();
-        throw std::runtime_error("SDL_CreateGPUDevice failed: " + error);
+        throw std::runtime_error("SDL_CreateRenderer failed: " + error);
     }
-
-    if (!SDL_ClaimWindowForGPUDevice(gpu, window)) {
-        const std::string error = SDL_GetError();
-        SDL_DestroyGPUDevice(gpu);
-        SDL_DestroyWindow(window);
-        SDL_Quit();
-        throw std::runtime_error("SDL_ClaimWindowForGPUDevice failed: " + error);
-    }
-    SDL_SetGPUSwapchainParameters(
-        gpu,
-        window,
-        SDL_GPU_SWAPCHAINCOMPOSITION_SDR,
-        SDL_GPU_PRESENTMODE_VSYNC);
+    (void)SDL_SetRenderVSync(renderer, 1);
 
     IMGUI_CHECKVERSION();
     ImGui::CreateContext();
@@ -204,14 +188,8 @@ int runVisualClient(const std::string& host, std::uint16_t port, const std::stri
     ImGui::GetStyle().ScaleAllSizes(mainScale);
     ImGui::GetStyle().FontScaleDpi = mainScale;
 
-    ImGui_ImplSDL3_InitForSDLGPU(window);
-    ImGui_ImplSDLGPU3_InitInfo initInfo{};
-    initInfo.Device = gpu;
-    initInfo.ColorTargetFormat = SDL_GetGPUSwapchainTextureFormat(gpu, window);
-    initInfo.MSAASamples = SDL_GPU_SAMPLECOUNT_1;
-    initInfo.SwapchainComposition = SDL_GPU_SWAPCHAINCOMPOSITION_SDR;
-    initInfo.PresentMode = SDL_GPU_PRESENTMODE_VSYNC;
-    ImGui_ImplSDLGPU3_Init(&initInfo);
+    ImGui_ImplSDL3_InitForSDLRenderer(window, renderer);
+    ImGui_ImplSDLRenderer3_Init(renderer);
 
     bool done = false;
     std::string status = "Connected to Fantasy Server";
@@ -228,7 +206,7 @@ int runVisualClient(const std::string& host, std::uint16_t port, const std::stri
             continue;
         }
 
-        ImGui_ImplSDLGPU3_NewFrame();
+        ImGui_ImplSDLRenderer3_NewFrame();
         ImGui_ImplSDL3_NewFrame();
         ImGui::NewFrame();
 
@@ -243,28 +221,11 @@ int runVisualClient(const std::string& host, std::uint16_t port, const std::stri
         drawWorld(client, status);
 
         ImGui::Render();
-        ImDrawData* drawData = ImGui::GetDrawData();
-        const bool minimized = drawData->DisplaySize.x <= 0.0f || drawData->DisplaySize.y <= 0.0f;
-        SDL_GPUCommandBuffer* commandBuffer = SDL_AcquireGPUCommandBuffer(gpu);
-        if (commandBuffer == nullptr) {
-            status = std::string("SDL_AcquireGPUCommandBuffer failed: ") + SDL_GetError();
-            continue;
-        }
-
-        SDL_GPUTexture* swapchainTexture = nullptr;
-        SDL_WaitAndAcquireGPUSwapchainTexture(commandBuffer, window, &swapchainTexture, nullptr, nullptr);
-        if (swapchainTexture != nullptr && !minimized) {
-            ImGui_ImplSDLGPU3_PrepareDrawData(drawData, commandBuffer);
-            SDL_GPUColorTargetInfo target{};
-            target.texture = swapchainTexture;
-            target.clear_color = SDL_FColor{0.06f, 0.07f, 0.09f, 1.0f};
-            target.load_op = SDL_GPU_LOADOP_CLEAR;
-            target.store_op = SDL_GPU_STOREOP_STORE;
-            SDL_GPURenderPass* renderPass = SDL_BeginGPURenderPass(commandBuffer, &target, 1, nullptr);
-            ImGui_ImplSDLGPU3_RenderDrawData(drawData, commandBuffer, renderPass);
-            SDL_EndGPURenderPass(renderPass);
-        }
-        SDL_SubmitGPUCommandBuffer(commandBuffer);
+        SDL_SetRenderScale(renderer, io.DisplayFramebufferScale.x, io.DisplayFramebufferScale.y);
+        SDL_SetRenderDrawColorFloat(renderer, 0.06f, 0.07f, 0.09f, 1.0f);
+        SDL_RenderClear(renderer);
+        ImGui_ImplSDLRenderer3_RenderDrawData(ImGui::GetDrawData(), renderer);
+        SDL_RenderPresent(renderer);
     }
 
     try {
@@ -273,12 +234,10 @@ int runVisualClient(const std::string& host, std::uint16_t port, const std::stri
         std::cerr << "Fantasy Client disconnect warning: " << error.what() << '\n';
     }
 
-    SDL_WaitForGPUIdle(gpu);
+    ImGui_ImplSDLRenderer3_Shutdown();
     ImGui_ImplSDL3_Shutdown();
-    ImGui_ImplSDLGPU3_Shutdown();
     ImGui::DestroyContext();
-    SDL_ReleaseWindowFromGPUDevice(gpu, window);
-    SDL_DestroyGPUDevice(gpu);
+    SDL_DestroyRenderer(renderer);
     SDL_DestroyWindow(window);
     SDL_Quit();
     return 0;
