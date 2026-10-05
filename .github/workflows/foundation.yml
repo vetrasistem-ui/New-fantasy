@@ -72,6 +72,27 @@ jobs:
         shell: pwsh
         run: cmake --build build/server --config Release
 
-      - name: Smoke-test Fantasy Server
+      - name: Test Fantasy Server and native play integration
         shell: pwsh
         run: ctest --test-dir build/server -C Release --output-on-failure
+
+      - name: Configure Fantasy Client
+        shell: pwsh
+        run: cmake -S Client -B build/client
+
+      - name: Build Fantasy Client
+        shell: pwsh
+        run: cmake --build build/client --config Release
+
+      - name: Smoke-test Fantasy Client
+        shell: pwsh
+        run: ctest --test-dir build/client -C Release --output-on-failure
+
+      - name: Upload Fantasy native runtime Windows binaries
+        uses: actions/upload-artifact@v4
+        with:
+          name: fantasy-native-runtime-windows-${{ github.sha }}
+          if-no-files-found: error
+          path: |
+            build/server/Release/fantasy-server.exe
+            build/client/Release/fantasy-client.exe
