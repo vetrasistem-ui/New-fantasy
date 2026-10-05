@@ -25,6 +25,7 @@ Assert-True ($Text -match '(?m)^  payloadLengthExcludesEnvelope:\s*true\s*$') 'p
 Assert-True ($Text -match '(?m)^  maxPayloadBytes:\s*4194304\s*$') 'maxPayloadBytes must be 4 MiB'
 Assert-True ($Text -match '(?m)^  stringEncoding:\s*utf8\s*$') 'strings must be utf8'
 Assert-True ($Text -match '(?m)^  variableLengthPrefix:\s*uint32\s*$') 'variable length fields must use uint32 prefix'
+Assert-True ($Text -match '(?m)^  mapChunkPayload:\s*FMCP-v1\s*$') 'MapChunk payload codec must be FMCP-v1'
 
 $RequiredEnvelope = @{
     magic = 'fixed_ascii'
@@ -111,11 +112,26 @@ Assert-True (-not $MessageInfo['MoveRequest'].fields.ContainsKey('y')) 'MoveRequ
 Assert-True (-not $MessageInfo['MoveRequest'].fields.ContainsKey('z')) 'MoveRequest must not contain z'
 Assert-True ($MessageInfo['EntityMove'].direction -eq 'server_to_client') 'EntityMove must be authoritative server_to_client state'
 Assert-True ($MessageInfo['EnterWorld'].fields.ContainsKey('entityId')) 'EnterWorld.entityId is required'
-Assert-True ($MessageInfo['MapChunk'].fields.ContainsKey('payload')) 'MapChunk.payload is required'
+
+$RequiredMapChunkFields = @{
+    regionId = 'string'
+    regionOriginX = 'int32'
+    regionOriginY = 'int32'
+    chunkX = 'int32'
+    chunkY = 'int32'
+    floor = 'int16'
+    revision = 'uint32'
+    payload = 'bytes'
+}
+foreach ($Entry in $RequiredMapChunkFields.GetEnumerator()) {
+    Assert-True ($MessageInfo['MapChunk'].fields.ContainsKey($Entry.Key)) "MapChunk.$($Entry.Key) is required"
+    Assert-True ($MessageInfo['MapChunk'].fields[$Entry.Key] -eq $Entry.Value) "MapChunk.$($Entry.Key) must be $($Entry.Value)"
+}
+Assert-True ($MessageInfo['MapChunk'].fields.Count -eq $RequiredMapChunkFields.Count) 'MapChunk v1 must contain exactly the frozen fields'
 
 foreach ($Rule in @('authoritativeServer', 'versionHandshakeRequired', 'unknownMessageIsProtocolError', 'clientCannotAuthoritativelySetPosition', 'clientMovementIsIntentOnly')) {
     $RulePattern = "(?m)^  ${Rule}:\s*true\s*$"
     Assert-True ($Text -match $RulePattern) "rule '$Rule' must be true"
 }
 
-Write-Host "Fantasy Protocol v1 validation PASS. messages=$($Matches.Count) ids=unique names=unique framing=frozen movement=intent-only"
+Write-Host "Fantasy Protocol v1 validation PASS. messages=$($Matches.Count) ids=unique names=unique framing=frozen movement=intent-only mapchunk=FMCP-v1"
