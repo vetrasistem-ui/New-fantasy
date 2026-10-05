@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.24)
 
-project(FantasyStudio VERSION 0.1.0 LANGUAGES CXX)
+project(FantasyStudio VERSION 0.2.0 LANGUAGES CXX)
 
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -10,21 +10,27 @@ add_library(fantasy-studio-project
     Project/ProjectManager.cpp
 )
 
-target_include_directories(fantasy-studio-project PUBLIC
-    ${CMAKE_CURRENT_SOURCE_DIR}
+add_library(fantasy-map-core
+    MapEngine/FmapCore.cpp
 )
 
-if(MSVC)
-    target_compile_options(fantasy-studio-project PRIVATE /W4 /permissive-)
-else()
-    target_compile_options(fantasy-studio-project PRIVATE -Wall -Wextra -Wpedantic)
-endif()
+foreach(target fantasy-studio-project fantasy-map-core)
+    target_include_directories(${target} PUBLIC
+        ${CMAKE_CURRENT_SOURCE_DIR}
+    )
+
+    if(MSVC)
+        target_compile_options(${target} PRIVATE /W4 /permissive-)
+    else()
+        target_compile_options(${target} PRIVATE -Wall -Wextra -Wpedantic)
+    endif()
+endforeach()
 
 add_executable(fantasy-studio
     Core/main.cpp
 )
 
-target_link_libraries(fantasy-studio PRIVATE fantasy-studio-project)
+target_link_libraries(fantasy-studio PRIVATE fantasy-studio-project fantasy-map-core)
 
 add_executable(fantasy-studio-project-tests
     Project/ProjectManagerTests.cpp
@@ -35,8 +41,18 @@ target_compile_definitions(fantasy-studio-project-tests PRIVATE
     FANTASY_REPO_ROOT="${CMAKE_CURRENT_SOURCE_DIR}/.."
 )
 
+add_executable(fantasy-map-core-tests
+    MapEngine/FmapCoreTests.cpp
+)
+
+target_link_libraries(fantasy-map-core-tests PRIVATE fantasy-map-core)
+target_compile_definitions(fantasy-map-core-tests PRIVATE
+    FANTASY_REPO_ROOT="${CMAKE_CURRENT_SOURCE_DIR}/.."
+)
+
 enable_testing()
 add_test(NAME fantasy-studio-project-tests COMMAND fantasy-studio-project-tests)
+add_test(NAME fantasy-map-core-tests COMMAND fantasy-map-core-tests)
 add_test(
     NAME fantasy-studio-open-project
     COMMAND fantasy-studio --open-project "${CMAKE_CURRENT_SOURCE_DIR}/.."
