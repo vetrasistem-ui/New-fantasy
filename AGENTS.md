@@ -28,6 +28,7 @@ Construir uma plataforma Fantasy própria: Studio, formato de mapa, servidor, pr
 18. Nunca introduzir dependência de OTBM, 10.98, DAT/SPR/OTB ou TFS no core nativo sem justificativa documentada.
 19. A GUI do Map Editor não pode possuir um segundo modelo de mapa: ela deve editar `MapDocument`/FMAP por operações do core.
 20. Ações visuais que alteram o mapa devem ser transações compatíveis com undo/redo desde a primeira implementação.
+21. O Server não deve manter uma segunda implementação divergente do FMAP. A dependência temporária em `Studio/MapEngine/FmapCore` durante a abertura da F04 deve ser removida antes de F04 PASS, extraindo o contrato/runtime comum apropriado para `Shared/`.
 
 ## Layout essencial
 
@@ -65,20 +66,22 @@ Projects/
 - **F00 — Independent Core Foundation: PASS**
 - **F01 — Project System: PASS**
 - **F02 — Fantasy Map Core: PASS**
+- **F03 — Fantasy Map Editor MVP: TECHNICAL PASS; interactive Windows visual check pending**
 
 ## Prioridade atual
 
-**F03 — Fantasy Map Editor MVP.**
+**F04 — Fantasy Server World Runtime.**
 
 Implementar e provar, nesta ordem:
 
-1. escolher e congelar toolkit/renderização do editor visual;
-2. criar viewport 2D usando o `MapDocument` existente;
-3. seleção e navegação por floor;
-4. ground/object brush via transações do core;
-5. fill/erase;
-6. minimapa básico;
-7. Save/Reopen FMAP;
-8. garantir que GUI, CLI e futura automação usem as mesmas operações.
+1. carregar o FMAP oficial diretamente no Fantasy Server;
+2. indexar Region / Chunk / Tile em coordenadas globais sem duplicidade;
+3. criar entity/player model mínimo;
+4. validar walkability no servidor;
+5. validar movimento autoritativo inclusive atravessando chunks;
+6. implementar ciclo Start / Ready / Tick / Stop;
+7. criar scheduler mínimo e testes;
+8. extrair o contrato/runtime FMAP reutilizável para `Shared/`, eliminando a dependência de código do Studio no Server;
+9. manter todos os gates F00–F03 verdes.
 
-Não iniciar editores avançados de monstros/quests/items antes do Map Editor MVP e do primeiro runtime nativo estarem suficientemente estáveis.
+Não iniciar rede/protocolo jogável da F05 antes de o runtime mínimo da F04 estar suficientemente estável.
