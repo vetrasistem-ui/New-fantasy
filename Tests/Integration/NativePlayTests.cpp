@@ -1,6 +1,7 @@
 #include "Client/Core/DevelopmentClient.hpp"
 #include "Server/Core/WorldRuntime.hpp"
 #include "Server/Network/TcpDevelopmentConnection.hpp"
+#include "Shared/Network/FrameStream.hpp"
 #include "Shared/Network/TcpTransport.hpp"
 
 #include <exception>
@@ -20,6 +21,7 @@ namespace fp = fantasy::protocol;
 namespace fc = fantasy::client;
 namespace fsrv = fantasy::server;
 namespace fnet = fantasy::server::network;
+namespace net = fantasy::net;
 
 namespace {
 
@@ -28,7 +30,7 @@ void require(bool condition, const std::string& message) {
 }
 
 void runRoundtrip(fsrv::WorldRuntime& runtime, const std::string& character, fp::MoveDirection direction) {
-    auto listener = fantasy::net::TcpListener::listenLoopback(0);
+    auto listener = net::TcpListener::listenLoopback(0);
     const auto port = listener.localPort();
     require(port != 0, "ephemeral listener did not receive a port");
 
@@ -105,6 +107,39 @@ void runRoundtrip(fsrv::WorldRuntime& runtime, const std::string& character, fp:
     require(runtime.entityCount() == 0, "server retained entity after TCP disconnect");
 }
 
+void runAbruptDisconnectCleanup(fsrv::WorldRuntime& runtime) {
+    auto listener = net::TcpListener::listenLoopback(0);
+    const auto port = listener.localPort();
+    std::exception_ptr serverError;
+
+    std::thread serverThread([&] {
+        try {
+            auto stream = listener.acceptOne();
+            (void)fnet::serveDevelopmentConnection(std::move(stream), runtime);
+        } catch (...) {
+            serverError = std::current_exception();
+        }
+    });
+
+    auto stream = net::TcpStream::connectIpv4("127.0.0.1", port);
+    net::sendFrame(stream, fp::makeFrame(1, fp::Hello{900, fp::kProtocolVersion}));
+    require(fp::decodeHelloAck(net::receiveFrame(stream)).acceptedProtocol == fp::kProtocolVersion,
+        "abrupt-disconnect handshake failed");
+
+    net::sendFrame(stream, fp::makeFrame(2, fp::LoginDev{"Abrupt Hero"}));
+    for (int index = 0; index < 7; ++index) {
+        (void)net::receiveFrame(stream);
+    }
+    require(runtime.entityCount() == 1, "abrupt-disconnect fixture did not enter world");
+
+    stream.close();
+    serverThread.join();
+    listener.close();
+
+    require(serverError != nullptr, "abrupt transport close should terminate the development connection");
+    require(runtime.entityCount() == 0, "abrupt TCP disconnect leaked a server entity");
+}
+
 } // namespace
 
 int main() {
@@ -115,6 +150,7 @@ int main() {
 
         runRoundtrip(runtime, "TCP Hero", fp::MoveDirection::East);
         runRoundtrip(runtime, "Reconnect Hero", fp::MoveDirection::West);
+        runAbruptDisconnectCleanup(runtime);
 
         runtime.stop();
         require(runtime.state() == fsrv::RuntimeState::Stopped, "runtime did not stop after native play test");
