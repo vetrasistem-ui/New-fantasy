@@ -2,12 +2,21 @@
 
 Local oficial de todos os mapas do jogo.
 
-O mapa principal padrão será:
+A fonte de verdade do mundo principal é:
 
 ```text
-Game/Maps/world.otbm
+Game/Maps/World/world.fmap.json
 ```
 
-Arquivos auxiliares de spawn/house relacionados ao mundo principal também ficam nesta área. O Map Editor deve abrir esta pasta por padrão e oferecer `Open Main Map` sem exigir busca manual.
+O Fantasy Studio deve abrir esse mapa diretamente através de `Open Main Map`, sem procurar arquivos pelo projeto.
 
-`world.otbm` será adicionado somente depois que a fixture 10.98 for homologada na F00.
+## Regras
+
+- FMAP é o formato nativo.
+- OTBM não é fonte de verdade.
+- Regiões/chunks futuros permanecem sob `Game/Maps/World/`.
+- IDs de assets devem ser semânticos sempre que possível.
+- arquivos gerados/runtime não devem substituir a fonte FMAP.
+- importação OTBM futura deve produzir FMAP e encerrar a dependência depois da conversão.
+
+O fixture inicial de F00 já existe em `Game/Maps/World/world.fmap.json`.
