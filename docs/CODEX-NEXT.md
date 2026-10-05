@@ -21,8 +21,8 @@ F01 PASS
 F02 PASS
 F03 TECHNICAL PASS — falta gate visual interativo Windows
 F04 PASS
-F05 implementação/automação pronta — falta fechamento Windows real
-F06 NOT STARTED
+F05 AUTOMATED TECHNICAL PASS — falta fechamento Windows real
+F06 PREPARED / NOT STARTED
 ```
 
 ## Missão do Codex agora
@@ -101,3 +101,16 @@ test(windows): close F03 and F05 native-play gates
 ```
 
 Depois do push, aguardar GitHub Actions no SHA exato e registrar o run/SHA nas evidências.
+
+## Já preparado para depois do fechamento
+
+A F06 já está planejada, mas bloqueada até C08 e o CI do SHA final passarem.
+
+Somente depois disso o Codex pode usar:
+
+```text
+docs/F06-PERSISTENCE-PLAN.md
+docs/CODEX-AFTER-F05.md
+```
+
+Esses arquivos definem PersistenceService/store independente de banco, primeiro adapter SQLite, migrations, contas locais de desenvolvimento, personagens, save/load de posição e o gate de restart/reconnect. Não antecipar essa implementação durante a validação F05.
