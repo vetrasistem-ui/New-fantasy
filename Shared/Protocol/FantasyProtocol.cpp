@@ -175,7 +175,7 @@ std::optional<std::size_t> expectedFrameSize(std::span<const std::uint8_t> prefi
     if (!isKnownMessageType(rawType)) throw std::runtime_error("Unknown Fantasy Protocol message type");
     const auto payloadLength = readUnsigned<std::uint32_t>(prefix, offset);
     if (payloadLength > kMaxPayloadBytes) throw std::runtime_error("Fantasy Protocol payload exceeds maximum");
-    (void)readUnsigned<std::uint32_t>(prefix, offset); // sequence
+    (void)readUnsigned<std::uint32_t>(prefix, offset);
     return kEnvelopeBytes + static_cast<std::size_t>(payloadLength);
 }
 
@@ -233,6 +233,8 @@ Frame makeFrame(std::uint32_t sequence, const EnterWorld& message) {
 Frame makeFrame(std::uint32_t sequence, const MapChunk& message) {
     Writer writer;
     writer.string(message.regionId);
+    writer.i32(message.regionOriginX);
+    writer.i32(message.regionOriginY);
     writer.i32(message.chunkX);
     writer.i32(message.chunkY);
     writer.i16(message.floor);
@@ -331,6 +333,8 @@ MapChunk decodeMapChunk(const Frame& value) {
     Reader reader(value.payload);
     MapChunk message;
     message.regionId = reader.string();
+    message.regionOriginX = reader.i32();
+    message.regionOriginY = reader.i32();
     message.chunkX = reader.i32();
     message.chunkY = reader.i32();
     message.floor = reader.i16();
