@@ -1,6 +1,6 @@
-# Upstreams — Reference implementations
+# Upstreams — References and approved dependencies
 
-Este documento registra projetos externos usados apenas como referência técnica, comparação de comportamento e fallback de desenvolvimento. Eles **não são a arquitetura final** do New Fantasy.
+Este documento registra projetos externos usados como referência técnica, comparação de comportamento, fallback de desenvolvimento ou dependência explicitamente aprovada por ADR.
 
 ## TFS reference
 
@@ -28,23 +28,45 @@ Este documento registra projetos externos usados apenas como referência técnic
 - Role: client/protocol behavior oracle and temporary fallback
 - Status: **REFERENCE ONLY**
 
+## SDL3 — approved F03 dependency
+
+- Repository: `libsdl-org/SDL`
+- Release: `release-3.4.18`
+- Commit: `829a65d769d935c4852f8159e964312c0957260a`
+- License: zlib
+- Role: window/input/platform layer and SDL_GPU graphics abstraction for Fantasy Studio
+- Status: **APPROVED DEPENDENCY — ADR-012**
+
+## Dear ImGui — approved F03 dependency
+
+- Repository: `ocornut/imgui`
+- Release: `v1.92.9b`
+- Commit: `f1cc2ae15e53a861a874c3034aae6798fde194ab`
+- License: MIT
+- Role: editor panels/tooling UI using official SDL3 + SDL_GPU backends
+- Status: **APPROVED DEPENDENCY — ADR-012**
+
 ## Boundary rule
 
-Reference clones live locally under `.upstream/` and remain ignored by Git.
+Reference-only clones may live locally under `.upstream/` and remain ignored by Git.
 
-Do not copy source from these repositories into `Studio/`, `Server/`, `Client/` or `Shared/` unless a later ADR explicitly approves that dependency and its licensing obligations.
+Approved dependencies are pinned explicitly and may be consumed by build tooling, but their source is not silently copied into the Fantasy core. License notices must remain preserved according to their licenses.
 
-The native path remains:
+Do not copy source from reference-only repositories into `Studio/`, `Server/`, `Client/` or `Shared/` unless a later ADR explicitly approves that dependency and its licensing obligations.
+
+The native gameplay path remains:
 
 ```text
 FMAP → Fantasy Server → Fantasy Protocol → Fantasy Client
 ```
 
+The visual Studio dependencies do not define the map/server/protocol data model.
+
 ## Update rule
 
-Changing a pinned reference SHA requires:
+Changing a pinned reference/dependency SHA requires:
 
 1. documented reason;
-2. comparison rerun if relevant;
+2. comparison/build rerun if relevant;
 3. update to this file;
-4. ADR only if the change affects architecture rather than reference evidence.
+4. ADR update if the change affects architecture rather than routine dependency maintenance.
