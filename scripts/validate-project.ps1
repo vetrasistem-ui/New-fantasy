@@ -62,7 +62,7 @@ foreach ($Name in $RequiredPaths) {
         Assert-True (-not (Test-Path $Target -PathType Container)) "paths.$Name must point to a file: $Relative"
     }
 
-    $Normalized = $Target.TrimEnd([System.IO.Path]::DirectorySeparatorChar, [System.IO.Path]::AltDirectorySeparatorChar)
+    $Normalized = $Target.ToLowerInvariant()
     if ($Name -notin @('game', 'content', 'assets', 'scripts', 'config')) {
         Assert-True (-not $SeenTargets.ContainsKey($Normalized)) "duplicate project target for paths.$Name and paths.$($SeenTargets[$Normalized]): $Relative"
         $SeenTargets[$Normalized] = $Name
