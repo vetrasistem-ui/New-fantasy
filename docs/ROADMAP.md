@@ -48,37 +48,47 @@ Evidência: `docs/evidence/F02/RESULT.md`.
 
 ## F03 — Fantasy Map Editor MVP
 
-Status: **IN_PROGRESS**
+Status: **TECHNICAL PASS / INTERACTIVE WINDOWS VISUAL CHECK PENDING**
 
-Visual foundation frozen by ADR-012:
+Implementado e validado automaticamente:
 
-- SDL3 for platform/window/input;
-- SDL_GPU for viewport rendering;
-- Dear ImGui for editor tooling UI;
-- visual layer edits the existing `MapDocument`, never a second map model.
-
-Remaining gates:
-
-- GUI shell/window clean Start/Stop;
+- SDL3 + SDL_GPU + Dear ImGui;
+- janela/editor nativo;
 - viewport 2D;
 - floors;
-- seleção;
+- pan/zoom e seleção;
 - ground/object brush;
-- fill/erase;
-- minimap básico;
-- Save/Reopen FMAP;
-- GUI usa as mesmas operações de `MapDocument` expostas à automação.
+- Fill e Erase pela camada compartilhada de operações;
+- Undo/Redo;
+- minimapa básico;
+- Save/Reopen FMAP em roundtrip semântico;
+- mundo de desenvolvimento 8 x 8 / 64 tiles / quatro chunks;
+- semântica multi-chunk e Fill atravessando fronteira de chunk.
 
-Evidência em progresso: `docs/evidence/F03/RESULT.md`.
+O único gate ainda não executado é a sessão visual interativa no Windows com captura de evidência. Esse gate não bloqueia o início da F04, mas permanece obrigatório antes do fechamento visual definitivo da F03.
+
+Evidência: `docs/evidence/F03/RESULT.md`.
 
 ## F04 — Fantasy Server World Runtime
 
-- carregar FMAP diretamente;
-- world/chunk registry;
+Status: **IN_PROGRESS**
+
+Objetivo: transformar o Fantasy Server de skeleton em runtime autoritativo mínimo que consome FMAP nativamente.
+
+Gates:
+
+- carregar `world.fmap.json` diretamente;
+- construir índice global de tiles a partir de Region/Chunk/Tile;
+- resolver movimento atravessando fronteiras de chunks;
 - player/entity model mínimo;
-- walkability;
+- walkability autoritativa;
+- impedir ocupação de tile por duas entidades;
+- ciclo Start / Ready / Tick / Stop;
 - scheduler básico;
-- Start/Stop limpo.
+- smoke test e testes headless do mundo;
+- remover dependência temporária do Server sobre código localizado em `Studio/MapEngine`, extraindo o contrato/runtime FMAP comum para `Shared/` antes de F04 PASS.
+
+Evidência em progresso: `docs/evidence/F04/RESULT.md`.
 
 ## F05 — Fantasy Protocol v1 + First Native Play
 
