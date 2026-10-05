@@ -102,7 +102,8 @@ Assert-True ($MessageInfo['EnterWorld'].fields.ContainsKey('entityId')) 'EnterWo
 Assert-True ($MessageInfo['MapChunk'].fields.ContainsKey('payload')) 'MapChunk.payload is required'
 
 foreach ($Rule in @('authoritativeServer', 'versionHandshakeRequired', 'unknownMessageIsProtocolError', 'clientCannotAuthoritativelySetPosition')) {
-    Assert-True ($Text -match "(?m)^  $Rule:\s*true\s*$") "rule '$Rule' must be true"
+    $RulePattern = "(?m)^  ${Rule}:\s*true\s*$"
+    Assert-True ($Text -match $RulePattern) "rule '$Rule' must be true"
 }
 
 Write-Host "Fantasy Protocol v1 validation PASS. messages=$($Matches.Count) ids=unique names=unique"
