@@ -26,10 +26,10 @@ TFS 1.4.2, RME 3.7 e um OTClient compatível com 10.98 permanecem fixados soment
 
 - Estrutura de pastas simples, previsível e sem duplicações.
 - Caminhos persistidos sempre relativos à raiz do projeto.
-- `FMAP` é o formato de mapa nativo em desenvolvimento; OTBM é apenas referência/importação legada.
-- `Fantasy Protocol` é o protocolo nativo em desenvolvimento; 10.98 é somente ponte/reference adapter temporário.
-- `Fantasy Server` será implementado como servidor próprio e autoritativo.
-- Studio, CLI, scripts e Codex usam as mesmas operações de domínio.
+- `FMAP` é a fonte de mapa nativa; OTBM é apenas referência/importação legada.
+- `Fantasy Protocol` é o protocolo nativo; 10.98 é apenas referência/bridge temporária.
+- `Fantasy Server` é próprio e autoritativo.
+- Studio, CLI, scripts e Codex devem convergir nas mesmas operações de domínio.
 - Operações de IA devem ser validáveis, determinísticas e reversíveis.
 - Código externo não entra silenciosamente no produto; referências ficam isoladas em `.upstream/`.
 - O jogo e o Studio crescem juntos depois do primeiro ciclo jogável nativo.
@@ -49,71 +49,129 @@ New-fantasy/
 ├── Client/
 ├── Shared/
 │   ├── Protocol/
+│   ├── Network/
 │   └── Formats/
 ├── Database/
 ├── Tools/
 ├── Projects/
+├── Tests/
 ├── scripts/
 └── docs/
 ```
 
-## Formatos próprios
+## Contratos próprios
 
-- **FMAP**: fonte de mapa semântica, versionável, organizada por regiões/chunks e amigável para IA.
-- **FMAPC**: formato compilado/runtime futuro, otimizado para carregamento pelo Fantasy Server.
-- **Fantasy Protocol v1**: contrato versionado entre Fantasy Server e Fantasy Client.
-- **Fantasy Data Model**: contratos compartilhados para entidades, itens, criaturas, mapas e conteúdo.
+- **FMAP v0**: fonte de mapa semântica, versionável e organizada por regiões/chunks.
+- **FMCP v1**: payload binário semântico usado por `MapChunk` no Fantasy Protocol.
+- **Fantasy Protocol v1**: framing TCP próprio, versionado, com servidor autoritativo.
+- **Fantasy Project v2**: manifesto e resolução de caminhos do projeto.
+- **Fantasy Data Model**: contratos compartilhados em evolução para entidades, itens, criaturas e conteúdo.
 
 ## Núcleo já funcional
 
-O Fantasy Studio já possui:
+### Fantasy Studio
 
 - Project Manager nativo em C++20;
 - New/Open/Recent Project;
-- Open Main Map sem busca manual;
-- caminhos relativos e teste de relocation;
-- modelo nativo `World / Region / Chunk / Tile`;
-- leitura e escrita FMAP;
-- validação semântica de assets;
-- transações de mapa com commit, rollback, undo e redo;
-- roundtrip FMAP validado automaticamente.
+- Open Main Map;
+- caminhos relativos e relocation test;
+- FMAP `World / Region / Chunk / Tile`;
+- leitura/escrita/validação;
+- transactions, rollback, undo e redo;
+- editor visual SDL3 + SDL_GPU + Dear ImGui;
+- viewport 2D, floors, pan/zoom, brushes, Fill, Erase, minimapa e Save/Reopen.
+
+### Fantasy Server
+
+- carregamento direto de `Game/Maps/World/world.fmap.json`;
+- índice global de tiles;
+- entidades e ocupação;
+- walkability e movimento autoritativo;
+- travessia entre chunks;
+- scheduler e ciclo Start/Ready/Tick/Stop;
+- sessão de desenvolvimento independente de socket;
+- transporte TCP loopback para o primeiro play nativo.
+
+### Fantasy Protocol / Client
+
+- envelope binário `FNTY` de 16 bytes;
+- versão, message type, payload length e sequence;
+- `Hello/HelloAck`;
+- `LoginDev/LoginOk`;
+- `EnterWorld`;
+- `MapChunk` + FMCP v1;
+- `EntityAdd/EntityMove/EntityRemove`;
+- `MoveRequest(direction)` como intenção;
+- `Error/Disconnect`;
+- cliente headless nativo;
+- cliente visual mínimo próprio para validar mapa e movimento.
+
+## Primeiro play nativo
+
+O caminho que estamos validando é:
+
+```text
+fantasy-client / fantasy-client-gui
+        ↓
+Fantasy Protocol v1 sobre TCP
+        ↓
+Fantasy Server
+        ↓
+WorldRuntime
+        ↓
+FMAP
+```
+
+Não há OTBM, TFS runtime, protocolo 10.98, DAT/SPR/OTB ou OTClient nesse caminho.
+
+O mundo de desenvolvimento atual possui 4 chunks e 64 tiles semânticos. O fluxo automatizado entra em `100,100,7`, recebe os chunks e solicita movimento ao Server, que devolve a posição autoritativa.
+
+## Estado das fases
+
+```text
+F00  Independent Core Foundation       PASS
+F01  Project System                    PASS
+F02  Fantasy Map Core                  PASS
+F03  Fantasy Map Editor MVP            TECHNICAL PASS
+      └─ gate visual interativo Windows pendente
+F04  Fantasy Server World Runtime      PASS
+F05  Protocol v1 + First Native Play   IN_PROGRESS
+      └─ implementação automatizada pronta; fechamento depende dos gates Windows reais
+F06  Persistence / Database            NOT STARTED
+```
+
+A F06 não deve começar antes do fechamento formal da F05.
+
+## Validação
+
+Build completo local no Windows:
+
+```powershell
+./scripts/build-native.ps1 -Configuration Release
+```
+
+Primeiro play headless em dois processos:
+
+```powershell
+./scripts/run-native-play.ps1 -Configuration Release -Port 17171 -Character "Development Hero"
+```
+
+Play visual para validação interativa:
+
+```powershell
+./scripts/run-visual-play.ps1 -Configuration Release -Port 17173 -Character "Visual Hero"
+```
+
+O roteiro ordenado para Codex fechar os gates Windows está em:
+
+```text
+docs/CODEX-F05-WINDOWS.md
+```
 
 ## Referências temporárias
 
-Os SHAs usados como referência estão em `docs/UPSTREAMS.md`:
+Os SHAs externos e suas funções estão em `docs/UPSTREAMS.md`. TFS 1.4.2, RME 3.7 e OTClient 10.98 são **REFERENCE ONLY** e não fazem parte do caminho nativo final.
 
-- TFS 1.4.2 / protocolo 10.98;
-- RME 3.7 / OTBM 10.98;
-- OpenTibiaBR OTClient compatível com TFS 1.4.2.
+## Próximo marco
 
-Esses projetos ajudam a comparar comportamento e validar conceitos, mas não são mais a fundação obrigatória do produto final.
-
-## Primeiro grande marco
-
-```text
-Open Project
-   ↓
-abrir FMAP
-   ↓
-Fantasy Server inicia
-   ↓
-Fantasy Client conecta pelo Fantasy Protocol
-   ↓
-personagem entra
-   ↓
-movimento funciona
-```
-
-Esse marco deve funcionar **sem OTBM e sem protocolo 10.98 no caminho principal**.
-
-## Estado
-
-**F00 — INDEPENDENT CORE FOUNDATION: PASS**
-
-**F01 — PROJECT SYSTEM: PASS**
-
-**F02 — FANTASY MAP CORE: PASS**
-
-**F03 — FANTASY MAP EDITOR MVP: NEXT**
-
-A próxima decisão técnica é a fundação visual/renderização do editor. A GUI deverá operar o mesmo `MapDocument` já usado pelos testes e, futuramente, pela automação/Codex.
+Fechar F03/F05 em Windows real com evidência visual e de processo. Somente depois disso a prioridade muda para F06 — persistência, contas/personagens e save/load.
