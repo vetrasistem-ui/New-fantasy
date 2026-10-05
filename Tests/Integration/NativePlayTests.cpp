@@ -9,6 +9,7 @@
 #include <stdexcept>
 #include <string>
 #include <thread>
+#include <utility>
 
 #ifndef FANTASY_REPO_ROOT
 #error FANTASY_REPO_ROOT must be defined for NativePlayTests
@@ -56,12 +57,24 @@ void runRoundtrip(fsrv::WorldRuntime& runtime, const std::string& character, fp:
         require(client.chunks().size() == 4, "client must receive four development chunks");
 
         std::size_t tileCount = 0;
+        bool spawnTileResolved = false;
         for (const auto& received : client.chunks()) {
             require(received.regionId == "development", "client received unexpected region");
+            require(received.regionOriginX == 96 && received.regionOriginY == 96,
+                "client received wrong FMAP region origin");
             require(received.revision == 1, "client received unexpected chunk revision");
             tileCount += received.chunk.tiles.size();
+
+            for (const auto& tile : received.chunk.tiles) {
+                const auto global = received.globalPosition(tile);
+                if (global == fantasy::fmap::Position{100, 100, 7}) {
+                    require(tile.ground == "terrain.grass.basic", "spawn tile semantic ground mismatch");
+                    spawnTileResolved = true;
+                }
+            }
         }
         require(tileCount == 64, "client must reconstruct 64 semantic FMAP tiles");
+        require(spawnTileResolved, "client could not resolve FMAP spawn tile to global coordinates");
 
         const auto moved = client.move(direction);
         if (direction == fp::MoveDirection::East) {
