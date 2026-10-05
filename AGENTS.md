@@ -17,7 +17,7 @@ Construir uma plataforma Fantasy própria: Studio, formato de mapa, servidor, pr
 7. OTBM é formato legado/referência; não deve virar fonte de verdade do novo jogo.
 8. O protocolo nativo é `Fantasy Protocol`; 10.98 é apenas bridge/reference temporário.
 9. O Fantasy Server é autoritativo: movimento, combate, inventário e estado persistente não podem depender da confiança no cliente.
-10. Contratos compartilhados ficam em `Shared/`; não duplicar definições de protocolo ou formato entre Server, Client e Studio.
+10. Contratos compartilhados ficam em `Shared/`; não duplicar definições de protocolo, FMCP, rede ou FMAP entre Server, Client e Studio.
 11. Código do Studio fica em `Studio/`; servidor em `Server/`; cliente em `Client/`; conteúdo em `Game/`.
 12. Não salvar builds, logs, caches ou bancos locais no Git.
 13. Toda nova função precisa de validação objetiva. Compilar sozinho não significa PASS.
@@ -30,6 +30,10 @@ Construir uma plataforma Fantasy própria: Studio, formato de mapa, servidor, pr
 20. Ações visuais que alteram o mapa devem ser transações compatíveis com undo/redo desde a primeira implementação.
 21. Studio e Server devem consumir o FMAP neutro de `Shared/Formats/FMAP/`; não criar parser/serializer FMAP paralelo.
 22. Mensagens do cliente expressam intenção. Estado autoritativo de posição/entidades é emitido pelo Server; o cliente nunca envia posição absoluta como verdade.
+23. `MapChunk` v1 usa o codec compartilhado FMCP v1. O Client resolve tiles com `regionOrigin + chunkOffset + tileLocal`; não inventar uma segunda convenção de coordenadas.
+24. O transporte `LoginDev` da F05 é **somente desenvolvimento/loopback**. Não alterar bind para `0.0.0.0`, IP público ou VPS público sem uma fase explícita de segurança/autenticação.
+25. O Client headless e o Client GUI devem consumir o mesmo `DevelopmentClient`; a GUI não pode implementar protocolo/rede próprios.
+26. SDL3/SDL_GPU/Dear ImGui são dependências visuais. Não mover regras de gameplay, protocolo, mapa ou autoridade para a camada ImGui.
 
 ## Layout essencial
 
@@ -40,10 +44,17 @@ Game/
   Content/
   Assets/
 Server/
+  Core/
+  Network/
 Client/
+  Core/
+  UI/
 Shared/
   Protocol/
   Formats/
+  Network/
+Tests/
+  Integration/
 Database/
 Tools/
 Projects/
@@ -57,10 +68,12 @@ Projects/
 - testes relevantes passam;
 - contratos compartilhados continuam consistentes;
 - se tocar em FMAP: schema/fixture valida e reabre semanticamente igual;
-- se tocar no protocolo: encoder/decoder ou contrato correspondente é testado;
+- se tocar em protocolo/FMCP: especificação, codec e roundtrip correspondente passam;
+- se tocar em rede: framing não pode depender de limites de pacote TCP e o listener F05 continua loopback-only;
 - se tocar no runtime: Start/Stop não deixa processo órfão;
 - se tocar em conteúdo: referências semânticas são validadas;
-- se tocar no editor visual: a alteração deve ser reproduzível pelo core sem depender do mouse/UI.
+- se tocar no editor visual: a alteração deve ser reproduzível pelo core sem depender do mouse/UI;
+- se tocar no Client GUI: `fantasy-client.exe` headless deve continuar funcional.
 
 ## Fases concluídas
 
@@ -74,17 +87,30 @@ Projects/
 
 **F05 — Fantasy Protocol v1 + First Native Play.**
 
-Implementar e provar, nesta ordem:
+A fundação implementada inclui:
 
-1. congelar framing binário do Fantasy Protocol v1;
-2. separar comandos/intenção do cliente de eventos/estado autoritativo do Server;
-3. criar codec compartilhado e testes de endian/framing/limites;
-4. implementar `Hello` / `HelloAck` e version handshake;
-5. implementar `LoginDev` / `LoginOk` e `EnterWorld`;
-6. serializar MapChunk a partir do FMAP;
-7. ligar TCP Server + Client mínimo;
-8. enviar MoveRequest e receber EntityMove autoritativo;
-9. provar personagem entrando no FMAP e andando sem OTBM/10.98;
-10. manter todos os gates anteriores verdes.
+1. framing binário `FNTY` e codec compartilhado;
+2. `Hello / HelloAck`, `LoginDev / LoginOk`, `EnterWorld`;
+3. `MoveRequest` intent-only e `EntityMove` autoritativo;
+4. `MapChunk` com region origin + FMCP v1;
+5. snapshot inicial determinístico do FMAP;
+6. TCP loopback compartilhado e `DevelopmentSession`;
+7. `fantasy-client.exe` headless;
+8. teste de integração TCP Client → Server → FMAP com reconnect;
+9. `fantasy-client-gui.exe` como primeiro visual nativo, consumindo o mesmo Client core;
+10. scripts reproduzíveis de build e primeiro play.
 
-Não iniciar persistência da F06 antes do primeiro play nativo da F05 estar funcional.
+## Ordem obrigatória para fechar F05
+
+1. manter validators/contracts verdes;
+2. build/test completo do Studio, Server e Client;
+3. provar `fantasy-native-play-tests` em Windows;
+4. provar `scripts/run-native-play.ps1` com `fantasy-server.exe` e `fantasy-client.exe` como processos separados;
+5. executar `fantasy-client-gui.exe` contra o Server real em Windows;
+6. confirmar render dos quatro chunks / 64 tiles, posição inicial e movimento por setas;
+7. fechar Client e confirmar Disconnect/Stop limpo;
+8. iniciar novamente e confirmar reconnect;
+9. capturar evidência visual/logs;
+10. somente então marcar F05 como PASS e iniciar F06.
+
+Não iniciar persistência da F06 antes do primeiro play nativo da F05 estar funcional e visualmente validado.
