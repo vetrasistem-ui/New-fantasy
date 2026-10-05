@@ -135,12 +135,12 @@ F02  Fantasy Map Core                  PASS
 F03  Fantasy Map Editor MVP            TECHNICAL PASS
       └─ gate visual interativo Windows pendente
 F04  Fantasy Server World Runtime      PASS
-F05  Protocol v1 + First Native Play   IN_PROGRESS
-      └─ implementação automatizada pronta; fechamento depende dos gates Windows reais
-F06  Persistence / Database            NOT STARTED
+F05  Protocol v1 + First Native Play   AUTOMATED TECHNICAL PASS
+      └─ fechamento formal depende dos gates visuais reais no Windows
+F06  Persistence / Database            PREPARED / NOT STARTED
 ```
 
-A F06 não deve começar antes do fechamento formal da F05.
+A F06 não deve começar antes do fechamento formal da F03/F05.
 
 ## Validação
 
@@ -166,6 +166,13 @@ O roteiro ordenado para Codex fechar os gates Windows está em:
 
 ```text
 docs/CODEX-F05-WINDOWS.md
+```
+
+Depois do fechamento, a F06 já possui planejamento e ordem de execução preparados em:
+
+```text
+docs/F06-PERSISTENCE-PLAN.md
+docs/CODEX-AFTER-F05.md
 ```
 
 ## Referências temporárias
