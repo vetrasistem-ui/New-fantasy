@@ -50,7 +50,7 @@ int main() {
         requireRoundtrip(3, LoginDev{"Development Hero"}, decodeLoginDev);
         requireRoundtrip(4, LoginOk{0x0102030405060708ull}, decodeLoginOk);
         requireRoundtrip(5, EnterWorld{42, -120, 345, 7}, decodeEnterWorld);
-        requireRoundtrip(6, MapChunk{"development", 4, 0, 7, 12, Bytes{1, 2, 3, 4, 5}}, decodeMapChunk);
+        requireRoundtrip(6, MapChunk{"development", 96, 96, 4, 0, 7, 12, Bytes{1, 2, 3, 4, 5}}, decodeMapChunk);
         requireRoundtrip(7, MoveRequest{MoveDirection::East}, decodeMoveRequest);
         requireRoundtrip(8, EntityAdd{42, "player", 100, 100, 7}, decodeEntityAdd);
         requireRoundtrip(9, EntityMove{42, 101, 99, 7, MoveDirection::East}, decodeEntityMove);
