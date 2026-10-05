@@ -126,12 +126,42 @@ OTBM e sem protocolo 10.98.**
 
 Evidência: `docs/evidence/F05/RESULT.md`.
 
+## F05.5 — Legacy Asset Bridge (DAT / SPR / OTB)
+
+Status: **PREPARED / NOT STARTED**
+
+Objetivo: colocar sprites reais no Map Editor e no Client agora, reutilizando
+DAT + SPR + OTB como fonte de assets sem recriar todo o conteúdo visual do zero.
+
+Regras:
+
+- DAT/SPR/OTB entram por um `Legacy Asset Bridge` isolado;
+- FMAP continua usando chaves semânticas Fantasy;
+- Studio e Client compartilham o mesmo `Fantasy Asset Registry`;
+- IDs/caminhos legados não viram contrato de domínio;
+- arquivos binários legados são fornecidos pelo projeto/usuário e não são
+  redistribuídos no repositório quando não houver autorização;
+- placeholder determinístico para asset ausente;
+- Save/Reopen não serializa textura/cache no FMAP.
+
+Gates MVP:
+
+- abrir/validar DAT + SPR + OTB;
+- resolver ground, border e object;
+- renderizar sprites reais no Studio;
+- palette mínima para ground/object;
+- mesmo registry no Client;
+- validação visual Windows;
+- regressões F00–F05 verdes.
+
+Plano detalhado: `docs/F05.5-LEGACY-ASSET-BRIDGE.md`.
+
 ## F06 — Persistence / Database
 
 Status: **PREPARED / NOT STARTED**
 
-F03/F05 passaram. F06 é a próxima prioridade documentada; sua implementação
-não faz parte deste fechamento e permanece NOT STARTED.
+F03/F05 passaram. Após o bootstrap visual F05.5, F06 continua sendo a próxima
+fase estrutural de persistência; sua implementação permanece NOT STARTED.
 
 Plano preparado:
 
@@ -195,10 +225,11 @@ Execução Codex após F05: `docs/CODEX-AFTER-F05.md`.
 
 ## F13 — Asset Pipeline
 
-- Fantasy Asset Registry;
+- Fantasy Asset Registry completo;
 - sprites/effects/UI próprios;
 - semantic keys;
-- import tools temporárias para referências legadas quando necessário.
+- import/migration tools para referências legadas;
+- atlas, animações, efeitos e substituição gradual dos assets bootstrap.
 
 ## F14 — Automation API / Codex
 
@@ -218,30 +249,23 @@ Modo Visual / Híbrido / Código para sistemas customizados.
 - UI própria;
 - particles/effects;
 - lighting/shaders quando necessário;
-- launcher/updater;
-- remover adapters legados restantes.
 
-## F17 — Website / Account Platform
+## F17 — Website / Accounts
 
-Somente após runtime nativo local estar estável.
+- web account flow;
+- integração com auth/persistence pública;
+- status/downloads.
 
 ## F18 — Build / Distribution
 
-- Studio;
-- Server;
-- Client;
-- assets;
-- updater;
-- pacote reproduzível.
+- instaladores;
+- packages;
+- versionamento;
+- update/distribution.
 
 ## F19 — Publish / VPS
 
-Deploy 24/7, observabilidade, backups, atualização segura.
-
-## Regra de transição
-
-TFS 1.4.2, RME 3.7 e cliente 10.98 são usados apenas para comparação e fallback. A cada sistema nativo validado, reduzimos a dependência do legado até que o caminho final seja somente:
-
-```text
-Fantasy Studio → FMAP → Fantasy Server → Fantasy Protocol → Fantasy Client
-```
+- deploy de servidor;
+- operação 24/7;
+- logs/backup/observabilidade;
+- processo de publicação.
