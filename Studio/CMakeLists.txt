@@ -82,7 +82,7 @@ add_executable(fantasy-studio
 target_link_libraries(fantasy-studio PRIVATE fantasy-studio-project fantasy-map-core)
 
 add_executable(fantasy-studio-gui
-    UI/StudioApp.cpp
+    UI/StudioAppV2.cpp
     UI/StudioTheme.cpp
 )
 target_link_libraries(fantasy-studio-gui PRIVATE
