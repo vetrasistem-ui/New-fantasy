@@ -124,3 +124,15 @@ Pinned foundation at decision time:
 **Boundary:** Studio-specific editor operations remain in `Studio/MapEngine/`; Server-specific world runtime remains in `Server/Core/`. The Studio may expose a thin compatibility facade over `fantasy::fmap`, but it must not duplicate the FMAP implementation.
 
 **Consequence:** changes to FMAP model/IO/validation are made once in `Shared/` and are validated against both Studio and Server builds/tests.
+
+---
+
+## ADR-014 — Fantasy Protocol v1 uses framed TCP and intent-only client commands
+
+**Decision:** Fantasy Protocol v1 runs over TCP with a fixed 16-byte little-endian envelope: `FNTY` magic, protocol version, message type, payload length and sequence. Payload length excludes the envelope, payloads are capped at 4 MiB, and variable-length fields use a `uint32` length prefix.
+
+**Authority:** client messages express intent; the Server publishes authoritative state. Movement is therefore split into `MoveRequest(direction)` from Client to Server and `EntityMove(entityId, x, y, z, direction)` from Server to Client. The client does not send an absolute position as authoritative truth.
+
+**Reason:** TCP provides reliable ordered delivery for the initial top-down RPG runtime while explicit framing prevents the code from depending on TCP packet boundaries. Separating intent from state makes the authoritative-server rule enforceable in the protocol itself.
+
+**Boundary:** transport can be revisited in a future protocol version if real gameplay measurements justify it; v1 code must not silently alter framing or authority semantics.
