@@ -168,3 +168,19 @@ Pinned foundation at decision time:
 **Reason:** reuse an already approved/pinned Windows-capable visual foundation and avoid introducing a second throwaway rendering toolkit before the first native-play gate closes.
 
 **Boundary:** Dear ImGui is only the F05 diagnostic/first-play presentation layer. `DevelopmentClient`, Fantasy Protocol, FMCP and gameplay state remain independent from the GUI. Future game UI/rendering may evolve without changing those contracts.
+
+---
+
+## ADR-018 — F06 persistence uses a database-independent Server boundary
+
+**Status:** **PREPARED / activates only after F03 and F05 are formally PASS.**
+
+**Decision:** gameplay/runtime code will depend on a `PersistenceService` / persistence-store contract instead of direct SQL. The first F06 adapter is planned for SQLite because it gives deterministic local Windows development and CI without an external database service.
+
+**Reason:** prove account/character/save-load semantics and restart persistence with the smallest operational surface while keeping SQL and engine-specific types out of `WorldRuntime`, protocol and Client code.
+
+**Boundary:** SQLite is the first adapter, not a permanent scaling commitment. Before website/public-account integration or production scaling, a PostgreSQL-class adapter may be introduced behind the same persistence contract if required by the measured workload.
+
+**Security:** F06 does not define public authentication and must not store plaintext passwords. `LoginDev` remains loopback/development-only.
+
+**Activation gate:** no F06 code is implemented until the Windows interactive F03/F05 closeout, evidence update and exact-SHA CI run are green.
