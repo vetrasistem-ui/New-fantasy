@@ -1,0 +1,64 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "fantasy://formats/project/schema-v2.json",
+  "title": "Fantasy Project Manifest v2",
+  "type": "object",
+  "required": ["schemaVersion", "name", "protocol", "paths", "runtime", "references"],
+  "properties": {
+    "schemaVersion": { "const": 2 },
+    "name": { "type": "string", "minLength": 1 },
+    "protocol": { "const": "fantasy-v1" },
+    "paths": {
+      "type": "object",
+      "required": ["studio", "game", "mainMap", "content", "assets", "scripts", "config", "server", "client", "shared", "protocolSpec", "mapSchema", "database", "tools", "projects"],
+      "properties": {
+        "studio": { "$ref": "#/$defs/relativePath" },
+        "game": { "$ref": "#/$defs/relativePath" },
+        "mainMap": { "$ref": "#/$defs/relativePath" },
+        "content": { "$ref": "#/$defs/relativePath" },
+        "assets": { "$ref": "#/$defs/relativePath" },
+        "scripts": { "$ref": "#/$defs/relativePath" },
+        "config": { "$ref": "#/$defs/relativePath" },
+        "server": { "$ref": "#/$defs/relativePath" },
+        "client": { "$ref": "#/$defs/relativePath" },
+        "shared": { "$ref": "#/$defs/relativePath" },
+        "protocolSpec": { "$ref": "#/$defs/relativePath" },
+        "mapSchema": { "$ref": "#/$defs/relativePath" },
+        "database": { "$ref": "#/$defs/relativePath" },
+        "tools": { "$ref": "#/$defs/relativePath" },
+        "projects": { "$ref": "#/$defs/relativePath" }
+      },
+      "additionalProperties": false
+    },
+    "runtime": {
+      "type": "object",
+      "required": ["server", "mapFormat", "protocol", "authoritativeServer"],
+      "properties": {
+        "server": { "const": "FantasyServer" },
+        "mapFormat": { "const": "FMAP-v0" },
+        "protocol": { "const": "FantasyProtocol-v1" },
+        "authoritativeServer": { "const": true }
+      },
+      "additionalProperties": false
+    },
+    "references": {
+      "type": "object",
+      "required": ["tfs", "rme", "otclient", "role"],
+      "properties": {
+        "tfs": { "type": "string", "minLength": 1 },
+        "rme": { "type": "string", "minLength": 1 },
+        "otclient": { "type": "string", "minLength": 1 },
+        "role": { "const": "reference-only" }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false,
+  "$defs": {
+    "relativePath": {
+      "type": "string",
+      "minLength": 1,
+      "pattern": "^(?![A-Za-z]:[\\\\/])(?![\\\\/]{1,2})(?!.*(?:^|[\\\\/])\\.\\.(?:[\\\\/]|$)).+$"
+    }
+  }
+}
