@@ -8,9 +8,8 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 
 include(FetchContent)
 
-# Keep the first native visual client on the same pinned visual stack as
-# Fantasy Studio. The stack is visual/platform-only; gameplay remains in the
-# shared protocol/client core.
+# Native 2D baseline: SDL3 for platform/input, SDL_Renderer3 for rendering,
+# Dear ImGui for presentation. Gameplay remains in the shared client core.
 set(SDL_SHARED OFF CACHE BOOL "" FORCE)
 set(SDL_STATIC ON CACHE BOOL "" FORCE)
 set(SDL_TEST_LIBRARY OFF CACHE BOOL "" FORCE)
@@ -80,7 +79,7 @@ add_library(fantasy-client-imgui STATIC
     ${imgui_SOURCE_DIR}/imgui_tables.cpp
     ${imgui_SOURCE_DIR}/imgui_widgets.cpp
     ${imgui_SOURCE_DIR}/backends/imgui_impl_sdl3.cpp
-    ${imgui_SOURCE_DIR}/backends/imgui_impl_sdlgpu3.cpp
+    ${imgui_SOURCE_DIR}/backends/imgui_impl_sdlrenderer3.cpp
 )
 target_include_directories(fantasy-client-imgui PUBLIC
     ${imgui_SOURCE_DIR}
