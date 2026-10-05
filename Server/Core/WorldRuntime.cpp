@@ -109,6 +109,10 @@ const Entity* WorldRuntime::entity(std::uint64_t id) const {
     return it == entities_.end() ? nullptr : &it->second;
 }
 
+bool WorldRuntime::removeEntity(std::uint64_t id) {
+    return entities_.erase(id) == 1;
+}
+
 bool WorldRuntime::moveEntity(std::uint64_t id, std::int32_t dx, std::int32_t dy) {
     if (state_ != RuntimeState::Ready) return false;
     if (std::abs(dx) + std::abs(dy) != 1) return false;
