@@ -18,6 +18,7 @@ $Required = @(
     'Shared',
     'Shared/Protocol/protocol-v1.yaml',
     'Shared/Formats/FMAP/schema-v0.json',
+    'Shared/Formats/Project/schema-v2.json',
     'Database',
     'Tools',
     'Projects',
