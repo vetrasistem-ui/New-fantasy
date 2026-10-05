@@ -1,0 +1,107 @@
+name: FantasyProtocol
+version: 1
+status: draft
+transport: tcp
+endianness: little
+
+# F00 defines the semantic contract. Binary serialization may still change
+# before v1 is declared stable.
+envelope:
+  fields:
+    - { name: magic, type: fixed_ascii, value: FNTY }
+    - { name: protocolVersion, type: uint16 }
+    - { name: messageType, type: uint16 }
+    - { name: payloadLength, type: uint32 }
+    - { name: sequence, type: uint32 }
+
+messages:
+  - id: 1
+    name: Hello
+    direction: client_to_server
+    fields:
+      - { name: clientBuild, type: uint32 }
+      - { name: requestedProtocol, type: uint16 }
+
+  - id: 2
+    name: HelloAck
+    direction: server_to_client
+    fields:
+      - { name: serverBuild, type: uint32 }
+      - { name: acceptedProtocol, type: uint16 }
+
+  - id: 16
+    name: LoginDev
+    direction: client_to_server
+    fields:
+      - { name: characterName, type: string }
+
+  - id: 17
+    name: LoginOk
+    direction: server_to_client
+    fields:
+      - { name: entityId, type: uint64 }
+
+  - id: 32
+    name: EnterWorld
+    direction: server_to_client
+    fields:
+      - { name: entityId, type: uint64 }
+      - { name: x, type: int32 }
+      - { name: y, type: int32 }
+      - { name: z, type: int16 }
+
+  - id: 33
+    name: MapChunk
+    direction: server_to_client
+    fields:
+      - { name: regionId, type: string }
+      - { name: chunkX, type: int32 }
+      - { name: chunkY, type: int32 }
+      - { name: floor, type: int16 }
+      - { name: revision, type: uint32 }
+      - { name: payload, type: bytes }
+
+  - id: 48
+    name: EntityAdd
+    direction: server_to_client
+    fields:
+      - { name: entityId, type: uint64 }
+      - { name: entityType, type: string }
+      - { name: x, type: int32 }
+      - { name: y, type: int32 }
+      - { name: z, type: int16 }
+
+  - id: 49
+    name: EntityMove
+    direction: bidirectional
+    fields:
+      - { name: entityId, type: uint64 }
+      - { name: x, type: int32 }
+      - { name: y, type: int32 }
+      - { name: z, type: int16 }
+      - { name: direction, type: uint8 }
+
+  - id: 50
+    name: EntityRemove
+    direction: server_to_client
+    fields:
+      - { name: entityId, type: uint64 }
+
+  - id: 254
+    name: Error
+    direction: server_to_client
+    fields:
+      - { name: code, type: uint32 }
+      - { name: message, type: string }
+
+  - id: 255
+    name: Disconnect
+    direction: bidirectional
+    fields:
+      - { name: reason, type: string }
+
+rules:
+  authoritativeServer: true
+  versionHandshakeRequired: true
+  unknownMessageIsProtocolError: true
+  clientCannotAuthoritativelySetPosition: true
