@@ -13,9 +13,9 @@ Server/
 
 O objetivo é construir **Fantasy Server**, não incorporar TFS como core permanente.
 
-## F04 — PASS
+## F04 — World Runtime: PASS
 
-O runtime nativo carrega `Game/Maps/World/world.fmap.json` diretamente e possui:
+O runtime carrega `Game/Maps/World/world.fmap.json` diretamente e possui:
 
 ```text
 Shared FMAP Core
@@ -29,16 +29,18 @@ Entities / Movement / Walkability
 Tick Scheduler
 ```
 
-Os testes headless cobrem movimento entre chunks, ocupação de tile, tile bloqueado, scheduler e ciclo Start/Stop. Studio e Server consomem a mesma implementação FMAP neutra em `Shared/Formats/FMAP/`.
+Os testes cobrem movimento entre chunks, ocupação exclusiva, tile bloqueado, scheduler e ciclo Start/Ready/Tick/Stop. Studio e Server consomem a mesma implementação FMAP neutra em `Shared/Formats/FMAP/`.
 
-## F05 — primeiro play nativo
+## F05 — Protocol v1 + First Native Play
 
-O Server agora possui o caminho de desenvolvimento:
+O Server já possui o caminho técnico do primeiro play nativo:
 
 ```text
 TCP loopback
    ↓
-FrameStream / Fantasy Protocol v1
+FrameStream
+   ↓
+Fantasy Protocol v1
    ↓
 DevelopmentSession
    ↓
@@ -49,15 +51,37 @@ WorldRuntime
 FMAP
 ```
 
-No login, o Server envia `LoginOk`, `EnterWorld`, os `MapChunk` do piso/região inicial e `EntityAdd`. O conteúdo dos chunks usa FMCP v1, mantendo grounds/objects semânticos. Movimento é `MoveRequest(direction)` e a resposta é `EntityMove` com posição autoritativa.
+A sessão implementa:
 
-O executável suporta um modo determinístico de validação em um único cliente:
+- `Hello / HelloAck` e version handshake;
+- sequence monotônica do Client;
+- `LoginDev / LoginOk`;
+- `EnterWorld`;
+- snapshot inicial `MapChunk` com FMCP v1;
+- `EntityAdd`;
+- `MoveRequest(direction)` validado pelo Server;
+- `EntityMove` com posição autoritativa;
+- `Disconnect` limpo;
+- cleanup da entidade se a conexão TCP cair abruptamente.
+
+No login, o Server envia os chunks da região/piso inicial. Grounds, objects e tags continuam semânticos; nenhum ID legado Tibia participa do caminho.
+
+## Modo de validação atual
 
 ```powershell
-build/server/Release/fantasy-server.exe --serve-once 7171
+build/server/Release/fantasy-server.exe --serve-once 17171
 ```
 
-Esse modo liga **somente em `127.0.0.1`**, aceita uma sessão, aguarda Disconnect limpo e encerra. `LoginDev` é propositalmente uma autenticação de desenvolvimento e não pode ser usado como endpoint público.
+`--serve-once`:
+
+- liga somente em `127.0.0.1`;
+- aceita uma conexão;
+- executa uma sessão F05;
+- encerra após Disconnect limpo.
+
+Ele existe para validação determinística. Ainda **não** é o servidor multi-client/24×7 final.
+
+`LoginDev` também é exclusivamente de desenvolvimento e não pode ser exposto publicamente.
 
 ## Build / testes
 
@@ -67,17 +91,31 @@ cmake --build build/server --config Release
 ctest --test-dir build/server -C Release --output-on-failure
 ```
 
-O `fantasy-native-play-tests` usa TCP loopback real e exercita Client → Server → FMAP, incluindo reconnect.
+O conjunto atual cobre runtime, codec do protocolo, FMCP, sessão autoritativa, TCP loopback real, first-play, reconnect e cleanup por desconexão abrupta.
 
-Para validar os executáveis Server e Client como dois processos separados:
+Para validar Server e Client como processos separados:
 
 ```powershell
-./scripts/run-native-play.ps1 -Configuration Release
+./scripts/run-native-play.ps1 -Configuration Release -Port 17171
 ```
+
+## Limites deliberados antes de F06+
+
+Ainda não entram no fechamento F05:
+
+- contas persistentes;
+- autenticação pública;
+- banco de personagens;
+- servidor multi-client 24/7;
+- inventário/combate/creatures completos;
+- assets finais;
+- TLS/infra pública.
+
+Esses sistemas não devem ser antecipados para contornar falhas do first-play nativo.
 
 ## Direção
 
-O core cresce em módulos pequenos:
+O core cresce em módulos próprios e pequenos:
 
 ```text
 App
@@ -88,6 +126,7 @@ Scheduler
 Network
 Protocol
 Persistence
+Gameplay
 ```
 
-TFS 1.4.2 permanece somente como referência de comportamento em `.upstream/`.
+TFS 1.4.2 permanece somente como referência comportamental isolada em `.upstream/`.
