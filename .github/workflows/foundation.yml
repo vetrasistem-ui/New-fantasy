@@ -51,6 +51,15 @@ jobs:
         shell: pwsh
         run: ctest --test-dir build/studio -C Release --output-on-failure
 
+      - name: Upload Fantasy Studio Windows binaries
+        uses: actions/upload-artifact@v4
+        with:
+          name: fantasy-studio-windows-${{ github.sha }}
+          if-no-files-found: error
+          path: |
+            build/studio/Release/fantasy-studio.exe
+            build/studio/Release/fantasy-studio-gui.exe
+
       - name: Configure Fantasy Server
         shell: pwsh
         run: cmake -S Server -B build/server
