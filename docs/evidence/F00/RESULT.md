@@ -1,42 +1,47 @@
 # F00 Evidence — Native Foundation
 
-Status: **IN_PROGRESS / PARTIAL PASS**
+Status: **PASS**
 
 ## Automated evidence
 
 GitHub Actions workflow: `Foundation Checks`
 
-Validated on Windows runner:
-
-- project layout and relative-path contract: **PASS**;
-- native FMAP fixture header (`format=FMAP`, `version=0`): **PASS**;
-- Fantasy Server CMake configure: **PASS**;
-- Fantasy Server C++20 build: **PASS**;
-- `fantasy-server --smoke-test` through CTest: **PASS**.
-
-Observed successful steps in workflow run 24:
+Validated on Windows runner in workflow run 29:
 
 ```text
 Checkout                              PASS
 Validate project layout and contracts PASS
+Validate FMAP v0                      PASS
+Validate Fantasy Protocol v1          PASS
+Record toolchain                       PASS
 Configure Fantasy Server              PASS
 Build Fantasy Server                  PASS
 Smoke-test Fantasy Server             PASS
 ```
 
-## Contracts present
+The run completed successfully for commit `fb6eb763b25440f4c520a4f2d701365fa511e684`.
+
+## Contracts frozen for F00
 
 - `Game/Maps/World/world.fmap.json`
 - `Shared/Formats/FMAP/schema-v0.json`
 - `Shared/Protocol/protocol-v1.yaml`
+- `fantasy.project.json` schemaVersion 2
 - `Server/CMakeLists.txt`
 - `Server/Core/main.cpp`
 
-## Still required before F00 PASS
+## Guarantees proven
 
-- validate the full FMAP fixture against the JSON Schema, not only its header;
-- add automated consistency checks for Fantasy Protocol message IDs/names/types;
-- freeze the F00 toolchain/version evidence;
-- record known limitations of FMAP v0 and Fantasy Protocol v1 draft.
+- project layout and persisted paths are relative;
+- the native path uses FMAP rather than OTBM;
+- the native protocol contract is Fantasy Protocol v1 draft rather than 10.98;
+- FMAP fixture passes structural and semantic validation;
+- protocol message IDs/names/types/directions pass automated consistency checks;
+- Fantasy Server configures, builds and smoke-tests as C++20 on the Windows CI runner;
+- TFS, RME and OTClient are not linked into the native build path.
 
-No OTBM, TFS code or protocol 10.98 is required by the native F00 build path.
+## Known limitations
+
+See `docs/F00-LIMITATIONS.md`.
+
+F00 does not prove networking, a visual editor, runtime FMAP loading or gameplay. Those belong to subsequent phases.
