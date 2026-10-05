@@ -20,6 +20,11 @@ Assert-True ($Text -match '(?m)^name:\s*FantasyProtocol\s*$') 'name must be Fant
 Assert-True ($Text -match '(?m)^version:\s*1\s*$') 'version must be 1'
 Assert-True ($Text -match '(?m)^transport:\s*tcp\s*$') 'transport must be tcp'
 Assert-True ($Text -match '(?m)^endianness:\s*little\s*$') 'endianness must be little'
+Assert-True ($Text -match '(?m)^  envelopeBytes:\s*16\s*$') 'v1 envelope must be 16 bytes'
+Assert-True ($Text -match '(?m)^  payloadLengthExcludesEnvelope:\s*true\s*$') 'payloadLength must exclude envelope'
+Assert-True ($Text -match '(?m)^  maxPayloadBytes:\s*4194304\s*$') 'maxPayloadBytes must be 4 MiB'
+Assert-True ($Text -match '(?m)^  stringEncoding:\s*utf8\s*$') 'strings must be utf8'
+Assert-True ($Text -match '(?m)^  variableLengthPrefix:\s*uint32\s*$') 'variable length fields must use uint32 prefix'
 
 $RequiredEnvelope = @{
     magic = 'fixed_ascii'
@@ -84,6 +89,7 @@ $RequiredMessages = @{
     LoginOk = 17
     EnterWorld = 32
     MapChunk = 33
+    MoveRequest = 34
     EntityAdd = 48
     EntityMove = 49
     EntityRemove = 50
@@ -97,13 +103,19 @@ foreach ($Entry in $RequiredMessages.GetEnumerator()) {
 
 Assert-True ($MessageInfo['Hello'].direction -eq 'client_to_server') 'Hello direction must be client_to_server'
 Assert-True ($MessageInfo['HelloAck'].direction -eq 'server_to_client') 'HelloAck direction must be server_to_client'
-Assert-True ($MessageInfo['EntityMove'].direction -eq 'bidirectional') 'EntityMove direction must be bidirectional during draft v1'
+Assert-True ($MessageInfo['MoveRequest'].direction -eq 'client_to_server') 'MoveRequest direction must be client_to_server'
+Assert-True ($MessageInfo['MoveRequest'].fields.Count -eq 1) 'MoveRequest must carry intent only'
+Assert-True ($MessageInfo['MoveRequest'].fields.ContainsKey('direction')) 'MoveRequest.direction is required'
+Assert-True (-not $MessageInfo['MoveRequest'].fields.ContainsKey('x')) 'MoveRequest must not contain x'
+Assert-True (-not $MessageInfo['MoveRequest'].fields.ContainsKey('y')) 'MoveRequest must not contain y'
+Assert-True (-not $MessageInfo['MoveRequest'].fields.ContainsKey('z')) 'MoveRequest must not contain z'
+Assert-True ($MessageInfo['EntityMove'].direction -eq 'server_to_client') 'EntityMove must be authoritative server_to_client state'
 Assert-True ($MessageInfo['EnterWorld'].fields.ContainsKey('entityId')) 'EnterWorld.entityId is required'
 Assert-True ($MessageInfo['MapChunk'].fields.ContainsKey('payload')) 'MapChunk.payload is required'
 
-foreach ($Rule in @('authoritativeServer', 'versionHandshakeRequired', 'unknownMessageIsProtocolError', 'clientCannotAuthoritativelySetPosition')) {
+foreach ($Rule in @('authoritativeServer', 'versionHandshakeRequired', 'unknownMessageIsProtocolError', 'clientCannotAuthoritativelySetPosition', 'clientMovementIsIntentOnly')) {
     $RulePattern = "(?m)^  ${Rule}:\s*true\s*$"
     Assert-True ($Text -match $RulePattern) "rule '$Rule' must be true"
 }
 
-Write-Host "Fantasy Protocol v1 validation PASS. messages=$($Matches.Count) ids=unique names=unique"
+Write-Host "Fantasy Protocol v1 validation PASS. messages=$($Matches.Count) ids=unique names=unique framing=frozen movement=intent-only"
