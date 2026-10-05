@@ -45,10 +45,12 @@ void WorldRuntime::start() {
     }
     state_ = RuntimeState::Starting;
     tickCount_ = 0;
+    scheduler_.clear();
     state_ = RuntimeState::Ready;
 }
 
 void WorldRuntime::stop() {
+    scheduler_.clear();
     entities_.clear();
     state_ = RuntimeState::Stopped;
 }
@@ -58,6 +60,18 @@ void WorldRuntime::tick() {
         throw std::runtime_error("WorldRuntime tick requires Ready state");
     }
     ++tickCount_;
+    scheduler_.tick();
+}
+
+Scheduler::TaskId WorldRuntime::scheduleAfter(std::uint64_t delayTicks, std::function<void()> callback) {
+    if (state_ != RuntimeState::Ready) {
+        throw std::runtime_error("WorldRuntime schedule requires Ready state");
+    }
+    return scheduler_.scheduleAfter(delayTicks, std::move(callback));
+}
+
+bool WorldRuntime::cancelTask(Scheduler::TaskId id) {
+    return scheduler_.cancel(id);
 }
 
 const MapTile* WorldRuntime::tileAt(const MapPosition& position) const {
@@ -79,6 +93,11 @@ std::uint64_t WorldRuntime::spawnEntity(std::string name, const MapPosition& pos
     }
     if (!isWalkable(position)) {
         throw std::runtime_error("Cannot spawn entity on non-walkable or missing tile");
+    }
+    for (const auto& [_, entity] : entities_) {
+        if (entity.position == position) {
+            throw std::runtime_error("Cannot spawn entity on occupied tile");
+        }
     }
     const auto id = nextEntityId_++;
     entities_.emplace(id, Entity{id, std::move(name), position});
