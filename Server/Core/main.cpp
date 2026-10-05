@@ -8,6 +8,7 @@
 #include <stdexcept>
 #include <string>
 #include <string_view>
+#include <utility>
 
 #ifndef FANTASY_SERVER_VERSION
 #define FANTASY_SERVER_VERSION "dev"
@@ -20,13 +21,14 @@
 namespace fs = std::filesystem;
 
 namespace fantasy {
-namespace {
 
 std::uint16_t parsePort(const std::string& value) {
     const int parsed = std::stoi(value);
     if (parsed < 1 || parsed > 65535) throw std::runtime_error("port must be between 1 and 65535");
     return static_cast<std::uint16_t>(parsed);
 }
+
+namespace {
 
 fs::path developmentMapPath() {
     const fs::path repoRoot = fs::weakly_canonical(fs::path(FANTASY_REPO_ROOT));
