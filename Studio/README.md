@@ -39,7 +39,7 @@ RME 3.7 permanece em `.upstream/` apenas como referência de comportamento, fixt
 
 **F03 — Fantasy Map Editor MVP: TECHNICAL PASS**
 
-O editor nativo `fantasy-studio-gui.exe` usa SDL3 + SDL_GPU + Dear ImGui e já possui:
+O editor nativo `fantasy-studio-gui.exe` usa SDL3 + SDL_Renderer3 + Dear ImGui e já possui:
 
 - viewport 2D;
 - floors;
@@ -55,6 +55,8 @@ O editor nativo `fantasy-studio-gui.exe` usa SDL3 + SDL_GPU + Dear ImGui e já p
 - reabertura do mesmo mapa pelo Project Manager.
 
 A alteração visual passa sempre pelo `MapDocument`/operações de domínio; a GUI não possui um segundo modelo de mapa.
+
+`SDL_Renderer3` é o baseline 2D oficial. `SDL_GPU` fica reservado para um backend avançado futuro, caso shaders/efeitos realmente justifiquem a complexidade adicional.
 
 ## Gate ainda pendente
 
