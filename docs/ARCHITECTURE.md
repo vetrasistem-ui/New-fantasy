@@ -2,25 +2,27 @@
 
 ## Visão geral
 
-O New Fantasy é organizado em quatro camadas principais:
+A plataforma alvo possui cinco blocos próprios:
 
 ```text
 Fantasy Studio
       │
-Fantasy Project Model
+Fantasy Data Model
       │
-Adapters / Automation API
+ ┌────┼──────────────┐
+ │    │              │
+FMAP  Fantasy Protocol  Content Contracts
+ │    │              │
+ └────┼──────────────┘
       │
-Server + Client + Map Engine
-      │
-Game Data
+Fantasy Server ↔ Fantasy Client
 ```
 
-A aplicação nasce a partir de um Map Engine compatível com 10.98, mas o editor de mapas é apenas o primeiro módulo do Studio.
+TFS 1.4.2, RME 3.7 e OTClient 10.98 são referências externas de comportamento e compatibilidade durante a transição. Eles ficam isolados em `.upstream/` e não são a arquitetura final.
 
 ## Regra central
 
-A interface gráfica e o Codex não devem ter motores separados.
+GUI, CLI, scripts e Codex compartilham o mesmo núcleo de domínio.
 
 ```text
                  Fantasy Core
@@ -31,22 +33,60 @@ A interface gráfica e o Codex não devem ter motores separados.
         │            │            │
         └────────────┼────────────┘
                      │
-                 Game Data
+              Fantasy Data Model
 ```
 
-Para mapas:
+## Mapas
+
+O formato fonte nativo é FMAP.
 
 ```text
 GUI / Script / Codex
         │
 Fantasy Map API
         │
-Map Engine
+Fantasy Map Model
         │
-IOMapOTBM
+Game/Maps/World/world.fmap.json
         │
-Game/Maps/world.otbm
+Validator / Compiler
+        │
+FMAPC (runtime futuro)
+        │
+Fantasy Server
 ```
+
+OTBM pode existir como importador/exportador legado enquanto for útil, mas não é a fonte de verdade.
+
+### FMAP
+
+O FMAP deve ser:
+
+- semântico em vez de depender apenas de IDs numéricos;
+- versionado por schema;
+- dividido por regiões/chunks quando necessário;
+- amigável a diff/Git;
+- fácil de criar por IA;
+- determinístico;
+- validável antes de entrar no runtime.
+
+A primeira versão usa JSON estruturado. Uma DSL própria pode ser adicionada depois sem alterar o modelo interno.
+
+## Protocolo
+
+O contrato nativo é o Fantasy Protocol.
+
+```text
+Fantasy Client
+      │
+Fantasy Protocol v1
+      │
+Fantasy Server
+```
+
+O protocolo deve ser versionado e definido primeiro em `Shared/Protocol/`. O servidor é autoritativo.
+
+Durante a transição, um adapter 10.98 pode existir para comparação ou fallback, mas o primeiro grande marco nativo deve funcionar sem ele.
 
 ## Layout oficial
 
@@ -61,6 +101,7 @@ New-fantasy/
 │   └── UI/
 ├── Game/
 │   ├── Maps/
+│   │   └── World/
 │   ├── Content/
 │   ├── Assets/
 │   ├── Scripts/
@@ -75,26 +116,24 @@ New-fantasy/
 │   ├── Modules/
 │   ├── UI/
 │   └── Assets/
+├── Shared/
+│   ├── Protocol/
+│   └── Formats/
+│       └── FMAP/
 ├── Database/
-│   ├── Migrations/
-│   └── Seeds/
 ├── Tools/
 ├── Projects/
 ├── scripts/
 └── docs/
 ```
 
-Pastas internas podem crescer, mas a raiz não deve virar um depósito de arquivos.
+A raiz deve permanecer pequena. Pastas novas na raiz exigem justificativa arquitetural.
 
 ## Fantasy Project Model
 
-O Studio nunca deve depender de busca manual para localizar recursos principais. `fantasy.project.json` define os caminhos oficiais e todos são relativos à raiz.
-
-O usuário deve conseguir mover o projeto de `C:\Fantasy` para `D:\Fantasy` e continuar abrindo-o sem editar arquivos.
+`fantasy.project.json` contém somente caminhos relativos e contratos do projeto. O projeto deve continuar funcional depois de mover sua pasta para outro disco ou PC.
 
 ## Conteúdo
-
-A organização lógica padrão é:
 
 ```text
 Game/Content/
@@ -109,46 +148,54 @@ Game/Content/
 └── Systems/
 ```
 
-O Studio pode gerar/adaptar dados para o TFS, mas não deve espalhar a fonte de verdade do conteúdo em locais arbitrários.
+Os editores trabalham com modelos Fantasy próprios. Runtime e formatos externos, quando existirem, são adapters e não a fonte de verdade.
 
-## Adapters
+## Servidor
 
-Cada editor trabalha com um modelo Fantasy e um adapter de runtime.
+O Fantasy Server é uma implementação própria. O core inicial deve crescer em módulos pequenos e testáveis:
 
 ```text
-Monster Editor
-      │
-Fantasy Monster Model
-      │
-TFS Monster Adapter
-      │
-Runtime data
+Server/Core
+├── App
+├── Network
+├── Protocol
+├── World
+├── Entities
+├── Map
+├── Scheduler
+└── Persistence
 ```
 
-O mesmo princípio vale para Items, NPCs, Spells, Quests e outros domínios.
+Gameplay de alto nível poderá usar Lua/configuração estruturada mais tarde. O core não deve nascer acoplado a TFS.
+
+## Cliente
+
+O alvo final é um Fantasy Client falando Fantasy Protocol. Durante a transição, um cliente 10.98 pode ser usado como referência/oráculo, mas não dita o contrato final.
 
 ## Automação e IA
 
-A automação deve entrar cedo no projeto. Operações planejadas:
+Operações planejadas:
 
 ```text
 fantasy project validate
-fantasy map open
-fantasy map save
+fantasy map validate
 fantasy map set-ground
-fantasy map add-item
+fantasy map add-object
 fantasy map fill-area
 fantasy map place-template
+fantasy server start
 fantasy build
 fantasy play
 ```
 
-A primeira implementação pode ser CLI. Comunicação em tempo real pode vir depois.
+Alterações grandes devem gerar transaction/snapshot e permitir Preview / Accept / Undo.
 
-## Segurança de edição
+## Regra de independência
 
-Operações grandes, especialmente geradas por IA, devem ser transacionais ou gerar snapshot. O usuário deve poder comparar, aceitar ou desfazer alterações em lote.
+Nenhum componente legado é obrigatório no caminho final:
 
-## Regra de compatibilidade
+```text
+FMAP → Fantasy Server → Fantasy Protocol → Fantasy Client
+```
 
-A plataforma 1.0 suporta uma única família de runtime: TFS 1.4.2 / protocolo 10.98. Suporte a outras versões não faz parte do escopo inicial.
+Esse é o contrato que guia o desenvolvimento.
