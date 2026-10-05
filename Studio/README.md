@@ -2,8 +2,6 @@
 
 Código do Fantasy Studio.
 
-Estrutura planejada:
-
 ```text
 Studio/
 ├── Core/
@@ -14,4 +12,15 @@ Studio/
 └── UI/
 ```
 
-O código do RME candidato só será incorporado após F00 e revisão de licença. `MapEngine/` será a casa do motor de mapas integrado, não de um executável externo separado.
+O Studio não nasce mais de uma cópia do RME. O `MapEngine/` será uma implementação própria baseada no Fantasy Map Model/FMAP.
+
+RME 3.7 permanece em `.upstream/` apenas para comparação de comportamento, fixtures e eventual interoperabilidade legada.
+
+Princípios:
+
+- GUI e Codex usam o mesmo Map/Core API;
+- FMAP é a fonte de verdade do mapa;
+- operações grandes são reversíveis;
+- nenhuma ferramenta procura arquivos em locais arbitrários;
+- `fantasy.project.json` define os caminhos oficiais;
+- OTBM/10.98 não entram no caminho nativo do Studio.
