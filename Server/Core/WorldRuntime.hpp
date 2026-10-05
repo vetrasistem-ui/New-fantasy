@@ -1,10 +1,12 @@
 #pragma once
 
+#include "Core/Scheduler.hpp"
 #include "MapEngine/FmapCore.hpp"
 
+#include <cstddef>
 #include <cstdint>
 #include <filesystem>
-#include <optional>
+#include <functional>
 #include <string>
 #include <unordered_map>
 
@@ -36,10 +38,14 @@ public:
     std::size_t indexedTileCount() const { return tiles_.size(); }
     std::size_t entityCount() const { return entities_.size(); }
     std::uint64_t tickCount() const { return tickCount_; }
+    std::size_t pendingTaskCount() const { return scheduler_.pendingTaskCount(); }
 
     void start();
     void stop();
     void tick();
+
+    Scheduler::TaskId scheduleAfter(std::uint64_t delayTicks, std::function<void()> callback);
+    bool cancelTask(Scheduler::TaskId id);
 
     const MapTile* tileAt(const MapPosition& position) const;
     bool isWalkable(const MapPosition& position) const;
@@ -56,6 +62,7 @@ private:
     RuntimeState state_ = RuntimeState::Stopped;
     std::uint64_t tickCount_ = 0;
     std::uint64_t nextEntityId_ = 1;
+    Scheduler scheduler_;
     std::unordered_map<std::string, const MapTile*> tiles_;
     std::unordered_map<std::uint64_t, Entity> entities_;
 };
