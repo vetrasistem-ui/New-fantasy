@@ -38,13 +38,14 @@ add_library(fantasy-studio-project
 )
 
 add_library(fantasy-map-core
-    MapEngine/FmapCore.cpp
+    ../Shared/Formats/FMAP/FmapCore.cpp
     MapEngine/EditorOperations.cpp
 )
 
 foreach(target fantasy-studio-project fantasy-map-core)
     target_include_directories(${target} PUBLIC
         ${CMAKE_CURRENT_SOURCE_DIR}
+        ${CMAKE_CURRENT_SOURCE_DIR}/..
     )
 
     if(MSVC)
