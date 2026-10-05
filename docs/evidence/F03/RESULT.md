@@ -49,24 +49,35 @@ The viewport currently renders semantic grounds as deterministic placeholder col
 
 Fill and eraser operations are covered by headless undo/redo tests so they can be called by GUI, CLI or future Codex automation without reimplementing map behavior.
 
+### Cross-chunk behaviour
+
+FMAP v0 multi-chunk coordinate semantics are now frozen in `Shared/Formats/FMAP/README.md`:
+
+```text
+global tile = region.origin + chunk.offset + tile.local
+```
+
+`chunk.x/y` are region-local tile offsets, while `tile.x/y` are chunk-local offsets. Missing tiles remain sparse; two chunks may not resolve to the same tile coordinate on the same floor.
+
+`Game/Maps/World/multichunk-fixture.fmap.json` is the canonical F03 multi-chunk fixture. It contains four chunks and a connected ground area crossing a chunk boundary.
+
+`fillConnectedGround` now resolves adjacency in region-local tile space, so a fill operation crosses chunk boundaries correctly while remaining one transaction. Undo and Redo cover the entire cross-chunk edit.
+
 ## Automated evidence
 
-Workflow run **69** (`12ed4109db1874be0565dc5f39d9fd66229e5cca`) passed on Windows:
+Workflow run **77** (`70cf98b39f3062cec4e7ba6a03703c86154cd899`) passed on Windows:
 
 - layout/contracts: PASS;
 - Fantasy Project v2: PASS;
 - FMAP v0: PASS;
+- FMAP multi-chunk coordinate validator: PASS;
 - Fantasy Protocol v1: PASS;
 - project relocation: PASS;
 - SDL3 + Dear ImGui dependency configure: PASS;
 - Fantasy Studio build, including `fantasy-studio-gui.exe`: PASS;
-- Studio CTest suite, including shared editor operations: PASS;
+- Studio CTest suite, including cross-chunk fill + undo/redo: PASS;
 - Windows Studio binaries artifact upload: PASS;
 - Fantasy Server build/smoke regression: PASS.
-
-Artifact produced:
-
-`fantasy-studio-windows-12ed4109db1874be0565dc5f39d9fd66229e5cca`
 
 ## Gates already demonstrated
 
@@ -79,6 +90,9 @@ Artifact produced:
 - tile selection: **PASS (build-level)**;
 - ground/object brush uses native transactions: **PASS (build-level + headless domain tests)**;
 - fill/erase domain operations reversible: **PASS (headless)**;
+- cross-chunk coordinate semantics: **PASS**;
+- cross-chunk connected fill: **PASS (headless)**;
+- multi-chunk fixture validation: **PASS**;
 - basic minimap implementation: **PASS (build-level)**;
 - Save/Reopen semantic roundtrip: **PASS (headless)**.
 
@@ -87,7 +101,6 @@ Artifact produced:
 - perform a real interactive Windows launch of `fantasy-studio-gui.exe` and capture visual evidence;
 - wire the already-tested fill/eraser commands into visible GUI controls;
 - validate interactive Save → close → reopen in the GUI;
-- validate viewport behavior with more than the tiny two-tile fixture;
-- settle/document multi-chunk coordinate semantics before generating large worlds.
+- validate viewport behaviour interactively with the multi-chunk fixture or a larger generated map.
 
 No RME, OTBM or 10.98 code is present in the F03 native path.
