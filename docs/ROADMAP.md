@@ -1,121 +1,171 @@
 # Roadmap — New Fantasy
 
-## F00 — Foundation & Compatibility
+## F00 — Independent Core Foundation
 
 Status: **IN_PROGRESS**
 
-Objetivo: provar que todas as bases candidatas falam a mesma linguagem antes de transformar o editor em Studio.
+Objetivo: congelar os contratos próprios antes de construir sistemas grandes.
 
 Gates:
 
-- TFS 1.4.2 compila e inicia;
-- MariaDB importa schema e persiste conta/personagem;
-- OTClient conecta em 10.98 e chega ao jogo;
-- RME abre mapa 10.98;
-- RME edita, salva e reabre sem corrupção;
-- TFS carrega o mapa salvo;
-- cliente visualiza a alteração;
-- asset mínimo é reconhecido de forma consistente;
-- SHAs e versões são congelados;
-- licenças das bases incorporadas são revisadas.
+- layout limpo e caminhos relativos validados;
+- `Shared/Protocol/` criado com Fantasy Protocol v1 mínimo;
+- `Shared/Formats/FMAP/` criado com FMAP v0 experimental;
+- `Game/Maps/World/world.fmap.json` válido;
+- Fantasy Server skeleton compila e executa;
+- referências 10.98 ficam isoladas em `.upstream/`;
+- nenhuma dependência de OTBM/TFS entra no caminho nativo.
 
-## F01 — Fantasy Identity
+## F01 — Project System
 
-- renomear produto para Fantasy Studio;
-- título, splash, ícone e identidade;
-- remover referências visuais desnecessárias do editor original;
-- preservar o Map Engine sem mudanças funcionais desnecessárias.
-
-## F02 — Project System & Clean Layout
-
-- `fantasy.project.json` real;
-- New Project / Open Project / Recent Projects;
+- `fantasy.project.json` como manifesto real;
+- New/Open/Recent Project;
 - caminhos relativos;
-- defaults conhecidos;
-- `Open Main Map` sem diálogo de procura;
-- mover a pasta inteira e reabrir com sucesso.
+- Open Main Map direto;
+- mover projeto para outro disco e reabrir.
 
-## F03 — Server Manager
+## F02 — Fantasy Map Core
 
-- Start / Stop / Restart;
-- console integrado;
-- logs;
-- detecção de processo órfão;
-- config do servidor por projeto.
+- estruturas World / Region / Chunk / Tile / Object;
+- leitura e escrita FMAP;
+- semantic asset keys;
+- validação;
+- transactions/undo;
+- fixtures determinísticas.
 
-## F04 — Database Manager
+## F03 — Fantasy Map Editor MVP
 
-- conectar MariaDB;
-- migrar schema;
-- seed de conta/personagem de teste;
-- status READY/ERROR no Studio.
+- viewport 2D;
+- floors;
+- seleção;
+- ground/object brush;
+- fill/erase;
+- minimap básico;
+- Save/Reopen FMAP;
+- GUI usa as mesmas operações expostas à automação.
 
-## F05 — Client Manager + First Play Gate
+## F04 — Fantasy Server World Runtime
 
-- configurar endpoint do projeto;
-- abrir cliente;
-- botão `Play`;
-- `Play` valida banco, inicia servidor e abre cliente;
-- personagem entra em `Game/Maps/world.otbm`.
+- carregar FMAP diretamente;
+- world/chunk registry;
+- player/entity model mínimo;
+- walkability;
+- scheduler básico;
+- Start/Stop limpo.
 
-**Primeiro grande marco: F05 PASS.**
+## F05 — Fantasy Protocol v1 + First Native Play
 
-## F06 — Item Editor
+- framing/version handshake;
+- auth de desenvolvimento;
+- enter world;
+- map chunk;
+- add/move/remove entity;
+- Fantasy Client mínimo conecta;
+- personagem entra em FMAP e anda.
 
-Modelo Fantasy + adapter 10.98/TFS.
+**Primeiro grande marco: F05 PASS sem OTBM e sem protocolo 10.98 no caminho principal.**
 
-## F07 — Monster Editor
+## F06 — Persistence / Database
 
-Monstros, loot, ataques, resistências e validação.
+- contas e personagens;
+- save/load de posição;
+- migrations;
+- reconnect/restart validation.
 
-## F08 — Spawn Editor
+## F07 — Item / Inventory Core
 
-Integração mapa + criaturas + áreas.
+- item definitions;
+- inventory;
+- containers;
+- semantic IDs;
+- Item Editor inicial.
 
-## F09 — Spell / Skill Editor
+## F08 — Creature / Monster Core
 
-Dados simples primeiro; visualização avançada depois.
+- creatures;
+- AI básica;
+- spawn;
+- Monster Editor;
+- loot.
 
-## F10 — NPC / Dialogue Editor
+## F09 — Combat / Spell / Skill
 
-Diálogo, lojas, condições e integração com quests.
+- combate autoritativo;
+- cooldown;
+- effects/events;
+- Spell/Skill Editor.
 
-## F11 — Quest Editor
+## F10 — NPC / Dialogue
 
-Etapas, condições, rewards e dependency validation.
+- NPCs;
+- shops;
+- dialogue model;
+- conditions/actions.
 
-## F12 — Class / Attribute Editor
+## F11 — Quest System
 
-Base para sistemas próprios do jogo.
+- etapas;
+- dependências;
+- rewards;
+- Quest Editor e validator.
 
-## F13 — Asset Manager
+## F12 — Classes / Attributes / Equipment
 
-Gerenciamento de DAT/SPR/OTB e catálogo semântico Fantasy.
+- atributos próprios;
+- level requirements;
+- attribute requirements;
+- equipment bonuses;
+- passives/classes.
+
+## F13 — Asset Pipeline
+
+- Fantasy Asset Registry;
+- sprites/effects/UI próprios;
+- semantic keys;
+- import tools temporárias para referências legadas quando necessário.
 
 ## F14 — Automation API / Codex
 
 - CLI estável;
-- mapa por comandos/scripts;
-- transactions/undo para alterações de IA;
-- validators;
-- templates e geração procedural.
+- map/content commands;
+- templates;
+- generation by regions;
+- transactions/preview/undo;
+- validators.
 
 ## F15 — System Lab
 
 Modo Visual / Híbrido / Código para sistemas customizados.
 
-## F16 — Website / Account Integration
+## F16 — Client Modernization
 
-Somente após runtime local estar estável.
+- UI própria;
+- particles/effects;
+- lighting/shaders quando necessário;
+- launcher/updater;
+- remover adapters legados restantes.
 
-## F17 — Build / Distribution
+## F17 — Website / Account Platform
 
-Pacote do Studio, cliente e runtime reproduzível.
+Somente após runtime nativo local estar estável.
 
-## F18 — Publish / VPS
+## F18 — Build / Distribution
 
-Deploy e operação 24/7.
+- Studio;
+- Server;
+- Client;
+- assets;
+- updater;
+- pacote reproduzível.
 
-## Desenvolvimento do jogo
+## F19 — Publish / VPS
 
-O jogo cresce junto com o Studio após F05. Cada editor deve nascer para resolver uma necessidade real de conteúdo, evitando construir ferramentas sem uso comprovado.
+Deploy 24/7, observabilidade, backups, atualização segura.
+
+## Regra de transição
+
+TFS 1.4.2, RME 3.7 e cliente 10.98 são usados apenas para comparação e fallback. A cada sistema nativo validado, reduzimos a dependência do legado até que o caminho final seja somente:
+
+```text
+Fantasy Studio → FMAP → Fantasy Server → Fantasy Protocol → Fantasy Client
+```
