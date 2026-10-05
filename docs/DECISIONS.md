@@ -112,3 +112,15 @@ Pinned foundation at decision time:
 **Boundary:** SDL/ImGui are visual/platform dependencies only. `MapDocument`, FMAP, project logic and automation remain independent from the GUI. The visual editor may be replaced later without changing the native map data model.
 
 **Dependency policy:** dependencies are fetched/pinned by build configuration or isolated under external dependency folders; their source is not copied into the Fantasy core and their license notices remain preserved.
+
+---
+
+## ADR-013 — Shared owns the neutral FMAP C++ core
+
+**Decision:** the reusable C++ implementation of the FMAP model, validation, JSON IO and `MapDocument` lives in `Shared/Formats/FMAP/` under the neutral namespace `fantasy::fmap`.
+
+**Reason:** Studio and Server must consume the same map implementation instead of maintaining separate parsers, serializers or semantic rules. FMAP is a platform contract shared by the whole Fantasy ecosystem, not a Studio implementation detail.
+
+**Boundary:** Studio-specific editor operations remain in `Studio/MapEngine/`; Server-specific world runtime remains in `Server/Core/`. The Studio may expose a thin compatibility facade over `fantasy::fmap`, but it must not duplicate the FMAP implementation.
+
+**Consequence:** changes to FMAP model/IO/validation are made once in `Shared/` and are validated against both Studio and Server builds/tests.
