@@ -1,0 +1,24 @@
+{
+  "schemaVersion": 1,
+  "name": "New Fantasy",
+  "protocol": "10.98",
+  "paths": {
+    "studio": "Studio",
+    "game": "Game",
+    "mainMap": "Game/Maps/world.otbm",
+    "content": "Game/Content",
+    "assets": "Game/Assets",
+    "scripts": "Game/Scripts",
+    "config": "Game/Config",
+    "server": "Server",
+    "client": "Client",
+    "database": "Database",
+    "tools": "Tools",
+    "projects": "Projects"
+  },
+  "runtime": {
+    "serverBase": "TFS-1.4.2",
+    "mapFormat": "OTBM-v3",
+    "assetFamily": "DAT-SPR-OTB-10.98"
+  }
+}
