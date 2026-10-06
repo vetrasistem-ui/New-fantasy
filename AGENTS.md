@@ -1,45 +1,60 @@
 # AGENTS.md — New Fantasy
 
-Este arquivo define regras permanentes para Codex e outros agentes que trabalhem neste repositório.
+Este arquivo define regras obrigatórias para Codex e outros agentes que trabalhem nesta branch.
 
-## Missão
+## Direção oficial atual
 
-Construir uma plataforma Fantasy própria: Studio, formato de mapa, servidor, protocolo e cliente, mantendo o projeto limpo, testável e preparado para automação por IA.
+O baseline operacional do New Fantasy é:
+
+```text
+Fantasy Studio V5
+      ↓
+OTBM v3 + DAT/SPR/OTB
+      ↓
+TFS 1.4.2
+      ↓
+Protocol 10.98
+      ↓
+Client 10.98
+```
+
+Crystal 4.1.8 / 15.24 não faz parte deste projeto.
+
+BlackTek MapEditor é a principal referência comportamental do Map Editor 10.98. RME 3.7 é referência secundária. TFS 1.4.2 é a fonte de verdade para compatibilidade de runtime.
+
+A auditoria atual está em `docs/BLACKTEK-MAPEDITOR-1098-AUDIT.md`. Quando houver conflito com ADRs anteriores que promoviam FMAP/Fantasy Server/Fantasy Protocol como runtime principal, a direção 1.4.2/10.98 desta branch prevalece até a consolidação formal dos ADRs.
 
 ## Regras obrigatórias
 
-1. Não mudar decisões estruturais sem registrar a mudança em `docs/DECISIONS.md`.
-2. TFS 1.4.2, RME 3.7 e OTClient 10.98 são referências isoladas em `.upstream/`; não tratá-los como fonte de verdade do produto.
-3. Não copiar código de terceiros para o core Fantasy sem decisão explícita, revisão de licença e registro em `docs/UPSTREAMS.md`.
-4. Não criar caminhos absolutos persistidos. Todos os caminhos de projeto devem ser relativos à raiz.
-5. Não duplicar mapas, assets, cliente, servidor ou conteúdo em múltiplas pastas.
-6. O mapa nativo é FMAP. O manifesto principal fica em `Game/Maps/World/world.fmap.json`.
-7. OTBM é formato legado/importação; pode ser aberto por uma camada de compatibilidade, mas não vira fonte de verdade do runtime nativo.
-8. O protocolo nativo é `Fantasy Protocol`; 10.98 é apenas bridge/reference temporário.
-9. O Fantasy Server é autoritativo: movimento, combate, inventário e estado persistente não podem depender da confiança no cliente.
-10. Contratos compartilhados ficam em `Shared/`; não duplicar definições de protocolo, FMCP, rede, FMAP ou Asset Registry entre Server, Client e Studio.
-11. Código do Studio fica em `Studio/`; servidor em `Server/`; cliente em `Client/`; conteúdo em `Game/`.
-12. Não salvar builds, logs, caches ou bancos locais no Git.
-13. Toda nova função precisa de validação objetiva. Compilar sozinho não significa PASS.
-14. GUI, CLI, scripts e Codex devem chamar o mesmo núcleo de operações de domínio sempre que possível.
-15. Operações grandes/IA devem ser transacionais, reversíveis ou precedidas por snapshot.
-16. Mudanças de protocolo devem atualizar a especificação versionada antes ou junto do código.
-17. Mudanças de FMAP devem manter compatibilidade de schema versionada ou fornecer migração explícita.
-18. Nunca introduzir dependência de OTBM, 10.98, DAT/SPR/OTB ou TFS no core nativo sem justificativa documentada.
-19. A GUI do Map Editor não pode possuir um segundo modelo nativo de mapa: ela deve editar `MapDocument`/FMAP por operações do core. Um `LegacyMapImportModel` temporário é permitido apenas dentro da camada de import/compatibilidade.
-20. Ações visuais que alteram o mapa devem ser transações compatíveis com undo/redo desde a primeira implementação.
-21. Studio e Server devem consumir o FMAP neutro de `Shared/Formats/FMAP/`; não criar parser/serializer FMAP paralelo.
-22. Mensagens do cliente expressam intenção. Estado autoritativo de posição/entidades é emitido pelo Server; o cliente nunca envia posição absoluta como verdade.
-23. `MapChunk` v1 usa o codec compartilhado FMCP v1. O Client resolve tiles com `regionOrigin + chunkOffset + tileLocal`; não inventar uma segunda convenção de coordenadas.
-24. O transporte `LoginDev` da F05 é **somente desenvolvimento/loopback**. Não alterar bind para `0.0.0.0`, IP público ou VPS público sem uma fase explícita de segurança/autenticação.
-25. O Client headless e o Client GUI devem consumir o mesmo `DevelopmentClient`; a GUI não pode implementar protocolo/rede próprios.
-26. SDL3 + SDL_Renderer3 + Dear ImGui formam o baseline visual 2D. SDL_GPU é opcional/futuro e não deve virar requisito do core, gameplay, protocolo, mapa ou autoridade.
-27. Na F05.5, DAT/SPR/OTB/OTBM e XMLs de houses/spawns ficam fora do Git salvo autorização explícita de redistribuição. O bridge trabalha com pack local configurável e registra hashes/evidências, não cópias do conteúdo.
-28. O parser OTBM não pode mutar `MapDocument` diretamente: deve produzir primeiro um modelo de import neutro e diagnóstico loss-aware.
-29. Nenhum item/atributo legado desconhecido pode ser descartado silenciosamente. Registrar unknown/unsupported com contagem/contexto antes de converter para FMAP.
-30. O OTBM de origem é imutável durante a migração: validar hash antes/depois das sessões e nunca salvar por cima do source.
+1. Não mudar a baseline TFS 1.4.2 / 10.98 sem decisão explícita do owner e documentação correspondente.
+2. TFS 1.4.2 pinado (`31d6e85...`) é a fonte de verdade para o que o mapa/runtime precisa aceitar.
+3. BlackTek MapEditor pinado (`d429c7a...`) é REFERENCE ONLY e principal oráculo de comportamento do editor 10.98.
+4. Não copiar código BlackTek/RME para o core sem decisão explícita de licença e proveniência.
+5. O source BlackTek auditado possui cabeçalhos GPLv3-or-later e um `LICENSE.rtf` conflitante; manter isolamento até resolver a estratégia de distribuição.
+6. O formato operacional de mapa desta baseline é OTBM v3. FMAP fica preservado como experimento anterior, não como requisito do caminho TFS.
+7. DAT/SPR/OTB 10.98 são formatos ativos de compatibilidade, não apenas dados temporários de importação.
+8. Não introduzir extensões BlackTek no arquivo salvo sem prova de compatibilidade com TFS 1.4.2 vanilla.
+9. Em especial, Zone IDs/TOML, Zone Brush, attribute-map 128 e live-map protocol ficam fora do primeiro gate.
+10. OTBM, houses e spawns do pack de origem devem ser tratados como read-only até existir writer homologado; nunca sobrescrever a fonte durante inspeção.
+11. Binários/assets do pack local não entram no Git sem autorização explícita de redistribuição.
+12. Implementações Fantasy de DAT/SPR/OTB/OTBM devem continuar próprias, testáveis e rastreáveis.
+13. Nenhum node/atributo/item desconhecido pode ser descartado silenciosamente; registrar diagnostics com contexto.
+14. O writer OTBM inicial deve emitir somente o subconjunto comprovado como aceito por TFS 1.4.2.
+15. Todo arquivo salvo pelo Studio precisa passar pelo gate real de carga no TFS 1.4.2.
+16. O gate final inclui Client 10.98 entrando e movimentando no mapa salvo pelo Studio.
+17. SDL3 + SDL_Renderer3 + Dear ImGui continuam sendo o baseline visual do Fantasy Studio V5.
+18. Não substituir a UI V5 por wxWidgets/RME/BlackTek UI.
+19. GUI, scripts e automação devem compartilhar as mesmas operações de domínio sempre que possível.
+20. Ações de edição devem ser reversíveis; uma ação/gesto significativo deve gerar histórico coerente para Undo/Redo.
+21. Preview de brush e mutação devem usar a mesma footprint/regra.
+22. Paths persistidos devem ser relativos à raiz do projeto.
+23. Não duplicar mapas, assets, server, client ou conteúdo em múltiplas localizações oficiais.
+24. Não salvar builds, caches, bancos locais ou logs efêmeros no Git.
+25. Compilar sozinho não significa PASS; cada mudança precisa de gate objetivo.
+26. F04/F05 do runtime Fantasy próprio permanecem preservadas como experimentos concluídos, mas não validam o runtime TFS atual.
+27. Não iniciar uma nova camada de Persistence/F06 antes de homologar o caminho TFS 1.4.2/10.98 ou de receber nova prioridade explícita do owner.
 
-## Layout essencial
+## Estrutura preferida
 
 ```text
 Studio/
@@ -47,79 +62,61 @@ Game/
   Maps/
   Content/
   Assets/
+  Imports/
 Server/
-  Core/
-  Network/
 Client/
-  Core/
-  UI/
 Shared/
   Assets/
-  Protocol/
   Formats/
-  Network/
 Tests/
-  Integration/
 Database/
 Tools/
 Projects/
+docs/
+scripts/
 ```
 
-## Gate mínimo para cada mudança
+## Gate mínimo de mudanças 10.98
 
-- layout continua válido;
-- nenhum caminho absoluto novo;
-- build relevante passa;
-- testes relevantes passam;
-- contratos compartilhados continuam consistentes;
-- se tocar em FMAP: schema/fixture valida e reabre semanticamente igual;
-- se tocar em protocolo/FMCP: especificação, codec e roundtrip correspondente passam;
-- se tocar em rede: framing não pode depender de limites de pacote TCP e o listener F05 continua loopback-only;
-- se tocar no runtime: Start/Stop não deixa processo órfão;
-- se tocar em conteúdo: referências semânticas são validadas;
-- se tocar no editor visual: a alteração deve ser reproduzível pelo core sem depender do mouse/UI;
-- se tocar no Client GUI: `fantasy-client.exe` headless deve continuar funcional;
-- se tocar em legado: source hashes permanecem iguais, unknowns são reportados e nenhum binário legado entra no commit.
+Se tocar em assets/mapa:
 
-## Fases concluídas
+- readers compilam e testes sintéticos passam;
+- source local permanece byte-identical em operações read-only;
+- unknowns são reportados;
+- comparação contra BlackTek/RME é feita quando relevante;
+- OTBM salvo pelo Fantasy reabre no Fantasy;
+- OTBM salvo pelo Fantasy carrega no TFS 1.4.2 vanilla;
+- houses/spawns/towns/waypoints relevantes são preservados;
+- regressões da UI V5 permanecem verdes.
 
-- **F00 — Independent Core Foundation: PASS**
-- **F01 — Project System: PASS**
-- **F02 — Fantasy Map Core: PASS**
-- **F03 — Fantasy Map Editor MVP: PASS**
-- **F04 — Fantasy Server World Runtime: PASS**
-- **F05 — Fantasy Protocol v1 + First Native Play: PASS**
-- **Fantasy Studio Visual Foundation V5: PASS / merged**
+Se tocar em runtime 10.98:
+
+- TFS 1.4.2 inicia sem erro do mapa;
+- client 10.98 conecta;
+- login/enter world funciona;
+- movimento básico funciona;
+- reconnect/shutdown não deixam processo órfão.
 
 ## Prioridade atual
 
-**F05.5 — PokeFans 10.98 Legacy Compatibility + Real Map Bootstrap: IN PROGRESS.**
+**F05.5 — TFS 1.4.2 / 10.98 Map Compatibility + Real Map Bootstrap: IN PROGRESS.**
 
-Branch ativa:
+Ordem atual:
 
-```text
-feature/f05.5-pokefans-1098
-```
+1. differential readers contra BlackTek/TFS;
+2. resolução OTB → DAT → SPR;
+3. abrir/renderizar mapa real 10.98;
+4. houses/spawns;
+5. ferramentas de edição sobre mapa real;
+6. writer OTBM v3;
+7. Save/Reopen;
+8. load no TFS 1.4.2;
+9. play com client 10.98;
+10. homologação formal do Map Engine.
 
-Objetivo imediato:
+Documentos principais:
 
-```text
-PokeFans 10.98
-OTBM + DAT + SPR + OTB + houses/spawns
-        ↓
-Legacy Compatibility Layer
-        ↓
-Fantasy Asset Registry + LegacyMapImportModel
-        ↓
-Fantasy Studio V5
-        ↓
-mapa real com sprites reais
-```
-
-Primeiro perfil suportado é PokeFans 10.98. Outras versões só entram depois que esse caminho estiver validado e sem espalhar condicionais de versão pelo core.
-
-## F06
-
-**F06 — Persistence / Database: NOT STARTED.**
-
-Não iniciar F06 enquanto o primeiro milestone F05.5 (mapa OTBM real + sprites reais + diagnóstico + source preservado) não estiver fechado ou enquanto o owner não mudar explicitamente a prioridade.
+- `docs/BLACKTEK-MAPEDITOR-1098-AUDIT.md`
+- `docs/F05.5-LEGACY-ASSET-BRIDGE.md`
+- `docs/UPSTREAMS.md`
+- `docs/STUDIO-MAP-TOOLS-RME-REFERENCE.md`
