@@ -42,7 +42,13 @@ add_library(fantasy-map-core
     MapEngine/EditorOperations.cpp
 )
 
-foreach(target fantasy-studio-project fantasy-map-core)
+# F05.5 neutral asset contract. Binary DAT/SPR/OTB readers are intentionally
+# kept out of this library and will feed it from the legacy compatibility layer.
+add_library(fantasy-asset-registry
+    ../Shared/Assets/LegacyAssetRegistry.cpp
+)
+
+foreach(target fantasy-studio-project fantasy-map-core fantasy-asset-registry)
     target_include_directories(${target} PUBLIC
         ${CMAKE_CURRENT_SOURCE_DIR}
         ${CMAKE_CURRENT_SOURCE_DIR}/..
@@ -89,6 +95,7 @@ add_executable(fantasy-studio-gui
 target_link_libraries(fantasy-studio-gui PRIVATE
     fantasy-studio-project
     fantasy-map-core
+    fantasy-asset-registry
     fantasy-imgui
     SDL3::SDL3
 )
@@ -129,10 +136,25 @@ target_compile_definitions(fantasy-editor-operations-tests PRIVATE
     FANTASY_REPO_ROOT="${CMAKE_CURRENT_SOURCE_DIR}/.."
 )
 
+add_executable(fantasy-asset-registry-tests
+    ../Shared/Assets/LegacyAssetRegistryTests.cpp
+)
+target_include_directories(fantasy-asset-registry-tests PRIVATE
+    ${CMAKE_CURRENT_SOURCE_DIR}
+    ${CMAKE_CURRENT_SOURCE_DIR}/..
+)
+target_link_libraries(fantasy-asset-registry-tests PRIVATE fantasy-asset-registry)
+if(MSVC)
+    target_compile_options(fantasy-asset-registry-tests PRIVATE /W4 /permissive-)
+else()
+    target_compile_options(fantasy-asset-registry-tests PRIVATE -Wall -Wextra -Wpedantic)
+endif()
+
 enable_testing()
 add_test(NAME fantasy-studio-project-tests COMMAND fantasy-studio-project-tests)
 add_test(NAME fantasy-map-core-tests COMMAND fantasy-map-core-tests)
 add_test(NAME fantasy-editor-operations-tests COMMAND fantasy-editor-operations-tests)
+add_test(NAME fantasy-asset-registry-tests COMMAND fantasy-asset-registry-tests)
 add_test(
     NAME fantasy-studio-open-project
     COMMAND fantasy-studio --open-project "${CMAKE_CURRENT_SOURCE_DIR}/.."
