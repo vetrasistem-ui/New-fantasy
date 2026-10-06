@@ -1,8 +1,8 @@
-# F05.5 — Inventário do pack legado 10.98
+# F05.5 — Inventário do pack 10.98
 
 Status: **SOURCE PACK RECEIVED / COMPATIBILITY REVIEWED**
 
-Este registro documenta os arquivos fornecidos pelo usuário para a futura F05.5 (Legacy Asset Bridge + OTBM → FMAP). Os binários não são adicionados ao repositório; permanecem fornecidos localmente.
+Este registro documenta os arquivos fornecidos pelo usuário para a homologação TFS 1.4.2 / 10.98. Os binários não são adicionados ao repositório; permanecem fornecidos localmente.
 
 ## Arquivos recebidos
 
@@ -27,15 +27,15 @@ O header do DAT indica um conjunto maior/customizado que o par `1098_semtranspar
   - tamanho: 53,704,504 bytes
   - SHA-256: `e298ed36554bbcc8ff256c61396eb761e7e170ae7e0feb81d041e9a445cbf90c`
   - metadata detectada: `Saved with Remere's Map Editor 3.5`
-  - OTBM map version detectada: 2
-  - item major version detectada: 3
-  - item minor/client id detectado: 57
+  - OTBM map version detectada: `2` no header, correspondente a OTBM v3 na nomenclatura do editor
+  - item major version detectada: `3`
+  - item minor/client id detectado: `57`
 - `mapa/map-house.xml`
   - tamanho: 14,603 bytes
 - `mapa/map-spawn.xml`
   - tamanho: 804,966 bytes
 
-A combinação `item major=3 / minor=57` coincide com a definição de client `10.98` no `clients.xml` do RME 3.5 fornecido no pack mapper.
+A combinação `item major=3 / minor=57` coincide com a definição de client `10.98` no `clients.xml` de referência.
 
 ### OTB customizado fornecido separadamente
 
@@ -78,6 +78,17 @@ Os dois pares DAT/SPR são diferentes. O perfil F05.5 não deve combinar DAT de 
 - útil como ferramenta/oráculo para inspeção de OTB;
 - não entra no core do Fantasy.
 
+## Referência adicional: BlackTek MapEditor
+
+A auditoria de 2026-10-06 adicionou como principal referência comportamental:
+
+```text
+Black-Tek/BlackTek-MapEditor
+d429c7a4334774983c652bf21764edb396a03c02
+```
+
+Ele confirma um perfil 10.98 com OTBM v3, DAT/SPR/OTB, houses/spawns e ferramentas de edição próximas do que precisamos. O código permanece REFERENCE ONLY por enquanto; ver `docs/BLACKTEK-MAPEDITOR-1098-AUDIT.md`.
+
 ## Decisão operacional para a F05.5
 
 Primeiro perfil a validar:
@@ -89,29 +100,35 @@ Spawns:   map-spawn.xml
 DAT:      1098(2)/Tibia.dat
 SPR:      1098(2)/Tibia.spr
 OTB:      items(1).otb
-Referência visual/metadata: RME 3.5 do pack_mapper
+Referências: BlackTek MapEditor + RME 3.5
+Runtime hard gate: TFS 1.4.2 vanilla
 ```
 
 Esse conjunto é **candidato**, não congelado. O perfil só será marcado como canônico após:
 
 1. abrir o mapa com o conjunto completo sem erro de versão;
 2. confirmar visualmente que ground/borders/objects correspondem ao esperado;
-3. verificar que não há IDs fora do catálogo OTB/DAT;
+3. verificar que não há IDs fora do catálogo OTB/DAT sem diagnóstico;
 4. comparar com o segundo par `1098_semtransparencia` quando necessário;
-5. registrar o conjunto escolhido por hashes exatos.
+5. registrar o conjunto escolhido por hashes exatos;
+6. salvar um OTBM de teste e carregá-lo no TFS 1.4.2 vanilla.
 
-## Regra de migração
+## Regra atual de uso
 
-O Fantasy não altera os arquivos originais. A sequência será:
+O Fantasy não altera os arquivos originais durante inspeção. A sequência alvo agora é:
 
 ```text
 OTBM + DAT/SPR/OTB 10.98
           ↓
-Legacy Asset Bridge + OTBM Importer
+Fantasy readers + asset registry
           ↓
-FMAP + Fantasy Asset Registry
+Fantasy Studio V5
+          ↓ edit / Save As
+OTBM v3 + houses/spawns
           ↓
-Fantasy Studio / Fantasy Client
+TFS 1.4.2
+          ↓
+Client 10.98
 ```
 
-Após a conversão, o FMAP passa a ser a fonte nativa do mapa. OTBM e os binários 10.98 permanecem como origem/importação e referência de compatibilidade.
+FMAP não é requisito desta homologação. A implementação FMAP existente fica preservada como experimento anterior e pode ser reutilizada no futuro, mas não substitui OTBM no gate atual.
