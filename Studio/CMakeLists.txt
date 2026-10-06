@@ -51,7 +51,13 @@ add_library(fantasy-asset-registry
     ../Shared/Assets/Legacy/OtbReader.cpp
 )
 
-foreach(target fantasy-studio-project fantasy-map-core fantasy-asset-registry)
+# OTBM stays isolated from the native map core. It produces only the neutral
+# LegacyMapImportModel and never mutates MapDocument directly.
+add_library(fantasy-legacy-import
+    ../Shared/Formats/Legacy/OtbmReader.cpp
+)
+
+foreach(target fantasy-studio-project fantasy-map-core fantasy-asset-registry fantasy-legacy-import)
     target_include_directories(${target} PUBLIC
         ${CMAKE_CURRENT_SOURCE_DIR}
         ${CMAKE_CURRENT_SOURCE_DIR}/..
@@ -125,7 +131,7 @@ target_include_directories(fantasy-legacy-inspect PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}
     ${CMAKE_CURRENT_SOURCE_DIR}/..
 )
-target_link_libraries(fantasy-legacy-inspect PRIVATE fantasy-asset-registry)
+target_link_libraries(fantasy-legacy-inspect PRIVATE fantasy-asset-registry fantasy-legacy-import)
 if(MSVC)
     target_compile_options(fantasy-legacy-inspect PRIVATE /W4 /permissive-)
 else()
@@ -174,7 +180,16 @@ target_include_directories(fantasy-legacy-binary-readers-tests PRIVATE
 )
 target_link_libraries(fantasy-legacy-binary-readers-tests PRIVATE fantasy-asset-registry)
 
-foreach(target fantasy-asset-registry-tests fantasy-legacy-binary-readers-tests)
+add_executable(fantasy-otbm-reader-tests
+    ../Shared/Formats/Legacy/OtbmReaderTests.cpp
+)
+target_include_directories(fantasy-otbm-reader-tests PRIVATE
+    ${CMAKE_CURRENT_SOURCE_DIR}
+    ${CMAKE_CURRENT_SOURCE_DIR}/..
+)
+target_link_libraries(fantasy-otbm-reader-tests PRIVATE fantasy-legacy-import)
+
+foreach(target fantasy-asset-registry-tests fantasy-legacy-binary-readers-tests fantasy-otbm-reader-tests)
     if(MSVC)
         target_compile_options(${target} PRIVATE /W4 /permissive-)
     else()
@@ -188,6 +203,7 @@ add_test(NAME fantasy-map-core-tests COMMAND fantasy-map-core-tests)
 add_test(NAME fantasy-editor-operations-tests COMMAND fantasy-editor-operations-tests)
 add_test(NAME fantasy-asset-registry-tests COMMAND fantasy-asset-registry-tests)
 add_test(NAME fantasy-legacy-binary-readers-tests COMMAND fantasy-legacy-binary-readers-tests)
+add_test(NAME fantasy-otbm-reader-tests COMMAND fantasy-otbm-reader-tests)
 add_test(
     NAME fantasy-studio-open-project
     COMMAND fantasy-studio --open-project "${CMAKE_CURRENT_SOURCE_DIR}/.."

@@ -24,6 +24,7 @@ struct LegacyImportedTile {
     std::optional<std::uint32_t> groundServerId;
     std::vector<LegacyImportedItem> items;
     std::optional<std::uint32_t> houseId;
+    std::unordered_map<std::string, std::string> attributes;
 };
 
 struct LegacyImportedTown {
