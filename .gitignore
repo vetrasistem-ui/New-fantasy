@@ -51,6 +51,13 @@ temp/
 # Local upstream homologation clones
 .upstream/
 
+# Local third-party legacy packs used only by compatibility/import work
+Game/Assets/Legacy/*
+!Game/Assets/Legacy/README.md
+!Game/Assets/Legacy/*.example.json
+Game/Imports/Legacy/*
+!Game/Imports/Legacy/README.md
+
 # OS
 .DS_Store
 Thumbs.db

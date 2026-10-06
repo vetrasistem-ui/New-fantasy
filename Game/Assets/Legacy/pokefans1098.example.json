@@ -1,0 +1,16 @@
+{
+  "schemaVersion": 1,
+  "id": "pokefans1098",
+  "family": "PokeFans",
+  "clientVersion": "10.98",
+  "assets": {
+    "dat": "Game/Assets/Legacy/PokeFans1098/Tibia.dat",
+    "spr": "Game/Assets/Legacy/PokeFans1098/Tibia.spr",
+    "otb": "Game/Assets/Legacy/PokeFans1098/items.otb"
+  },
+  "map": {
+    "otbm": "Game/Imports/Legacy/PokeFans1098/global_dash.otbm",
+    "houses": "Game/Imports/Legacy/PokeFans1098/map-house.xml",
+    "spawns": "Game/Imports/Legacy/PokeFans1098/map-spawn.xml"
+  }
+}

@@ -42,7 +42,22 @@ add_library(fantasy-map-core
     MapEngine/EditorOperations.cpp
 )
 
-foreach(target fantasy-studio-project fantasy-map-core)
+# F05.5 neutral asset contract plus isolated legacy binary readers. The readers
+# feed the shared registry; no DAT/SPR/OTB type leaks into FMAP/MapDocument.
+add_library(fantasy-asset-registry
+    ../Shared/Assets/LegacyAssetRegistry.cpp
+    ../Shared/Assets/Legacy/DatReader.cpp
+    ../Shared/Assets/Legacy/SprReader.cpp
+    ../Shared/Assets/Legacy/OtbReader.cpp
+)
+
+# OTBM stays isolated from the native map core. It produces only the neutral
+# LegacyMapImportModel and never mutates MapDocument directly.
+add_library(fantasy-legacy-import
+    ../Shared/Formats/Legacy/OtbmReader.cpp
+)
+
+foreach(target fantasy-studio-project fantasy-map-core fantasy-asset-registry fantasy-legacy-import)
     target_include_directories(${target} PUBLIC
         ${CMAKE_CURRENT_SOURCE_DIR}
         ${CMAKE_CURRENT_SOURCE_DIR}/..
@@ -89,9 +104,13 @@ add_executable(fantasy-studio-gui
 target_link_libraries(fantasy-studio-gui PRIVATE
     fantasy-studio-project
     fantasy-map-core
+    fantasy-asset-registry
     fantasy-imgui
     SDL3::SDL3
 )
+# Give users a product-facing executable instead of an internal target name.
+# The CMake target stays stable so existing build/test wiring does not change.
+set_target_properties(fantasy-studio-gui PROPERTIES OUTPUT_NAME "FantasyStudio")
 if(WIN32)
     target_link_libraries(fantasy-studio-gui PRIVATE dwmapi)
 endif()
@@ -104,6 +123,20 @@ add_custom_target(fantasy-studio-presentation
         "$<TARGET_FILE_DIR:fantasy-studio-gui>/StudioVisual"
 )
 add_dependencies(fantasy-studio-gui fantasy-studio-presentation)
+
+add_executable(fantasy-legacy-inspect
+    ../Tools/LegacyInspect/main.cpp
+)
+target_include_directories(fantasy-legacy-inspect PRIVATE
+    ${CMAKE_CURRENT_SOURCE_DIR}
+    ${CMAKE_CURRENT_SOURCE_DIR}/..
+)
+target_link_libraries(fantasy-legacy-inspect PRIVATE fantasy-asset-registry fantasy-legacy-import)
+if(MSVC)
+    target_compile_options(fantasy-legacy-inspect PRIVATE /W4 /permissive-)
+else()
+    target_compile_options(fantasy-legacy-inspect PRIVATE -Wall -Wextra -Wpedantic)
+endif()
 
 add_executable(fantasy-studio-project-tests
     Project/ProjectManagerTests.cpp
@@ -129,10 +162,48 @@ target_compile_definitions(fantasy-editor-operations-tests PRIVATE
     FANTASY_REPO_ROOT="${CMAKE_CURRENT_SOURCE_DIR}/.."
 )
 
+add_executable(fantasy-asset-registry-tests
+    ../Shared/Assets/LegacyAssetRegistryTests.cpp
+)
+target_include_directories(fantasy-asset-registry-tests PRIVATE
+    ${CMAKE_CURRENT_SOURCE_DIR}
+    ${CMAKE_CURRENT_SOURCE_DIR}/..
+)
+target_link_libraries(fantasy-asset-registry-tests PRIVATE fantasy-asset-registry)
+
+add_executable(fantasy-legacy-binary-readers-tests
+    ../Shared/Assets/Legacy/LegacyBinaryReadersTests.cpp
+)
+target_include_directories(fantasy-legacy-binary-readers-tests PRIVATE
+    ${CMAKE_CURRENT_SOURCE_DIR}
+    ${CMAKE_CURRENT_SOURCE_DIR}/..
+)
+target_link_libraries(fantasy-legacy-binary-readers-tests PRIVATE fantasy-asset-registry)
+
+add_executable(fantasy-otbm-reader-tests
+    ../Shared/Formats/Legacy/OtbmReaderTests.cpp
+)
+target_include_directories(fantasy-otbm-reader-tests PRIVATE
+    ${CMAKE_CURRENT_SOURCE_DIR}
+    ${CMAKE_CURRENT_SOURCE_DIR}/..
+)
+target_link_libraries(fantasy-otbm-reader-tests PRIVATE fantasy-legacy-import)
+
+foreach(target fantasy-asset-registry-tests fantasy-legacy-binary-readers-tests fantasy-otbm-reader-tests)
+    if(MSVC)
+        target_compile_options(${target} PRIVATE /W4 /permissive-)
+    else()
+        target_compile_options(${target} PRIVATE -Wall -Wextra -Wpedantic)
+    endif()
+endforeach()
+
 enable_testing()
 add_test(NAME fantasy-studio-project-tests COMMAND fantasy-studio-project-tests)
 add_test(NAME fantasy-map-core-tests COMMAND fantasy-map-core-tests)
 add_test(NAME fantasy-editor-operations-tests COMMAND fantasy-editor-operations-tests)
+add_test(NAME fantasy-asset-registry-tests COMMAND fantasy-asset-registry-tests)
+add_test(NAME fantasy-legacy-binary-readers-tests COMMAND fantasy-legacy-binary-readers-tests)
+add_test(NAME fantasy-otbm-reader-tests COMMAND fantasy-otbm-reader-tests)
 add_test(
     NAME fantasy-studio-open-project
     COMMAND fantasy-studio --open-project "${CMAKE_CURRENT_SOURCE_DIR}/.."
