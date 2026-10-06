@@ -1,6 +1,6 @@
-# CODEX — F05.5 PokeFans 10.98 / OTBM + Real Sprites
+# CODEX — F05.5 TFS 1.4.2 / PokeFans 10.98 Map Engine Homologation
 
-Status: **READY TO EXECUTE LOCALLY**
+Status: **READY TO EXECUTE LOCALLY / REALIGNED**
 
 Branch:
 
@@ -10,20 +10,47 @@ feature/f05.5-pokefans-1098
 
 ## Missão
 
-Conectar o pack local PokeFans 10.98 ao Fantasy Studio V5 e chegar ao primeiro mapa OTBM grande renderizado com sprites reais.
+Homologar o Fantasy Studio V5 como editor real para **TFS 1.4.2 / protocolo 10.98**.
+
+O resultado desta fase deve provar:
+
+```text
+OTBM 10.98 real
+   ↓ open/render/edit/save
+Fantasy Studio V5
+   ↓
+OTBM v3 gerado + houses/spawns
+   ↓
+TFS 1.4.2 vanilla
+   ↓
+Client 10.98
+```
 
 Não iniciar F06.
 
+## Fontes de verdade
+
+1. Runtime: `otland/forgottenserver@31d6e85de2a86fb3f0e36c63509fba75b855b8bd`
+2. Map Editor behavior oracle: `Black-Tek/BlackTek-MapEditor@d429c7a4334774983c652bf21764edb396a03c02`
+3. RME 3.7: referência secundária.
+4. Documentos locais:
+   - `docs/BLACKTEK-MAPEDITOR-1098-AUDIT.md`
+   - `docs/F05.5-LEGACY-ASSET-BRIDGE.md`
+   - `docs/UPSTREAMS.md`
+   - `AGENTS.md`
+
 ## Restrições permanentes
 
-- não copiar código de RME/TFS/PokeFans para o core;
-- não versionar DAT/SPR/OTB/OTBM binários;
-- não salvar por cima do OTBM de origem;
-- não colocar parser legado em `MapDocument`, FMAP, Server ou Protocol;
-- não criar segundo modelo nativo de mapa;
-- SDL3 + SDL_Renderer3 + Dear ImGui continuam obrigatórios;
-- caminhos locais devem ser resolvidos por profile/config relativo, nunca persistidos como absolutos;
-- qualquer item/atributo não suportado deve aparecer em diagnóstico; não descartar silenciosamente.
+- Crystal/15.24 está fora do projeto.
+- Não copiar código BlackTek/RME para o core.
+- Não versionar DAT/SPR/OTB/OTBM de terceiros sem autorização.
+- Não sobrescrever o OTBM source durante inspeção/desenvolvimento.
+- Não introduzir Zone TOML/Zone IDs, OTBM attribute-map 128 ou live-map protocol no primeiro gate.
+- SDL3 + SDL_Renderer3 + Dear ImGui continuam obrigatórios para o Studio V5.
+- Paths persistidos devem ser relativos.
+- Unknown/unsupported nunca pode ser descartado silenciosamente.
+- O TFS 1.4.2 vanilla decide se o OTBM salvo é compatível.
+- FMAP não é requisito desta fase; não converter OTBM para FMAP para cumprir o gate.
 
 ## C00 — sincronização e baseline
 
@@ -36,213 +63,257 @@ git rev-parse HEAD
 ./scripts/build-native.ps1 -Configuration Release
 ```
 
-Registrar SHA inicial e confirmar regressões verdes antes de tocar no bridge.
+Registrar SHA inicial e regressões existentes.
 
-## C01 — descobrir o pack real, sem alterar arquivos
+## C01 — pack 10.98 exato
 
-Localizar os arquivos fornecidos pelo owner. Esperado encontrar equivalentes a:
+Localizar e hash:
 
 ```text
-global_dash.otbm
 Tibia.dat
 Tibia.spr
 items.otb
-map-house.xml
-map-spawn.xml
+*.otbm
+*-house.xml
+*-spawn.xml
 ```
 
-Há mais de um DAT/SPR/OTB no material local. NÃO misturar conjuntos.
+Usar somente um conjunto coerente. Registrar tamanho, SHA-256 e signatures.
 
-Para cada candidato registrar:
+## C02 — differential asset readers
 
-- caminho relativo/local de trabalho;
-- tamanho;
-- SHA-256;
-- versão/signature observável;
-- qual OTB foi usado com o mapa no RME de referência.
+Validar readers próprios existentes:
 
-Manter o source pack original somente leitura quando possível.
+- `DatReader`
+- `SprReader`
+- `OtbReader`
+- `LegacyAssetRegistry`
 
-O mapa conhecido apresentou compatibilidade 10.98 / OTB item major 3 minor 57 durante a inspeção anterior. Revalidar no arquivo real; não assumir somente pelo nome da pasta.
-
-## C02 — profile explícito
-
-Usar `Shared/Assets/LegacyAssetRegistry.*` como contrato inicial.
-
-Criar carregamento de profile/config para:
+Fluxo:
 
 ```text
-id: pokefans1098
-family: PokeFans
-clientVersion: 10.98
-datPath
-sprPath
-otbPath
-mapPath
-housesPath (opcional)
-spawnsPath (opcional)
+OTB serverId -> clientId
+DAT clientId -> appearance/frame/sprite ids
+SPR sprite id -> pixels
 ```
 
-O profile deve aceitar nomes físicos diferentes.
+Comparar amostras e contagens contra o comportamento observado no BlackTek MapEditor.
 
-Falhar claramente se DAT/SPR/OTB estiver faltando ou se o path fugir da política esperada.
+Diagnosticar:
 
-## C03 — SPR 10.98
+- OTB sem DAT;
+- DAT sem sprite;
+- sprite inválida;
+- duplicatas;
+- signatures incompatíveis.
 
-Implementar reader isolado, com testes.
+## C03 — differential OTBM reader
 
-Requisitos:
+Usar `OtbmReader` existente e ampliar somente onde necessário.
 
-- validar signature/header observável;
-- indexar sprites sem decodificar tudo antecipadamente;
-- decodificar uma sprite por id para RGBA;
-- bounds checks rigorosos;
-- erro determinístico para id inválido/truncado;
-- fixture mínima e legalmente segura criada pelo teste, sem copiar sprite de terceiros para Git.
-
-Não integrar UI antes dos testes do reader passarem.
-
-## C04 — DAT + OTB
-
-Implementar metadata readers/mapping isolados.
-
-Produzir registros equivalentes a:
-
-```text
-serverId -> clientId -> sprite ids / appearance metadata
-```
-
-Popular `FantasyAssetRegistry`.
-
-Para itens sem alias Fantasy amigável usar:
-
-```text
-legacy.pokefans1098.item.<serverId>
-```
-
-Gerar relatório:
-
-- total de entries OTB;
-- total mapeado para DAT;
-- client IDs ausentes;
-- sprite IDs inválidos;
-- duplicatas/conflitos.
-
-## C05 — textura/cache no Studio
-
-Criar adaptador de apresentação separado do registry de domínio.
-
-Requisitos:
-
-- SDL_Renderer3 textures;
-- lazy load/cache;
-- liberação determinística de textura;
-- placeholder seguro para asset ausente;
-- não guardar `SDL_Texture*` dentro de FMAP/MapDocument/registry persistente.
-
-Primeiro gate visual: renderizar um pequeno conjunto conhecido de ground/object real dentro de Items & Assets.
-
-## C06 — OTBM parser para modelo neutro
-
-Implementar parser OTBM somente na camada legado/import.
-
-Saída obrigatória:
-
-```text
-LegacyMapImportModel
-```
-
-Não mutar `MapDocument` durante parsing.
-
-Preservar no modelo, quando presentes:
+Comparar, para o mesmo mapa:
 
 - width/height;
-- x/y/z;
-- ground/item server ids;
-- item attributes reconhecidos;
+- OTBM header/version;
+- floors;
+- tile count;
+- item count;
+- server ids;
+- tile flags;
+- houses;
+- towns;
+- waypoints;
+- attributes;
+- external house/spawn filenames.
+
+A referência de comportamento é BlackTek/RME, mas a compatibilidade final é TFS 1.4.2.
+
+## C04 — houses e spawns
+
+Implementar/levar ao modelo de trabalho:
+
+- `map-house.xml`;
+- `map-spawn.xml`;
+- house ids;
+- house tiles;
+- house exits quando aplicável;
 - towns/temple positions;
-- house ids/entry metadata;
-- external houses XML;
-- external spawns XML;
-- textos/action/unique IDs e demais atributos relevantes quando encontrados.
+- spawn centers/radius;
+- monsters/NPCs e direção/spawntime quando presentes.
 
-Se algo não for suportado, registrar warning/diagnóstico com contagem e contexto.
+Unknown XML fields devem entrar em diagnostics.
 
-## C07 — abrir `global_dash.otbm`
+## C05 — render 10.98 real no Studio V5
 
-Abrir o mapa real local com o profile exato.
+Integrar asset registry ao renderer sem alterar a identidade visual V5.
 
-Antes:
+Requisitos:
 
-```powershell
-Get-FileHash <map> -Algorithm SHA256
-```
+- lazy sprite decoding/cache;
+- SDL_Renderer3 textures;
+- stack order correto;
+- ground/borders/objects reais;
+- floor navigation;
+- XYZ;
+- minimap;
+- picker/inspector exibindo serverId/clientId/metadata relevantes;
+- placeholder determinístico para asset ausente.
 
-Depois da sessão repetir o hash. Deve ser idêntico.
+Não colocar `SDL_Texture*` em modelos persistentes.
 
-Produzir relatório determinístico:
+## C06 — ferramentas sobre mapa real
 
-```text
-map dimensions
-floors observados
-tiles
-items
-unique server ids
-unknown server ids
-towns
-houses
-spawns
-unsupported attributes
-```
-
-Não tente ainda converter tudo para FMAP se a leitura não estiver loss-aware.
-
-## C08 — mapa real no Studio
-
-Adicionar modo/entrada explícita de compatibilidade legado no Studio, sem mudar a identidade V5.
-
-Objetivo visual:
-
-- viewport mostra o OTBM real;
-- grounds/borders/objects usam sprites reais;
-- floors e coordenadas funcionam;
-- Minimap usa o mapa importado;
-- seleção/picker identifica item/ground legado e semantic key bootstrap;
-- Items & Assets mostra sprites reais resolvidos pelo mesmo registry.
-
-O mapa aberto pode permanecer em modelo de import temporário durante este gate. Não fingir que já é FMAP.
-
-## C09 — edição mínima sobre o mapa real
-
-Depois do render correto, conectar somente ferramentas essenciais já existentes/contratadas:
+Implementar/homologar progressivamente:
 
 - Select/Picker;
-- preview de brush;
-- Paint simples;
-- Object placement simples;
-- Undo/Redo por operação.
+- raw/object placement;
+- ground paint;
+- Erase;
+- brush footprint preview;
+- square/circle sizes;
+- copy/paste;
+- Undo/Redo por gesto;
+- floors;
+- minimap navigation.
 
-A edição que será persistida precisa passar pelo core Fantasy/conversão controlada. Não salvar OTBM original.
+Autoborder/autowall só entra quando as regras 10.98 estiverem comparadas contra BlackTek/RME e cobertas por teste.
 
-## C10 — conversão para FMAP
+## C07 — writer OTBM v3 próprio
 
-Criar conversor separado:
+Criar writer próprio para o subconjunto aceito pelo TFS 1.4.2.
+
+Primeiro escopo permitido:
+
+- identifier OTBM;
+- header version 2 (OTBM v3 na nomenclatura do editor);
+- width/height;
+- item major/minor compatíveis;
+- MAP_DATA;
+- DESCRIPTION;
+- EXT_SPAWN_FILE;
+- EXT_HOUSE_FILE;
+- TILE_AREA;
+- TILE/HOUSETILE;
+- TILE_FLAGS;
+- compact item e item nodes;
+- atributos padrão necessários;
+- TOWNS;
+- WAYPOINTS quando presentes.
+
+Não emitir no primeiro gate:
+
+- attribute-map 128;
+- Zone IDs/TOML;
+- nodes custom BlackTek;
+- atributos desconhecidos inventados.
+
+## C08 — writer houses/spawns
+
+Gerar XML auxiliar compatível com TFS 1.4.2 e manter nomes relativos ao mapa.
+
+Não sobrescrever source; salvar em pasta/output de teste.
+
+## C09 — Save/Reopen Fantasy
+
+Executar roundtrip:
 
 ```text
-LegacyMapImportModel -> FMAP/MapDocument
+source OTBM
+   ↓
+open
+   ↓
+edit determinístico
+   ↓
+save as novo OTBM
+   ↓
+reopen no Fantasy
 ```
 
-Características:
+Comparar semanticamente:
 
-- transacional;
-- diagnóstico de perdas;
-- unknown IDs preservados por bootstrap semantic keys;
-- sem caminhos físicos/sprite offsets no FMAP;
-- Save/Reopen semanticamente estável.
+- posições;
+- floors;
+- item ids/order;
+- tile flags;
+- houses;
+- towns;
+- waypoints;
+- spawn/house references;
+- atributos suportados.
 
-Se o FMAP atual não comportar algum dado essencial de houses/spawns/attrs, parar e propor extensão versionada antes de descartar informação.
+## C10 — BlackTek/RME comparison
 
-## C11 — fechamento
+Abrir o OTBM gerado no BlackTek/RME para verificação visual e estrutural.
+
+Isso é comparação, não gate final.
+
+Registrar qualquer diferença.
+
+## C11 — TFS 1.4.2 hard gate
+
+Compilar/executar TFS 1.4.2 pinado e apontar para o mapa gerado.
+
+O gate falha se o TFS reportar:
+
+- unknown OTBM version;
+- unknown node;
+- unknown header/tile/item attribute;
+- incompatible items.otb;
+- house/spawn inválido essencial;
+- crash/assert;
+- corrupção de mapa.
+
+TFS load limpo é obrigatório.
+
+## C12 — Client 10.98 play gate
+
+Conectar cliente 10.98 ao TFS 1.4.2 real:
+
+- login;
+- character list quando aplicável;
+- enter world;
+- render do mapa editado;
+- movimento;
+- reconnect;
+- disconnect/shutdown limpos.
+
+## C13 — edição de homologação
+
+No mapa real executar pelo menos:
+
+1. selecionar tile/item;
+2. pintar ground;
+3. colocar object;
+4. apagar;
+5. Undo;
+6. Redo;
+7. Save As;
+8. reabrir;
+9. carregar no TFS;
+10. entrar pelo client 10.98.
+
+O resultado precisa sobreviver de ponta a ponta.
+
+## C14 — evidência e fechamento
+
+Registrar:
+
+```text
+docs/evidence/F05.5/
+```
+
+com:
+
+- SHA inicial/final;
+- hashes do source pack;
+- versões/signatures;
+- contagens DAT/SPR/OTB/OTBM;
+- diagnostics;
+- screenshots Studio;
+- logs de TFS load;
+- evidência Client 10.98;
+- matriz de preservação de atributos;
+- confirmação de que source original permaneceu intacto.
 
 Rodar:
 
@@ -252,39 +323,20 @@ git diff --check
 git status --short
 ```
 
-Capturar evidência real do Windows:
+## PASS
 
-```text
-docs/evidence/F05.5/pokefans-map-real.png
-docs/evidence/F05.5/pokefans-items-assets.png
-docs/evidence/F05.5/import-report.md
-```
+F05.5 somente pode ser marcada PASS quando:
 
-Gate mínimo para declarar primeiro milestone PASS:
+- readers reais 10.98 passam;
+- mapa real abre e renderiza;
+- edição + Undo/Redo funcionam;
+- writer OTBM v3 funciona;
+- Save/Reopen Fantasy passa;
+- BlackTek/RME consegue abrir para comparação;
+- **TFS 1.4.2 vanilla carrega o mapa salvo**;
+- **Client 10.98 entra e movimenta no mapa salvo**;
+- nenhuma extensão BlackTek é requisito oculto;
+- nenhum binário de terceiros foi commitado sem autorização;
+- F06 permanece NOT STARTED.
 
-- source hashes preservados;
-- DAT/SPR/OTB exatos validados;
-- OTBM abre sem crash;
-- mapa grande aparece no Studio;
-- ground/border/object real aparece com sprite correto;
-- unknowns são reportados;
-- build/testes anteriores continuam verdes;
-- nenhum binário legado foi commitado;
-- F06 continua NOT STARTED.
-
-## Relatório final do Codex
-
-Entregar:
-
-- SHA inicial/final;
-- hashes do source pack usado;
-- files/classes criados;
-- contagens do mapa;
-- contagem de assets resolvidos/desconhecidos;
-- build/testes;
-- screenshots;
-- diferenças ainda não suportadas;
-- confirmação de source OTBM inalterado;
-- confirmação de que F06 não iniciou.
-
-Continue sozinho até o limite em que uma decisão de schema/semântica ou aprovação visual do owner seja realmente necessária.
+Continue sozinho até um bloqueio real de ambiente local, incompatibilidade de dados ou decisão do owner. Não trocar a arquitetura por conveniência.
