@@ -1,6 +1,15 @@
-# Codex — Fantasy Studio Visual Foundation Windows Gate
+# Codex — Fantasy Studio Visual Foundation V5 Windows Gate
 
-Status: **V4 WINDOWS VALIDATION / OWNER APPROVAL REQUIRED**
+Status: **V5 TECHNICAL VALIDATION PASS / OWNER VISUAL ACCEPTANCE PENDING**
+
+V5 baseline SHA: `b534ab9a9faf61cda9afc0fcd7189a198fc64d12`.
+
+The owner rejected V4 on `2026-10-06`: **V4 TECHNICAL PASS / VISUAL FAIL**.
+Preserved evidence is in `docs/evidence/STUDIO-VISUAL/RESULT-V4.md` and the
+unchanged V4 screenshots. Do not treat those checks as V5 validation.
+The owner also rejected the first V5 composition. Its six real captures remain
+in `docs/evidence/STUDIO-VISUAL/V5-FIRST-PASS/`; the current result evaluates
+the subsequent proportions, artwork and compact library revision.
 
 Target branch:
 
@@ -14,7 +23,9 @@ Visual reference:
 docs/STUDIO-VISUAL-TARGET-V1.md
 ```
 
-Do not start OTBM/DAT/SPR integration or F06 during this gate. The goal is to accept the Studio shell first.
+Do not start F05.5, F06, OTBM/DAT/SPR/OTB integration, real sprites or new core
+features during this gate. Keep SDL3 + SDL_Renderer3 + Dear ImGui and the
+existing MapDocument / EditorOperations / FMAP / Server / Protocol / Client core.
 
 ## V00 — Sync and freeze baseline
 
@@ -31,13 +42,17 @@ Expected: clean working tree before validation. Record the exact SHA in:
 docs/evidence/STUDIO-VISUAL/RESULT.md
 ```
 
+Do not discard unrelated changes or synchronize over an in-progress rebuild.
+
 ## V01 — Full native Release regression
 
 ```powershell
 ./scripts/build-native.ps1 -Configuration Release
 ```
 
-This must compile Studio, Server and Client and run the existing tests. Do not bypass failures.
+This must compile Studio, Server and Client and run all existing tests and
+validators. Correct relevant warnings/errors. Record observed V5 counts and
+results; do not bypass failures or reuse V4 checks as V5 proof.
 
 ## V02 — One-command Studio launch
 
@@ -61,32 +76,44 @@ Required launch behavior:
 - no renderer error;
 - SDL_Renderer3 remains the baseline;
 - initial page is Home;
-- the executable is the V4 visual target `Studio/UI/StudioAppV4.cpp`, wired by `Studio/CMakeLists.txt`;
+- the executable is the V5 visual target `Studio/UI/StudioAppV5.cpp`, wired by `Studio/CMakeLists.txt`;
 - UI typography is a neutral system font, never the rejected pixel/terminal font;
-- the supplied V4 styleboard is a design reference, not a runtime texture.
+- branding uses Cinzel with the bundled SIL Open Font License 1.1;
+- original hero/emblem resources, Cinzel and its license are copied beside
+  the executable and resolve through relative paths;
+- presentation art is branding, not fake gameplay content; supplied
+  screenshots/crops remain design references, never application textures;
+- no absolute resource or font path is persisted in a project contract.
 
 ## V03 — Home / Project Manager visual gate
 
-Compare Home directly with `docs/STUDIO-VISUAL-TARGET-V1.md` and the approved styleboard.
+Compare Home directly with `docs/STUDIO-VISUAL-TARGET-V1.md`, the approved Home
+image/styleboard and V4's real screenshot. First impression must clearly
+recall the approved reference; palette similarity alone is insufficient.
 
 Confirm:
 
-- dark navy/cyan Fantasy identity;
-- compact topbar with brand, project/module breadcrumb and action grouping;
-- permanent sidebar with clear active-state rail;
-- lightweight hero with `FANTASY STUDIO` identity;
+- deep navy/blue depth, strong faceted emblem and display wordmark;
+- integrated 46 px topbar with Save/Undo/Redo and the right runtime group;
+- stable 188 px sidebar (164 px below 1150 px) without CREATE/RUNTIME headings, coherent icons
+  and strong blue/cyan active selection;
+- rich original illustrated hero with `FANTASY STUDIO` identity;
 - three equal project-action cards;
-- Recent Projects compact rows;
-- project information panel using real FMAP metrics;
-- `Abrir Map Workspace` routes to Map.
+- Recent Projects compact rows using real projects;
+- structured information on the right with actual FMAP preview and metrics;
+- `Abrir Mapa` routes to Map.
+
+No invented project/date/content fills the layout. Reserved project/import
+dialogs retain honest limitations without dominating the presentation.
 
 Capture:
 
 ```text
-docs/evidence/STUDIO-VISUAL/home-v4.png
+docs/evidence/STUDIO-VISUAL/home-v5.png
 ```
 
-Only correct real layout defects, clipping, contrast, hierarchy or ergonomic issues. Do not redesign away from the approved target.
+Correct visual distance as well as clipping, contrast, hierarchy and ergonomic
+defects. Rebuild toward the approved target, not a new unrelated direction.
 
 ## V04 — Navigation gate
 
@@ -110,7 +137,9 @@ Required:
 - no crash;
 - selected module remains obvious;
 - future modules remain honest shells;
-- sidebar does not shift between pages.
+- Home/Map and future modules retain full navigation; Items & Assets switches
+  to the reference's compact icon rail without losing any destination;
+- reserved runtime pages introduce no unintended processes or simulated gameplay.
 
 ## V05 — Map Workspace visual + functional regression
 
@@ -119,11 +148,10 @@ Open `Map` and confirm:
 ```text
 top command bar
 left sidebar
-compact map toolbar
-central viewport as dominant area
-right Inspector
-Minimap
-lower Console
+compact icon-first map toolbar
+dominant initially fitted viewport
+cohesive right Inspector / Minimap column
+discreet full-width lower Console
 ```
 
 Repeat the validated editor operations:
@@ -142,12 +170,20 @@ reopen Studio
 confirm persisted saved state
 ```
 
-Use only `MapDocument` / `EditorOperations`. Restore the canonical development FMAP after intentional test edits when required.
+Confirm four chunks/existing tiles and Fill across chunk boundaries. Semantic
+ground colors must agree with Home previews, Minimap and Assets without
+changing FMAP. Check selection coordinates after fitting/layout changes;
+drawing and hit testing preserve `regionOrigin + chunkOffset + tileLocal`.
+
+Use only `MapDocument` / `EditorOperations`, retaining transactional undo/redo.
+Verify the complete saved state against the expected edits, not only a visible
+marker. After deliberate test edits and normal close, restore the canonical
+development FMAP; do not commit regression-test content.
 
 Capture:
 
 ```text
-docs/evidence/STUDIO-VISUAL/map-v4.png
+docs/evidence/STUDIO-VISUAL/map-v5.png
 ```
 
 ## V06 — Items & Assets visual gate
@@ -155,18 +191,24 @@ docs/evidence/STUDIO-VISUAL/map-v4.png
 Open `Items & Assets` and confirm:
 
 - tabs `Items / Sprites / Textures / Sounds`;
+- 56 px icon navigation rail and 156 px library tree;
 - narrow library tree;
-- wide asset grid;
+- broad compact asset grid with square semantic previews;
 - search field;
-- Grounds / Objects categories;
+- All / Grounds / Objects categories, query filtering and clear selection;
 - semantic cards originate from the real current FMAP;
-- `PokeFans / 10.98` is presented only as the next legacy source;
-- no DAT/SPR pixels are loaded during this visual gate.
+- friendly labels retain real semantic keys in details/tooltips;
+- search by semantic key and translated label, including case and accents;
+- selected key remains available in the footer without an extra right panel;
+- unconnected tabs remain honestly empty;
+- last rows remain reachable by scrolling in smaller windows;
+- no invented equipment catalog, screenshot-derived sprite or DAT/SPR/OTB
+  content is loaded during this visual gate.
 
 Capture:
 
 ```text
-docs/evidence/STUDIO-VISUAL/items-assets-v4.png
+docs/evidence/STUDIO-VISUAL/items-assets-v5.png
 ```
 
 ## V07 — Resolution / layout sanity
@@ -186,6 +228,10 @@ Also resize to a smaller practical desktop window and confirm:
 - Items & Assets tree/grid remain usable;
 - no critical control is clipped permanently.
 
+Record client and capture dimensions actually observed. If the display cannot
+show 1440x900 completely, report that limit instead of inferring an
+exact-resolution PASS from code geometry.
+
 ## V08 — Close / cleanup gate
 
 Close the Studio normally.
@@ -196,6 +242,9 @@ Get-Process fantasy-studio-gui -ErrorAction SilentlyContinue
 
 Expected: no process remains. Also confirm no Server/Client orphan process was introduced by this visual phase.
 
+A later deliberate owner-review launch is recorded separately from the
+successful cleanup check.
+
 ## V09 — Repository integrity
 
 ```powershell
@@ -203,7 +252,14 @@ git status --short
 git diff --check
 ```
 
-Allowed post-validation changes are only intended evidence/docs and reviewed visual fixes. Do not stage build output, local databases, DAT/SPR/OTB/OTBM or absolute-path files.
+Review only intended visual code, docs, original presentation resources,
+Cinzel with its license and real evidence. Exclude build output, logs/caches,
+binaries, local databases, legacy game assets, test-map edits and absolute
+local paths. Preserve all V4 screenshots.
+
+Record genuine full-window captures from the running application. Native
+captures may be encoded as PNG; cropping, compositing or retouching UI pixels
+does not prove actual appearance.
 
 ## V10 — Closeout
 
@@ -214,11 +270,12 @@ docs/evidence/STUDIO-VISUAL/RESULT.md
 docs/STUDIO-VISUAL-FOUNDATION.md
 ```
 
-Mark Visual Foundation `PASS` only after the owner accepts the real V4 screenshots
+Mark Visual Foundation `PASS` only after the owner accepts the real V5 screenshots
 and all of the following gates pass:
 
 ```text
 Release regression PASS
+V5 clearly closer to approved images than V4
 Home visual PASS
 all navigation PASS
 Map functional regression PASS
@@ -230,14 +287,8 @@ screenshots recorded
 working tree clean except intended evidence commit
 ```
 
-After the visual gate is accepted, the next milestone is compatibility with the supplied 10.98 content:
-
-```text
-OTBM + matching DAT/SPR/OTB
-        ↓
-legacy compatibility layer
-        ↓
-real map + real sprites inside Fantasy Studio
-```
-
-Only after that real-map surface is working do we expand the larger editor/tool set.
+Record observed build/test counts, implementation SHA and remaining visual
+differences in RESULT.md. Report local checks as local results; do not imply
+unobserved remote CI success. Technical checks and an agent's comparison do
+not replace owner appearance approval. Until that approval, keep visual
+acceptance pending. F05.5, F06 and legacy integration remain NOT STARTED.

@@ -17,6 +17,7 @@ ImVec4 rgb(int r, int g, int b, int a = 255) {
 
 void applyFantasyStudioTheme(float dpiScale) {
     ImGuiStyle& style = ImGui::GetStyle();
+    style.DisabledAlpha = 0.72f;
 
     // The approved styleboard is compact and tool-oriented. Keep corners subtle so
     // the Studio feels like a professional editor instead of a rounded dashboard.
@@ -62,10 +63,10 @@ void applyFantasyStudioTheme(float dpiScale) {
     // Deep navy hierarchy. The top-level canvas is the darkest layer, then
     // child/panel surfaces step upward slightly to preserve separation without
     // relying on expensive shadows or blur.
-    colors[ImGuiCol_WindowBg] = rgb(17, 24, 39);
-    colors[ImGuiCol_ChildBg] = rgb(13, 23, 38);
+    colors[ImGuiCol_WindowBg] = rgb(4, 16, 28);
+    colors[ImGuiCol_ChildBg] = rgb(5, 19, 32);
     colors[ImGuiCol_PopupBg] = rgb(9, 22, 38, 252);
-    colors[ImGuiCol_Border] = rgb(44, 61, 81);
+    colors[ImGuiCol_Border] = rgb(26, 63, 87);
     colors[ImGuiCol_BorderShadow] = rgb(0, 0, 0, 0);
 
     colors[ImGuiCol_FrameBg] = rgb(11, 29, 49);
@@ -88,8 +89,8 @@ void applyFantasyStudioTheme(float dpiScale) {
 
     // Normal controls are restrained; cyan is reserved for hover/selection so
     // the active hierarchy matches the approved mockup.
-    colors[ImGuiCol_Button] = rgb(30, 41, 59);
-    colors[ImGuiCol_ButtonHovered] = rgb(59, 130, 246, 190);
+    colors[ImGuiCol_Button] = rgb(12, 41, 65);
+    colors[ImGuiCol_ButtonHovered] = rgb(10, 103, 160);
     colors[ImGuiCol_ButtonActive] = rgb(14, 165, 233, 255);
 
     colors[ImGuiCol_Header] = rgb(8, 83, 120, 215);

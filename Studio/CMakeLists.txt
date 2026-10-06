@@ -81,10 +81,9 @@ add_executable(fantasy-studio
 )
 target_link_libraries(fantasy-studio PRIVATE fantasy-studio-project fantasy-map-core)
 
-# Visual Target v1 implementation. V2 is intentionally kept in-tree as a
-# short-lived rollback reference until the Windows visual gate closes.
+# V5 implements the approved visual shell. Earlier revisions remain in Git history.
 add_executable(fantasy-studio-gui
-    UI/StudioAppV4.cpp
+    UI/StudioAppV5.cpp
     UI/StudioTheme.cpp
 )
 target_link_libraries(fantasy-studio-gui PRIVATE
@@ -93,6 +92,18 @@ target_link_libraries(fantasy-studio-gui PRIVATE
     fantasy-imgui
     SDL3::SDL3
 )
+if(WIN32)
+    target_link_libraries(fantasy-studio-gui PRIVATE dwmapi)
+endif()
+
+# Presentation-only resources travel with the executable; no project-root or
+# machine-specific absolute resource path is baked into the Studio.
+add_custom_target(fantasy-studio-presentation
+    COMMAND ${CMAKE_COMMAND} -E copy_directory
+        "${CMAKE_CURRENT_SOURCE_DIR}/UI/Assets"
+        "$<TARGET_FILE_DIR:fantasy-studio-gui>/StudioVisual"
+)
+add_dependencies(fantasy-studio-gui fantasy-studio-presentation)
 
 add_executable(fantasy-studio-project-tests
     Project/ProjectManagerTests.cpp
