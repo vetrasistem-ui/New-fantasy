@@ -42,10 +42,12 @@ add_library(fantasy-map-core
     MapEngine/EditorOperations.cpp
 )
 
-# F05.5 neutral asset contract. Binary DAT/SPR/OTB readers are intentionally
-# kept out of this library and will feed it from the legacy compatibility layer.
+# F05.5 neutral asset contract plus isolated legacy binary readers. The readers
+# feed the shared registry; no DAT/SPR/OTB type leaks into FMAP/MapDocument.
 add_library(fantasy-asset-registry
     ../Shared/Assets/LegacyAssetRegistry.cpp
+    ../Shared/Assets/Legacy/SprReader.cpp
+    ../Shared/Assets/Legacy/OtbReader.cpp
 )
 
 foreach(target fantasy-studio-project fantasy-map-core fantasy-asset-registry)
@@ -112,6 +114,20 @@ add_custom_target(fantasy-studio-presentation
 )
 add_dependencies(fantasy-studio-gui fantasy-studio-presentation)
 
+add_executable(fantasy-legacy-inspect
+    ../Tools/LegacyInspect/main.cpp
+)
+target_include_directories(fantasy-legacy-inspect PRIVATE
+    ${CMAKE_CURRENT_SOURCE_DIR}
+    ${CMAKE_CURRENT_SOURCE_DIR}/..
+)
+target_link_libraries(fantasy-legacy-inspect PRIVATE fantasy-asset-registry)
+if(MSVC)
+    target_compile_options(fantasy-legacy-inspect PRIVATE /W4 /permissive-)
+else()
+    target_compile_options(fantasy-legacy-inspect PRIVATE -Wall -Wextra -Wpedantic)
+endif()
+
 add_executable(fantasy-studio-project-tests
     Project/ProjectManagerTests.cpp
 )
@@ -144,17 +160,30 @@ target_include_directories(fantasy-asset-registry-tests PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/..
 )
 target_link_libraries(fantasy-asset-registry-tests PRIVATE fantasy-asset-registry)
-if(MSVC)
-    target_compile_options(fantasy-asset-registry-tests PRIVATE /W4 /permissive-)
-else()
-    target_compile_options(fantasy-asset-registry-tests PRIVATE -Wall -Wextra -Wpedantic)
-endif()
+
+add_executable(fantasy-legacy-binary-readers-tests
+    ../Shared/Assets/Legacy/LegacyBinaryReadersTests.cpp
+)
+target_include_directories(fantasy-legacy-binary-readers-tests PRIVATE
+    ${CMAKE_CURRENT_SOURCE_DIR}
+    ${CMAKE_CURRENT_SOURCE_DIR}/..
+)
+target_link_libraries(fantasy-legacy-binary-readers-tests PRIVATE fantasy-asset-registry)
+
+foreach(target fantasy-asset-registry-tests fantasy-legacy-binary-readers-tests)
+    if(MSVC)
+        target_compile_options(${target} PRIVATE /W4 /permissive-)
+    else()
+        target_compile_options(${target} PRIVATE -Wall -Wextra -Wpedantic)
+    endif()
+endforeach()
 
 enable_testing()
 add_test(NAME fantasy-studio-project-tests COMMAND fantasy-studio-project-tests)
 add_test(NAME fantasy-map-core-tests COMMAND fantasy-map-core-tests)
 add_test(NAME fantasy-editor-operations-tests COMMAND fantasy-editor-operations-tests)
 add_test(NAME fantasy-asset-registry-tests COMMAND fantasy-asset-registry-tests)
+add_test(NAME fantasy-legacy-binary-readers-tests COMMAND fantasy-legacy-binary-readers-tests)
 add_test(
     NAME fantasy-studio-open-project
     COMMAND fantasy-studio --open-project "${CMAKE_CURRENT_SOURCE_DIR}/.."
