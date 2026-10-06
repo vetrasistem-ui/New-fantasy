@@ -46,6 +46,7 @@ add_library(fantasy-map-core
 # feed the shared registry; no DAT/SPR/OTB type leaks into FMAP/MapDocument.
 add_library(fantasy-asset-registry
     ../Shared/Assets/LegacyAssetRegistry.cpp
+    ../Shared/Assets/Legacy/DatReader.cpp
     ../Shared/Assets/Legacy/SprReader.cpp
     ../Shared/Assets/Legacy/OtbReader.cpp
 )
@@ -101,6 +102,9 @@ target_link_libraries(fantasy-studio-gui PRIVATE
     fantasy-imgui
     SDL3::SDL3
 )
+# Give users a product-facing executable instead of an internal target name.
+# The CMake target stays stable so existing build/test wiring does not change.
+set_target_properties(fantasy-studio-gui PROPERTIES OUTPUT_NAME "FantasyStudio")
 if(WIN32)
     target_link_libraries(fantasy-studio-gui PRIVATE dwmapi)
 endif()

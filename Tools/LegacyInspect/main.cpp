@@ -1,3 +1,4 @@
+#include "Shared/Assets/Legacy/DatReader.hpp"
 #include "Shared/Assets/Legacy/OtbReader.hpp"
 #include "Shared/Assets/Legacy/SprReader.hpp"
 
@@ -12,9 +13,12 @@ namespace {
 
 void printUsage() {
     std::cout << "Usage:\n"
+              << "  fantasy-legacy-inspect --dat <Tibia.dat>\n"
+              << "  fantasy-legacy-inspect --dat <Tibia.dat> --item <client-id>\n"
               << "  fantasy-legacy-inspect --spr <file.spr>\n"
+              << "  fantasy-legacy-inspect --spr <file.spr> --sprite <id>\n"
               << "  fantasy-legacy-inspect --otb <items.otb>\n"
-              << "  fantasy-legacy-inspect --spr <file.spr> --sprite <id>\n";
+              << "  options may be combined to inspect a matching legacy pack\n";
 }
 
 } // namespace
@@ -26,19 +30,66 @@ int main(int argc, char** argv) {
             return 2;
         }
 
+        fs::path datPath;
         fs::path sprPath;
         fs::path otbPath;
+        std::uint32_t itemId = 0;
         std::uint32_t spriteId = 0;
         for (int i = 1; i < argc; ++i) {
             const std::string arg = argv[i];
-            if (arg == "--spr" && i + 1 < argc) {
+            if (arg == "--dat" && i + 1 < argc) {
+                datPath = argv[++i];
+            } else if (arg == "--spr" && i + 1 < argc) {
                 sprPath = argv[++i];
             } else if (arg == "--otb" && i + 1 < argc) {
                 otbPath = argv[++i];
+            } else if (arg == "--item" && i + 1 < argc) {
+                itemId = static_cast<std::uint32_t>(std::stoul(argv[++i]));
             } else if (arg == "--sprite" && i + 1 < argc) {
                 spriteId = static_cast<std::uint32_t>(std::stoul(argv[++i]));
             } else {
                 throw std::runtime_error("Unknown or incomplete argument: " + arg);
+            }
+        }
+
+        if (datPath.empty() && sprPath.empty() && otbPath.empty()) {
+            printUsage();
+            return 2;
+        }
+        if (itemId != 0 && datPath.empty()) {
+            throw std::runtime_error("--item requires --dat");
+        }
+        if (spriteId != 0 && sprPath.empty()) {
+            throw std::runtime_error("--sprite requires --spr");
+        }
+
+        if (!datPath.empty()) {
+            const fantasy::assets::legacy::DatReader1057 dat(datPath);
+            const auto& header = dat.header();
+            std::cout << "DAT signature=0x" << std::hex << header.signature << std::dec
+                      << " item_max_id=" << header.itemMaxId
+                      << " creatures=" << header.creatureCount
+                      << " effects=" << header.effectCount
+                      << " distance_effects=" << header.distanceCount
+                      << " parsed_item_creature_appearances=" << dat.appearances().size()
+                      << '\n';
+
+            if (itemId != 0) {
+                const auto* item = dat.findItem(itemId);
+                if (item == nullptr) {
+                    std::cout << "item=" << itemId << " present=no\n";
+                } else {
+                    std::size_t spriteRefs = 0;
+                    for (const auto& group : item->frameGroups) {
+                        spriteRefs += group.spriteIds.size();
+                    }
+                    std::cout << "item=" << itemId
+                              << " present=yes"
+                              << " raw_flags=" << item->rawFlags.size()
+                              << " frame_groups=" << item->frameGroups.size()
+                              << " sprite_refs=" << spriteRefs
+                              << '\n';
+                }
             }
         }
 

@@ -1,3 +1,4 @@
+#include "Shared/Assets/Legacy/DatReader.hpp"
 #include "Shared/Assets/Legacy/OtbReader.hpp"
 #include "Shared/Assets/Legacy/SprReader.hpp"
 
@@ -10,6 +11,7 @@
 #include <vector>
 
 namespace fs = std::filesystem;
+using fantasy::assets::legacy::DatReader1057;
 using fantasy::assets::legacy::OtbReader;
 using fantasy::assets::legacy::SprReader;
 
@@ -25,6 +27,10 @@ void appendU32(std::vector<std::uint8_t>& out, std::uint32_t value) {
     out.push_back(static_cast<std::uint8_t>((value >> 8U) & 0xFFU));
     out.push_back(static_cast<std::uint8_t>((value >> 16U) & 0xFFU));
     out.push_back(static_cast<std::uint8_t>((value >> 24U) & 0xFFU));
+}
+
+void appendI32(std::vector<std::uint8_t>& out, std::int32_t value) {
+    appendU32(out, static_cast<std::uint32_t>(value));
 }
 
 void appendEscaped(std::vector<std::uint8_t>& out, std::uint8_t value) {
@@ -98,6 +104,59 @@ std::vector<std::uint8_t> makeSyntheticOtb() {
     return bytes;
 }
 
+std::vector<std::uint8_t> makeSyntheticDat1057() {
+    std::vector<std::uint8_t> bytes;
+    appendU32(bytes, 0x000042A3U); // PokeFans/RME 10.98 DAT signature
+    appendU16(bytes, 100U); // one item, id 100
+    appendU16(bytes, 1U);   // one creature, logical id 101 in this reader
+    appendU16(bytes, 0U);   // effects intentionally outside first bridge scope
+    appendU16(bytes, 0U);   // distance effects intentionally outside first bridge scope
+
+    // Item 100: Ground(0), encoded Displacement(25 -> normalized 24),
+    // encoded MinimapColor(29 -> normalized 28), then terminator.
+    bytes.push_back(0U);
+    appendU16(bytes, 150U);
+    bytes.push_back(25U);
+    appendU16(bytes, 8U);
+    appendU16(bytes, 16U);
+    bytes.push_back(29U);
+    appendU16(bytes, 42U);
+    bytes.push_back(0xFFU);
+
+    // One item frame group. DAT 10.57 uses 32-bit sprite ids and frame durations.
+    bytes.push_back(1U); // width
+    bytes.push_back(1U); // height
+    bytes.push_back(1U); // layers
+    bytes.push_back(1U); // pattern x
+    bytes.push_back(1U); // pattern y
+    bytes.push_back(1U); // pattern z
+    bytes.push_back(2U); // frames
+    bytes.push_back(1U); // async
+    appendI32(bytes, 2); // loop count
+    bytes.push_back(0U); // start frame
+    appendU32(bytes, 100U); appendU32(bytes, 120U);
+    appendU32(bytes, 130U); appendU32(bytes, 160U);
+    appendU32(bytes, 0x12345678U);
+    appendU32(bytes, 0x9ABCDEF0U);
+
+    // Creature: no flags, one idle frame group with four directional patterns.
+    bytes.push_back(0xFFU);
+    bytes.push_back(1U); // group count
+    bytes.push_back(0U); // group type
+    bytes.push_back(1U); // width
+    bytes.push_back(1U); // height
+    bytes.push_back(1U); // layers
+    bytes.push_back(4U); // pattern x
+    bytes.push_back(1U); // pattern y
+    bytes.push_back(1U); // pattern z
+    bytes.push_back(1U); // frames
+    appendU32(bytes, 201U);
+    appendU32(bytes, 202U);
+    appendU32(bytes, 203U);
+    appendU32(bytes, 204U);
+    return bytes;
+}
+
 } // namespace
 
 int main() {
@@ -105,8 +164,10 @@ int main() {
     fs::create_directories(root);
     const fs::path sprPath = root / "synthetic.spr";
     const fs::path otbPath = root / "synthetic.otb";
+    const fs::path datPath = root / "synthetic.dat";
     writeBinary(sprPath, makeSyntheticSpr());
     writeBinary(otbPath, makeSyntheticOtb());
+    writeBinary(datPath, makeSyntheticDat1057());
 
     {
         const SprReader reader(sprPath);
@@ -143,6 +204,41 @@ int main() {
         assert(item->attributes.back().value[1] == 0xFDU);
         assert(item->attributes.back().value[2] == 0xFFU);
         assert(item->attributes.back().value[3] == 0xFEU);
+    }
+
+    {
+        const DatReader1057 reader(datPath);
+        assert(reader.header().signature == 0x000042A3U);
+        assert(reader.header().itemMaxId == 100U);
+        assert(reader.header().creatureCount == 1U);
+        assert(reader.header().effectCount == 0U);
+        assert(reader.header().distanceCount == 0U);
+        assert(reader.appearances().size() == 2U);
+
+        const auto* item = reader.findItem(100U);
+        assert(item != nullptr);
+        assert(!item->creature);
+        assert(item->groundSpeed.has_value() && *item->groundSpeed == 150U);
+        assert(item->displacementX.has_value() && *item->displacementX == 8U);
+        assert(item->displacementY.has_value() && *item->displacementY == 16U);
+        assert(item->minimapColor.has_value() && *item->minimapColor == 42U);
+        assert(item->frameGroups.size() == 1U);
+        assert(item->frameGroups[0].frames == 2U);
+        assert(item->frameGroups[0].frameDurations.size() == 2U);
+        assert(item->frameGroups[0].frameDurations[1].minimumMs == 130U);
+        assert(item->frameGroups[0].frameDurations[1].maximumMs == 160U);
+        assert(item->frameGroups[0].spriteIds.size() == 2U);
+        assert(item->frameGroups[0].spriteIds[0] == 0x12345678U);
+        assert(item->frameGroups[0].spriteIds[1] == 0x9ABCDEF0U);
+
+        assert(reader.findItem(99U) == nullptr);
+        assert(reader.findItem(101U) == nullptr);
+        const auto& creature = reader.appearances()[1];
+        assert(creature.creature);
+        assert(creature.frameGroups.size() == 1U);
+        assert(creature.frameGroups[0].groupType.has_value() && *creature.frameGroups[0].groupType == 0U);
+        assert(creature.frameGroups[0].spriteIds.size() == 4U);
+        assert(creature.frameGroups[0].spriteIds[3] == 204U);
     }
 
     std::error_code ignored;
