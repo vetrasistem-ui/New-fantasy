@@ -21,7 +21,7 @@ void applyFantasyStudioTheme(float dpiScale) {
     // The approved styleboard is compact and tool-oriented. Keep corners subtle so
     // the Studio feels like a professional editor instead of a rounded dashboard.
     style.WindowRounding = 2.0f;
-    style.ChildRounding = 4.0f;
+    style.ChildRounding = 3.0f;
     style.FrameRounding = 3.0f;
     style.PopupRounding = 4.0f;
     style.ScrollbarRounding = 4.0f;
@@ -35,8 +35,8 @@ void applyFantasyStudioTheme(float dpiScale) {
     style.TabBorderSize = 1.0f;
 
     style.WindowPadding = ImVec2(10.0f, 8.0f);
-    style.FramePadding = ImVec2(9.0f, 5.0f);
-    style.ItemSpacing = ImVec2(7.0f, 6.0f);
+    style.FramePadding = ImVec2(9.0f, 4.0f);
+    style.ItemSpacing = ImVec2(7.0f, 5.0f);
     style.ItemInnerSpacing = ImVec2(6.0f, 4.0f);
     style.CellPadding = ImVec2(8.0f, 6.0f);
     style.IndentSpacing = 18.0f;
@@ -62,10 +62,10 @@ void applyFantasyStudioTheme(float dpiScale) {
     // Deep navy hierarchy. The top-level canvas is the darkest layer, then
     // child/panel surfaces step upward slightly to preserve separation without
     // relying on expensive shadows or blur.
-    colors[ImGuiCol_WindowBg] = rgb(8, 18, 32);
-    colors[ImGuiCol_ChildBg] = rgb(10, 24, 41);
+    colors[ImGuiCol_WindowBg] = rgb(17, 24, 39);
+    colors[ImGuiCol_ChildBg] = rgb(13, 23, 38);
     colors[ImGuiCol_PopupBg] = rgb(9, 22, 38, 252);
-    colors[ImGuiCol_Border] = rgb(14, 165, 233, 105);
+    colors[ImGuiCol_Border] = rgb(44, 61, 81);
     colors[ImGuiCol_BorderShadow] = rgb(0, 0, 0, 0);
 
     colors[ImGuiCol_FrameBg] = rgb(11, 29, 49);
@@ -88,11 +88,11 @@ void applyFantasyStudioTheme(float dpiScale) {
 
     // Normal controls are restrained; cyan is reserved for hover/selection so
     // the active hierarchy matches the approved mockup.
-    colors[ImGuiCol_Button] = rgb(14, 48, 73, 235);
-    colors[ImGuiCol_ButtonHovered] = rgb(10, 126, 186, 245);
+    colors[ImGuiCol_Button] = rgb(30, 41, 59);
+    colors[ImGuiCol_ButtonHovered] = rgb(59, 130, 246, 190);
     colors[ImGuiCol_ButtonActive] = rgb(14, 165, 233, 255);
 
-    colors[ImGuiCol_Header] = rgb(8, 70, 106, 215);
+    colors[ImGuiCol_Header] = rgb(8, 83, 120, 215);
     colors[ImGuiCol_HeaderHovered] = rgb(10, 126, 186, 235);
     colors[ImGuiCol_HeaderActive] = rgb(14, 165, 233, 245);
 

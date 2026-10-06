@@ -1,6 +1,6 @@
 # Codex — Fantasy Studio Visual Foundation Windows Gate
 
-Status: **READY TO EXECUTE AFTER V3 REMOTE BUILD**
+Status: **V4 WINDOWS VALIDATION / OWNER APPROVAL REQUIRED**
 
 Target branch:
 
@@ -61,7 +61,9 @@ Required launch behavior:
 - no renderer error;
 - SDL_Renderer3 remains the baseline;
 - initial page is Home;
-- the executable is the V3 visual target wired by `Studio/CMakeLists.txt`.
+- the executable is the V4 visual target `Studio/UI/StudioAppV4.cpp`, wired by `Studio/CMakeLists.txt`;
+- UI typography is a neutral system font, never the rejected pixel/terminal font;
+- the supplied V4 styleboard is a design reference, not a runtime texture.
 
 ## V03 — Home / Project Manager visual gate
 
@@ -81,7 +83,7 @@ Confirm:
 Capture:
 
 ```text
-docs/evidence/STUDIO-VISUAL/home.png
+docs/evidence/STUDIO-VISUAL/home-v4.png
 ```
 
 Only correct real layout defects, clipping, contrast, hierarchy or ergonomic issues. Do not redesign away from the approved target.
@@ -145,7 +147,7 @@ Use only `MapDocument` / `EditorOperations`. Restore the canonical development F
 Capture:
 
 ```text
-docs/evidence/STUDIO-VISUAL/map.png
+docs/evidence/STUDIO-VISUAL/map-v4.png
 ```
 
 ## V06 — Items & Assets visual gate
@@ -164,7 +166,7 @@ Open `Items & Assets` and confirm:
 Capture:
 
 ```text
-docs/evidence/STUDIO-VISUAL/items-assets.png
+docs/evidence/STUDIO-VISUAL/items-assets-v4.png
 ```
 
 ## V07 — Resolution / layout sanity
@@ -212,7 +214,8 @@ docs/evidence/STUDIO-VISUAL/RESULT.md
 docs/STUDIO-VISUAL-FOUNDATION.md
 ```
 
-Mark Visual Foundation `PASS` only if:
+Mark Visual Foundation `PASS` only after the owner accepts the real V4 screenshots
+and all of the following gates pass:
 
 ```text
 Release regression PASS

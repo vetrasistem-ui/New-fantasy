@@ -1,8 +1,15 @@
 # Fantasy Studio — Visual Target v1
 
-Status: **APPROVED TARGET / POLISH IN PROGRESS**
+Status: **APPROVED TARGET / V4 OWNER ACCEPTANCE PENDING**
 
 This document freezes the visual direction selected for Fantasy Studio before real 10.98 assets are integrated.
+
+The owner rejected the V3 appearance and supplied `Fantasy-Studio-Visual-Package-V4.zip`.
+Its [approved styleboard](design/STUDIO-VISUAL-V4/approved-styleboard.png) is the
+primary visual reference; [V4 tokens](design/STUDIO-VISUAL-V4/DESIGN_TOKENS.json)
+make the typography requirement explicit. These are design references only,
+never application textures. The current phase ends at owner approval of real
+V4 screenshots, without starting F05.5, F06 or legacy format integration.
 
 ## Product character
 
@@ -181,9 +188,11 @@ The styleboard uses a fantasy display direction for branding and a neutral UI fa
 For the baseline implementation:
 
 - UI readability has priority;
-- system/default UI fonts are acceptable until font packaging is explicitly introduced;
+- use Segoe UI or an equivalent neutral system UI font;
+- pixel, terminal and monospaced display typography are rejected for the UI;
 - do not bundle unlicensed font files;
-- branding may use size, spacing and color hierarchy even when the final display font is not yet packaged.
+- display/serif typography is confined to branding; load licensed system fonts
+  at runtime rather than redistributing proprietary font files.
 
 ## Resolution targets
 

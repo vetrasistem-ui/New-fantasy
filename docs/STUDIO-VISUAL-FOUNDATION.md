@@ -1,189 +1,76 @@
-# Fantasy Studio — Visual Foundation
+# Fantasy Studio — Visual Foundation V4
 
-Status: **VISUAL POLISH IN PROGRESS / REMOTE CI BASELINE PASS**
+Status: **V4 IMPLEMENTED / OWNER VISUAL ACCEPTANCE PENDING**
 
 Branch: `feature/studio-visual-foundation`
 
-## Objective
+## Scope and reference
 
-Transform the technical Map Editor shell into the official Fantasy Studio visual foundation while preserving the validated FMAP editor behavior and all F00–F05 contracts.
+The owner rejected V3's terminal typography and visual distance from the
+styleboard. The supplied `Fantasy-Studio-Visual-Package-V4.zip` now guides the
+shell rebuild. The [approved styleboard](design/STUDIO-VISUAL-V4/approved-styleboard.png)
+and [design tokens](design/STUDIO-VISUAL-V4/DESIGN_TOKENS.json) are documentation
+references, never runtime textures.
 
-The approved visual direction is the Fantasy Studio styleboard selected by the project owner: deep navy background, cyan/blue accents, compact professional tooling, permanent left navigation, top command bar, central workspace, right inspector and lower console/status area.
+Initial branch SHA: `c91b926d08ef5fd61dff7c56b7395dff578f501f`.
 
-The product shell comes first. Real 10.98 assets and OTBM content are the next milestone, not a prerequisite for finishing the shell.
+The renderer remains **SDL3 + SDL_Renderer3 + Dear ImGui**. MapDocument,
+EditorOperations, FMAP, Server, Protocol and Client core remain unchanged.
+F05.5, F06 and OTBM/DAT/SPR/OTB integration are **NOT STARTED** by this revision.
 
-## Current product priority
+## V4 shell
 
-```text
-1. Finish the Fantasy Studio visual base
-2. Open a real 10.98 OTBM with real sprites/assets
-3. Use that real map as the working production surface
-4. Expand editing tools and domain editors
-5. Persistence/database comes later
-```
+`Studio/CMakeLists.txt` builds `Studio/UI/StudioAppV4.cpp`. V3 is preserved in
+Git history rather than used as the current visual direction. The existing V2
+source remains an unbuilt historical reference.
 
-Do not start F06 while the visual base and real-map bridge are still open.
+- **Typography:** neutral system UI fonts (Segoe UI on Windows, with Arial or
+  DejaVu Sans fallbacks); system semibold headings; serif branding only. No
+  proprietary font file is redistributed and no pixel/terminal UI fallback is
+  used. Font paths are resolved at runtime, not stored in project contracts.
+- **Identity:** an original faceted F/sword vector mark, serif wordmark and
+  layered abstract hero with restrained cyan accents. No supplied screenshot,
+  cropped logo, fake sprite or invented map art is embedded in the application.
+- **Topbar:** vertically aligned commands with coherent vector icons, secondary
+  project/module context and a fixed right action group. Undo/Redo reflect real
+  document history. Runtime/settings commands remain visibly reserved.
+- **Sidebar:** one consistent icon family for all ten destinations, compact
+  rows, quiet inactive states and a cyan rail for the active workspace.
+- **Home:** equal Novo/Abrir/Importar cards, compact project information, real
+  region/chunk/tile/object counts and `Abrir Map Workspace`. Existing CLI/launcher
+  project entry points remain explicit; GUI project dialogs/import are reserved.
+  Recent rows and the world preview consume the current FMAP directly.
+- **Map:** icon/text tool strip, dominant editing canvas, right Inspector,
+  Minimap rendered from actual tiles/objects/spawn, and a quieter lower Console.
+  Canvas clipping/grid alignment follow the viewport; paths shown in the Console
+  are project-relative. Inspector actions continue to call EditorOperations;
+  Undo/Redo are grouped in the topbar and keep their keyboard shortcuts.
+- **Items & Assets:** narrow library tree, search and tabs, broad semantic grid,
+  readable full keys and cyan selected borders. Swatches are labelled semantic
+  references, not final sprite artwork. The legacy source is `NOT CONNECTED`.
+- **Future modules:** honest shells in the same visual language, without fake
+  progress percentages, catalog contents or gameplay functionality.
 
-## Approved visual target
+## Practical window behavior
 
-The frozen reference contract is documented in:
+The preferred client area is 1440x900. Initial size is bounded by the display's
+usable area so titlebar and commands remain reachable. The practical minimum is
+960x640, also bounded by the display. Width-sensitive panels preserve their
+separate bounds; long secondary text wraps or clips within its own region.
+Fixed shell geometry does not load/save an `imgui.ini` cache at the project root.
 
-```text
-docs/STUDIO-VISUAL-TARGET-V1.md
-```
+This Windows machine has a 1366x768 display. The exact 1440x900 visual approval
+requires a display that can show that client area completely; it must not be
+reported as observed merely because the layout supports the preferred size.
 
-Core tokens:
+## Validation and owner gate
 
-```text
-Background       #081220
-Surface          #111827
-Panel            #1E293B
-Primary          #0EA5E9
-Primary bright   #22D3EE
-Hover            #3B82F6
-Active           #60A5FA
-Text primary     #E2E8F0
-Text secondary   #94A3B8
-Success          #10B981
-Warning          #F59E0B
-Error            #EF4444
-```
+See [the Windows result and real screenshots](evidence/STUDIO-VISUAL/RESULT.md)
+and [the validation procedure](CODEX-STUDIO-VISUAL-VALIDATION.md).
 
-The UI remains lightweight on SDL3 + SDL_Renderer3 + Dear ImGui. The approved look is created through hierarchy, compact spacing, restrained borders, active-state cyan and limited identity glow rather than expensive effects.
+The gate requires Release build/tests, all sidebar destinations, Map operation
+regression, semantic Save/Reopen, responsive window checks, normal close/cleanup
+and real screenshots. Technical checks do not substitute for appearance approval.
 
-## Current implementation — V3 polish shell
-
-The executable target `fantasy-studio-gui` now points to:
-
-```text
-Studio/UI/StudioAppV3.cpp
-```
-
-`StudioAppV2.cpp` remains temporarily in-tree only as a rollback reference until the Windows visual gate closes.
-
-V3 tightens the visual direction without replacing any map/domain core:
-
-- stronger Fantasy identity in topbar and Home;
-- compact breadcrumb project/module context;
-- right-aligned Save / Undo / Redo and runtime-control grouping;
-- sidebar active-state accent rail and cleaner hierarchy;
-- technical status pill at the bottom of the sidebar;
-- richer but lightweight Home hero;
-- Project Manager cards aligned to the approved proportions;
-- compact Recent Projects rows with generated neutral previews;
-- structured project-stat cards using real FMAP counts;
-- Map toolbar with clear selected tool state;
-- viewport-first Map layout with Inspector, Minimap and Console separation;
-- Items & Assets library tree kept narrow while the grid receives most width;
-- real semantic FMAP keys remain the only current asset-card source;
-- explicit PokeFans / 10.98 source state without loading legacy pixels yet;
-- future modules keep consistent visual shells without fake domain data.
-
-## Product shell
-
-```text
-Fantasy Studio
-├── Topbar
-│   ├── Fantasy mark + product name
-│   ├── project / active module context
-│   ├── Save / Undo / Redo
-│   └── Play / Stop / Build / Settings
-├── Sidebar
-│   ├── Home
-│   ├── Map
-│   ├── Items & Assets
-│   ├── Monsters
-│   ├── NPCs
-│   ├── Spells
-│   ├── Quests
-│   ├── Systems
-│   ├── Server
-│   └── Client
-└── Workspaces
-    ├── Home / Project Manager
-    ├── Map Editor
-    │   ├── compact tool strip
-    │   ├── real FMAP viewport
-    │   ├── Inspector tabs
-    │   ├── Minimap
-    │   └── Console
-    ├── Items & Assets
-    │   ├── tabs
-    │   ├── library tree
-    │   ├── search
-    │   └── semantic asset grid
-    └── module shells for future domain editors
-```
-
-## Core-preservation rules
-
-The visual phase must not:
-
-- create a second map model;
-- bypass `MapDocument` or `EditorOperations`;
-- add OTBM/DAT/SPR/OTB dependencies to the native map core;
-- replace SDL_Renderer3 with a heavier renderer;
-- start F06 persistence;
-- fake final asset pixels just to make the UI look complete.
-
-Save, Paint, Fill, Add Object, Remove Object, Erase, Undo and Redo remain wired to the validated editor core.
-
-## Windows gate after polish
-
-Remote CI proved the previous visual baseline on Windows. The polished V3 shell must compile in the same workflow and then receive one real interactive Windows pass before visual acceptance.
-
-Interactive acceptance:
-
-```text
-1. Fantasy Studio opens on real Windows.
-2. Home follows the approved visual target.
-3. Sidebar/topbar hierarchy is clear and stable.
-4. Every module is reachable without crash.
-5. Map remains editable through MapDocument/EditorOperations.
-6. Paint / Fill / Add / Remove / Erase / Undo / Redo / Save-Reopen pass.
-7. Items & Assets layout is usable and visually consistent.
-8. Studio closes without orphan processes.
-9. Home / Map / Items & Assets screenshots are recorded.
-```
-
-## What comes immediately after visual acceptance
-
-```text
-PokeFans / 10.98 source pack
-        ↓
-DAT + SPR + OTB
-        +
-OTBM + houses + spawns
-        ↓
-Legacy compatibility layer
-        ↓
-Fantasy Asset Registry + map import/open path
-        ↓
-Fantasy Studio renders the real map with real sprites
-```
-
-The Studio is expected to support legacy OTBM + matching DAT/SPR/OTB as an editing/import compatibility surface while keeping Fantasy's native architecture isolated from those formats.
-
-## After the real map opens correctly
-
-```text
-real map + real sprites
-        ↓
-map editing refinement
-        ↓
-Items & Assets real catalog
-        ↓
-Monster / NPC / Spell / Quest / Systems tools
-        ↓
-other game-production systems
-```
-
-## Non-goals of the current visual phase
-
-- DAT/SPR/OTB decoding;
-- OTBM conversion/open compatibility implementation;
-- persistence/database;
-- complete Items/Monsters/NPC/Spell/Quest editors;
-- production Server/Client controls.
-
-Those remain deliberately outside the visual PR until the Studio appearance is accepted.
+**Only the owner can accept the V4 appearance and freeze this foundation.**
+No legacy integration or persistence work begins as part of this delivery.

@@ -84,7 +84,7 @@ target_link_libraries(fantasy-studio PRIVATE fantasy-studio-project fantasy-map-
 # Visual Target v1 implementation. V2 is intentionally kept in-tree as a
 # short-lived rollback reference until the Windows visual gate closes.
 add_executable(fantasy-studio-gui
-    UI/StudioAppV3.cpp
+    UI/StudioAppV4.cpp
     UI/StudioTheme.cpp
 )
 target_link_libraries(fantasy-studio-gui PRIVATE

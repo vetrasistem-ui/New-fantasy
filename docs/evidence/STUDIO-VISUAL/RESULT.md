@@ -1,140 +1,163 @@
-# Fantasy Studio Visual Foundation — Validation Result
+# Fantasy Studio Visual Foundation V4 — Windows Result
 
-Status: **V3 REMOTE CI PASS / WINDOWS INTERACTIVE VISUAL ACCEPTANCE PENDING**
+Status: **TECHNICAL GATES PASS / OWNER VISUAL ACCEPTANCE PENDING**
 
-Branch: `feature/studio-visual-foundation`
+Date: `2026-10-05` · Branch: `feature/studio-visual-foundation`
 
-## Baseline
+Initial SHA: `c91b926d08ef5fd61dff7c56b7395dff578f501f`.
+The implementation and evidence are in the revision containing this report;
+the initial SHA is the synchronization baseline, not the V4 executable revision.
 
-- Visual implementation SHA: `68f5eb76030a4bbb7f2b8654498778562258dd84`
-- Visual shell: `Studio/UI/StudioAppV3.cpp`
-- Windows version: **PENDING local interactive gate**
-- GPU / driver: **PENDING local interactive gate**
-- Configuration: `Release`
-- Renderer baseline: `SDL3 + SDL_Renderer3 + Dear ImGui`
+Validated V4 source Git blob: `3a8792a5ef8e9de513fc3e4ea73332b8394543c2`.
 
-## Automated / build gate
+## Reference and scope
 
-Remote exact-SHA GitHub Actions for the V3 visual shell: **PASS**
+The supplied V4 package replaces the rejected V3 appearance as the design
+direction. Package SHA-256:
+`194B2E3D39039F0CBCAECA407B215AB6AA3C393278A975192EE0E3097CF75E84`.
+The [styleboard](../../design/STUDIO-VISUAL-V4/approved-styleboard.png) and
+[tokens](../../design/STUDIO-VISUAL-V4/DESIGN_TOKENS.json) are documentation
+references only. No screenshot or crop is used as an application texture.
 
-- Run: `#237` / `37384402410`
-- Exact implementation SHA: `68f5eb76030a4bbb7f2b8654498778562258dd84`
-- Result: **SUCCESS**
+Current GUI source: `Studio/UI/StudioAppV4.cpp`. The renderer remains
+SDL3 + SDL_Renderer3 + Dear ImGui. MapDocument, EditorOperations, FMAP, Server,
+Protocol and Client core were not changed. **F05.5 and F06 were not started.**
+No OTBM/DAT/SPR/OTB integration was introduced.
 
-Validated remotely on Windows:
+## Environment and automated checks
 
-- [x] project layout/contracts
-- [x] Fantasy Project v2 validator
-- [x] FMAP v0 validator
-- [x] FMAP multi-chunk validator
-- [x] Fantasy Protocol v1 validator
-- [x] project relocation
-- [x] V3 Studio configure/build/tests
-- [x] Studio Windows artifact published
-- [x] Server configure/build/tests/native play
-- [x] Client configure/build/smoke test
-- [x] two-process native play
-- [x] native runtime Windows artifact published
+| Check | Observed result |
+| --- | --- |
+| OS | Windows 11 Home, `10.0.26200` |
+| GPU | Intel HD Graphics 5500 |
+| Driver | `20.19.15.4703` |
+| Configuration | Release |
+| Runtime renderer | `direct3d11`, reported by the V4 executable |
+| Runtime UI font | `segoeui.ttf`, loaded from the system |
+| Display | 1366×768 |
+| Full native build | PASS |
+| Studio CTests | 5/5 PASS |
+| Server CTests | 6/6 PASS |
+| Client CTests | 2/2 PASS |
+| Layout/project/FMAP/multi-chunk/protocol validators | PASS |
+| Project relocation | PASS |
 
-The V3 Studio Windows artifact was produced successfully before the remainder of the native regression completed.
+Executed `./scripts/build-native.ps1 -Configuration Release` after the final
+V4 source changes. All **13 CTests passed**. No compiler warning or error
+remained. Optional SDL PkgConfig/LibUSB discovery messages do not represent
+required Windows dependency failures.
 
-Documentation/launcher commits after the implementation SHA do not change the V3 executable source. Their current branch runs are ordinary revalidation runs.
+During implementation, an ImGui overload ambiguity was corrected and the
+relocation check was rerun with the V4 source replacement in Git's tracked file
+list. The successful full build above includes both corrections; neither
+validator nor test was skipped or weakened.
 
-## Home — interactive acceptance pending
+The existing two-process native play also passed during this task: Ready,
+four chunks/64 tiles, initial position `100,100,7`, authoritative move to
+`101,100,7`, clean Disconnect/Stop. Server and Client source were unchanged.
+This report claims local Windows checks; historical V3 remote CI is not V4 CI
+evidence.
 
-- [ ] Fantasy Studio window opens
-- [ ] dark navy/cyan hierarchy matches the approved direction
-- [ ] Fantasy brand identity is clear
-- [ ] topbar layout is stable
-- [ ] sidebar active-state rail is clear
-- [ ] hero is visually balanced
-- [ ] three project action cards are aligned
-- [ ] Recent Projects rows are readable
-- [ ] real FMAP project metrics are visible
-- [ ] `Abrir Map Workspace` routes to Map
+## Home and navigation
 
-Evidence target:
+**Interactive inspection completed; appearance approval remains with the owner.**
 
-```text
-docs/evidence/STUDIO-VISUAL/home.png
-```
+- Neutral proportional UI typography, original vector identity and abstract
+  navy/cyan hero replace the terminal typography and previous hero treatment.
+- Topbar commands and ten sidebar destinations keep consistent icon sizes,
+  spacing and selected states. Undo/Redo reflect real document history.
+- Novo/Abrir/Importar cards share dimensions; project counts and previews come
+  from the current FMAP. No fake project, date, sprite or progress value fills
+  the screen.
+- `Abrir Map Workspace` opens Map successfully.
+- All ten destinations opened without crash: Home, Map, Items & Assets,
+  Monsters, NPCs, Spells, Quests, Systems, Server and Client.
 
-## Navigation — interactive acceptance pending
+GUI project dialogs/import and future runtime/settings functionality remain
+reserved, with their existing CLI/launcher entry points explained. These shells
+are not claimed as newly implemented product features.
 
-- [ ] Home
-- [ ] Map
-- [ ] Items & Assets
-- [ ] Monsters
-- [ ] NPCs
-- [ ] Spells
-- [ ] Quests
-- [ ] Systems
-- [ ] Server
-- [ ] Client
+## Map functional regression
 
-## Map Workspace — interactive acceptance pending
+**PASS through the real GUI and shared editor operations.**
 
-- [ ] compact tool strip
-- [ ] viewport remains dominant
-- [ ] Inspector tabs
-- [ ] Minimap
-- [ ] Console
-- [ ] Select tile
-- [ ] Paint
-- [ ] Undo
-- [ ] Redo
-- [ ] Fill
-- [ ] Add Object
-- [ ] Remove Object
-- [ ] Erase
-- [ ] Save
-- [ ] Reopen / semantic persistence
-- [ ] canonical FMAP restored after validation when required
+| Operation | Observed result |
+| --- | --- |
+| Four chunks | All 64 tiles rendered; actual world also shown in Minimap |
+| Select | Global `97,97,7` shown as local tile `1,1` in chunk `0,0` |
+| Paint | Changed selected ground to `terrain.grass.basic` |
+| Undo / Redo | Topbar and keyboard shortcuts reverted/reapplied the edit |
+| Fill across chunks | Seed `96,96,7`; 17 connected tiles changed to `terrain.sand.basic` across two chunks |
+| Add Object | `nature.tree.oak.small` appeared on the selected tile |
+| Remove Object | Object marker disappeared |
+| Erase | Reported removal of one object after re-adding it |
+| Save | FMAP saved with grass/oak at `97,97,7` and the 17 filled tiles |
+| Close / Reopen | New GUI process loaded those exact edits and object marker |
+| Semantic persistence | Entire saved JSON compared with the expected edit set; no unrelated difference |
 
-Evidence target:
+Saved-file SHA-256 before and after reopening:
+`8432EB4745C4B6CFAE077EBF94B2861A8156377966EF09579AB7E540EB972934`.
+The map stayed at four chunks/64 tiles; the final test edit added one object
+(five objects in that temporary saved state).
 
-```text
-docs/evidence/STUDIO-VISUAL/map.png
-```
+After normal close, the canonical FMAP was restored. Its Git blob is
+`1442d649ff73ba39881f876a4bde33394df2784c`, and the map has no Git diff.
+The Map screenshots intentionally retain the successful saved/reopened test
+state; that test edit is not committed as content.
 
-## Items & Assets — interactive acceptance pending
+## Items & Assets
 
-- [ ] Items / Sprites / Textures / Sounds tabs
-- [ ] narrow library tree
-- [ ] wide asset grid
-- [ ] search
-- [ ] Grounds
-- [ ] Objects
-- [ ] semantic cards originate from current FMAP
-- [ ] PokeFans / 10.98 is shown only as the next source
-- [ ] no DAT/SPR pixels loaded before the compatibility phase
+**Functional inspection PASS; appearance approval pending.**
 
-Evidence target:
+- Items, Sprites, Textures and Sounds tabs opened. Unconnected tabs display an
+  honest empty state.
+- Search for `tree` showed the two matching semantic object keys; Grounds then
+  showed no matches. Clearing the search restored the catalog.
+- All, Grounds and Objects categories worked. Full keys remain readable; the
+  selected oak card has a cyan border and selection detail.
+- The narrow library tree leaves the main grid dominant. Colors are explicitly
+  semantic swatches rather than final sprite art. The future legacy source is
+  `NOT CONNECTED`.
 
-```text
-docs/evidence/STUDIO-VISUAL/items-assets.png
-```
+## Practical sizing, screenshots and cleanup
 
-## Resolution / cleanup pending
+Full-window screenshots were captured from the running Windows application
+using Computer Use. Native JPEG captures were encoded as PNG without cropping,
+retouching, compositing or replacing UI pixels.
 
-- [ ] 1440x900 target layout accepted
-- [ ] smaller practical window sanity check
-- [ ] Studio closes cleanly
-- [ ] no orphan Studio process
-- [ ] no Server/Client orphan process introduced
-- [ ] `git diff --check` clean
-- [ ] no build/cache/binary legacy files staged
+| Evidence | Client area | Capture including native frame |
+| --- | --- | --- |
+| [Home](home-v4.png) | 1334×656 | 1336×688 |
+| [Map](map-v4.png) | 1334×656 | 1336×688 |
+| [Items & Assets](items-assets-v4.png) | 1334×656 | 1336×688 |
+| [Home — smaller](home-v4-small.png) | 960×656 | 962×688 |
+| [Map — smaller](map-v4-small.png) | 960×656 | 962×688 |
+| [Items & Assets — smaller](items-assets-v4-small.png) | 960×656 | 962×688 |
 
-## Preferred local command
+At the smaller size, Home remains readable and Map's editing controls, Minimap
+and Console remain reachable. The Assets All grid scrolls to the last object;
+its Objects category fits all four cards. The smaller Assets screenshot shows
+that category deliberately. Small Home and both Map captures use the saved test
+state; main Home uses the canonical project.
 
-```powershell
-./scripts/run-studio-visual.ps1 -Configuration Release -Build
-```
+**Exact 1440×900 inspection is pending:** this display cannot show that client
+area completely. No exact-resolution visual PASS is inferred from the preferred
+window size or code geometry.
 
-The launcher builds when requested, opens the Studio with the repository root and verifies that the GUI leaves no orphan process after normal close.
+Normal Alt+F4 closure returned exit code 0 and the launcher's clean-close PASS.
+Process inspection then found no Fantasy Studio, Server, Client or Client GUI
+process. The final review launch intentionally leaves one Studio on Home;
+it is the owner's review window, not an orphan runtime process.
 
-## Final decision
+Build output, local validation scripts and caches stay under ignored `build/`.
+Screenshots and design documentation are the only image artifacts delivered.
+`git diff --check` and the staged whitespace check passed. The staged path
+review excluded build/cache output, executables, font binaries, legacy assets,
+map edits and changes to Server/Client/Shared core.
 
-**PENDING WINDOWS INTERACTIVE VISUAL ACCEPTANCE**
+## Owner decision
 
-The V3 code/build gate is closed as PASS. The remaining work is visual/ergonomic acceptance on a real Windows display, screenshots, and any small polish corrections discovered there. Only after this acceptance should the project move to opening a real 10.98 OTBM with matching DAT/SPR/OTB and rendering real sprites.
+**V4 visual acceptance is PENDING.** Home/Map/Items & Assets are ready for the
+owner to inspect using these real captures and the Studio left open on Home.
+Technical success does not mark the overall visual foundation PASS or authorize
+F05.5, F06 or legacy asset integration.
