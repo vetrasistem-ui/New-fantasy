@@ -46,6 +46,16 @@ Este documento registra projetos externos usados como referência técnica, comp
 - Role: Studio editor panels and the F05 diagnostic/first-play Client UI using official SDL3 + SDL_GPU backends
 - Status: **APPROVED DEPENDENCY — ADR-012 / ADR-017**
 
+## Cinzel — Studio V5 branding font
+
+- Source: [Google Fonts — Cinzel](https://github.com/google/fonts/tree/main/ofl/cinzel).
+- License: SIL Open Font License 1.1; original copyright and complete license retained in `Studio/UI/Assets/Fonts/OFL-Cinzel.txt`.
+- File: `Studio/UI/Assets/Fonts/Cinzel.ttf`, unmodified `Cinzel[wght].ttf` downloaded from the official source; no system installation.
+- Font SHA-256: `f4d83d34d1f6c741193e4acf4b3dff9531e5a67b6aa65228d00a7db72a4e0f34`.
+- License SHA-256: `f2b3029aba64c378bf0963b62945eee15e564fe4330b934c8f2eb058282b5e83`.
+- Role: Fantasy Studio V5 branding; neutral UI typography continues to use the system UI font. No core code or gameplay/map/protocol dependency.
+- Status: **PRESENTATION ASSET — owner-requested V5 visual reconstruction**. Full source URLs and verification: `docs/design/STUDIO-VISUAL-V5/ART-PROVENANCE.md`.
+
 ## Boundary rule
 
 Reference-only clones may live locally under `.upstream/` and remain ignored by Git.

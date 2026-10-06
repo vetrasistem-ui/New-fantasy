@@ -1,0 +1,31 @@
+{
+  "name": "Fantasy Studio Visual Target v1",
+  "source": "Approved styleboard supplied by project owner",
+  "renderer_constraint": "SDL3 + SDL_Renderer3 + Dear ImGui",
+  "colors": {
+    "background": "#081220",
+    "surface": "#111827",
+    "panel": "#1E293B",
+    "primary": "#0EA5E9",
+    "primary_bright": "#22D3EE",
+    "hover": "#3B82F6",
+    "active": "#60A5FA",
+    "text_secondary": "#94A3B8",
+    "text_primary": "#E2E8F0",
+    "warning": "#F59E0B",
+    "error": "#EF4444",
+    "success": "#10B981"
+  },
+  "typography": {
+    "branding": "Cinzel / Trajan-style display direction (reference only; do not bundle unlicensed fonts)",
+    "interface": "Segoe UI or Inter-like neutral UI font",
+    "banned_for_ui": "pixel / terminal / monospaced display look"
+  },
+  "shape_language": {
+    "corner_radius": "small",
+    "borders": "subtle; cyan only for selection/important state",
+    "glow": "restrained",
+    "density": "compact professional editor"
+  },
+  "primary_resolution": "1440x900"
+}

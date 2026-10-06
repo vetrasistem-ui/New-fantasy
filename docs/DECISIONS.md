@@ -173,7 +173,7 @@ Pinned foundation at decision time:
 
 ## ADR-018 — F06 persistence uses a database-independent Server boundary
 
-**Status:** **PREPARED / activates only after F03 and F05 are formally PASS.**
+**Status:** **PREPARED / activates only after the explicitly scheduled pre-F06 visual/bootstrap work is closed.**
 
 **Decision:** gameplay/runtime code will depend on a `PersistenceService` / persistence-store contract instead of direct SQL. The first F06 adapter is planned for SQLite because it gives deterministic local Windows development and CI without an external database service.
 
@@ -183,7 +183,7 @@ Pinned foundation at decision time:
 
 **Security:** F06 does not define public authentication and must not store plaintext passwords. `LoginDev` remains loopback/development-only.
 
-**Activation gate:** no F06 code is implemented until the Windows interactive F03/F05 closeout, evidence update and exact-SHA CI run are green.
+**Activation gate:** no F06 code is implemented until the Studio Visual Foundation and F05.5 bootstrap phases that now precede it are explicitly closed.
 
 ---
 
@@ -198,3 +198,19 @@ Pinned foundation at decision time:
 **Compatibility principle:** prefer the simplest renderer that correctly renders Fantasy content across a broad hardware range. Advanced rendering is added only when a concrete feature requires it.
 
 **Future:** an explicit renderer abstraction may later expose `Render2D` and optional advanced backends. That future work must not make SDL_GPU mandatory for the basic editor/client.
+
+---
+
+## ADR-020 — Fantasy Studio adopts a permanent product shell before F05.5/F06
+
+**Decision:** the approved dark navy/cyan Fantasy Studio styleboard becomes the Visual Foundation v1 for the native Studio. The product shell is implemented before the legacy asset bridge and persistence phases so future editors and imported content enter a stable visual structure instead of the F03 diagnostic layout.
+
+**Shell:** a fixed topbar, left module navigation, central workspace, right inspector and lower console/status area form the baseline. The initial navigation surface reserves Home, Map, Items & Assets, Monsters, NPCs, Spells, Quests, Systems, Server and Client.
+
+**Reason:** the Studio is now the primary production surface. Establishing the visual/navigation contract early prevents repeated UI rewrites while F05.5, items, monsters, systems and other tools are added.
+
+**Boundary:** this phase is presentation/navigation only. The existing `MapDocument`, FMAP operations, Server, Protocol and Client contracts remain canonical. Placeholder module pages must not fake domain features.
+
+**Performance:** the shell remains on SDL3 + SDL_Renderer3 + Dear ImGui and must not require heavy effects, shaders or a new renderer.
+
+**Order:** Studio Visual Foundation → F05.5 Legacy Asset Bridge / PokeFans 10.98 migration → F06 Persistence.
