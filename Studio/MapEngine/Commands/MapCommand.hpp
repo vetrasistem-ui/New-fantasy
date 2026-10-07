@@ -2,6 +2,7 @@
 
 #include "../Core/MapTypes.hpp"
 
+#include <cstddef>
 #include <cstdint>
 #include <optional>
 #include <string>
