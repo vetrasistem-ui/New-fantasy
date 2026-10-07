@@ -141,6 +141,7 @@ target_link_libraries(fantasy-studio PRIVATE fantasy-studio-project fantasy-map-
 add_executable(fantasy-studio-gui
     UI/StudioAppV5.cpp
     UI/StudioTheme.cpp
+    UI/LegacyMapCanvasRenderer.cpp
 )
 target_link_libraries(fantasy-studio-gui PRIVATE
     fantasy-studio-project
