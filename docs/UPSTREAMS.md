@@ -59,6 +59,16 @@ Observação de licença: os arquivos-fonte auditados carregam cabeçalho GPLv3-
 - Role: Studio editor panels/tooling UI
 - Status: **APPROVED DEPENDENCY**
 
+## pugixml — approved legacy XML compatibility dependency
+
+- Repository: `zeux/pugixml`
+- Release: `v1.16`
+- Published: 2026-06-16
+- License: MIT
+- Role: leitura/escrita robusta dos arquivos XML externos de houses/spawns usados pela baseline TFS 1.4.2/10.98
+- Boundary: somente a camada `Shared/Formats/Legacy`; o `Fantasy Map Core` permanece independente de XML
+- Status: **APPROVED DEPENDENCY**
+
 ## Cinzel — Studio V5 branding font
 
 - Source: Google Fonts / `google/fonts`, `ofl/cinzel`
@@ -80,7 +90,7 @@ O caminho operacional atual é:
 ```text
 Fantasy Studio V5
       ↓
-OTBM v3 + DAT/SPR/OTB
+OTBM v3 + DAT/SPR/OTB + houses/spawns XML
       ↓
 TFS 1.4.2
       ↓
