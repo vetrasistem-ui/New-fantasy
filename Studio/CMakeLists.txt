@@ -44,7 +44,9 @@ add_library(fantasy-map-core
     MapEngine/Core/SelectionModel.cpp
     MapEngine/Core/ActionHistory.cpp
     MapEngine/Core/MapDocument.cpp
+    MapEngine/Commands/CommandValidator.cpp
     MapEngine/Commands/CommandExecutor.cpp
+    MapEngine/Query/MapQueryService.cpp
 )
 
 # F05.5 neutral asset contract plus isolated legacy binary readers. The readers
