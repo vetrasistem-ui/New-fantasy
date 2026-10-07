@@ -7,6 +7,7 @@
 #include <functional>
 #include <optional>
 #include <unordered_map>
+#include <vector>
 
 namespace fantasy::studio::mapcore {
 
@@ -42,6 +43,9 @@ public:
     std::unordered_map<std::string, Waypoint>& waypoints() noexcept { return waypoints_; }
     const std::unordered_map<std::string, Waypoint>& waypoints() const noexcept { return waypoints_; }
 
+    std::vector<SpawnArea>& spawnAreas() noexcept { return spawnAreas_; }
+    const std::vector<SpawnArea>& spawnAreas() const noexcept { return spawnAreas_; }
+
 private:
     struct ChunkKey {
         std::int32_t x = 0;
@@ -67,6 +71,7 @@ private:
     std::unordered_map<std::uint32_t, Town> towns_;
     std::unordered_map<std::uint32_t, House> houses_;
     std::unordered_map<std::string, Waypoint> waypoints_;
+    std::vector<SpawnArea> spawnAreas_;
     std::size_t tileCount_ = 0;
 };
 
