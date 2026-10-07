@@ -59,6 +59,14 @@ BrushEngine makeEngine() {
     grass.outerBorderId = "grass-edge";
     grass.maxRadius = 8;
     require(engine.registerGroundBrush(std::move(grass), &error), "register grass brush");
+
+    WallBrushDefinition stone;
+    stone.id = "stone-wall";
+    stone.pieces[WallPieceKind::Horizontal] = {{item(3001), 100}, {item(3005), 0}};
+    stone.pieces[WallPieceKind::Vertical] = {{item(3002), 100}};
+    stone.pieces[WallPieceKind::Corner] = {{item(3003), 100}};
+    stone.pieces[WallPieceKind::Pole] = {{item(3004), 100}};
+    require(engine.registerWallBrush(std::move(stone), &error), "register stone wall brush");
     return engine;
 }
 
@@ -145,6 +153,63 @@ int main() {
     require(center && center->items.empty(), "interior tile has no auto-border");
     require(northWest && northWest->items.size() == 1 && hasItem(*northWest, 2009), "outer corner uses northwest diagonal piece");
     require(north && north->items.size() == 1 && hasItem(*north, 2001), "top edge uses north horizontal piece");
+
+    MapDocument wallDocument;
+    WallStroke wallPreview;
+    wallPreview.brushId = "stone-wall";
+    wallPreview.centers = {Position{70, 70, 7}, Position{72, 70, 7}};
+    wallPreview.requestId = "wall-preview";
+    wallPreview.expectedRevision = wallDocument.revision();
+    wallPreview.previewOnly = true;
+
+    const BrushPlanResult wallPlan = engine.planWallStroke(wallDocument, wallPreview);
+    require(wallPlan.success && wallPlan.footprintTileCount == 3, "wall path rasterizes endpoints into three tiles");
+    const CommandResult wallPreviewResult = engine.executeWallStroke(wallDocument, wallPreview);
+    require(wallPreviewResult.status == CommandStatus::Preview, "wall preview status");
+    require(wallDocument.map().tileCount() == 0, "wall preview does not mutate map");
+
+    wallPreview.previewOnly = false;
+    wallPreview.requestId = "wall-horizontal";
+    const CommandResult horizontalResult = engine.executeWallStroke(wallDocument, wallPreview);
+    require(horizontalResult.status == CommandStatus::Applied, "horizontal wall applied");
+    require(wallDocument.revision() == 1, "wall path is one history action");
+    for (std::int32_t x = 70; x <= 72; ++x) {
+        const Tile* tile = wallDocument.map().findTile(Position{x, 70, 7});
+        require(tile && hasItem(*tile, 3001), "horizontal wall uses horizontal piece");
+        require(!hasItem(*tile, 3005), "zero-weight horizontal alternate is not selected");
+    }
+
+    WallStroke vertical;
+    vertical.brushId = "stone-wall";
+    vertical.centers = {Position{71, 70, 7}, Position{71, 72, 7}};
+    vertical.requestId = "wall-vertical";
+    vertical.expectedRevision = wallDocument.revision();
+    const CommandResult verticalResult = engine.executeWallStroke(wallDocument, vertical);
+    require(verticalResult.status == CommandStatus::Applied, "vertical wall extension applied");
+    require(wallDocument.revision() == 2, "vertical extension is one history action");
+
+    const Tile* junction = wallDocument.map().findTile(Position{71, 70, 7});
+    const Tile* verticalMiddle = wallDocument.map().findTile(Position{71, 71, 7});
+    const Tile* verticalEnd = wallDocument.map().findTile(Position{71, 72, 7});
+    require(junction && hasItem(*junction, 3003), "wall junction becomes corner piece");
+    require(verticalMiddle && hasItem(*verticalMiddle, 3002), "vertical segment uses vertical piece");
+    require(verticalEnd && hasItem(*verticalEnd, 3002), "vertical endpoint keeps vertical alignment");
+    require(!hasItem(*junction, 3001), "old horizontal piece is removed at junction");
+
+    require(wallDocument.undo(), "undo wall extension");
+    require(wallDocument.map().findTile(Position{71, 71, 7}) == nullptr, "wall undo removes extension");
+    junction = wallDocument.map().findTile(Position{71, 70, 7});
+    require(junction && hasItem(*junction, 3001), "wall undo restores previous horizontal alignment");
+
+    MapDocument poleDocument;
+    WallStroke pole;
+    pole.brushId = "stone-wall";
+    pole.centers = {Position{90, 90, 7}};
+    pole.requestId = "wall-pole";
+    pole.expectedRevision = poleDocument.revision();
+    require(engine.executeWallStroke(poleDocument, pole).status == CommandStatus::Applied, "isolated wall applied");
+    const Tile* poleTile = poleDocument.map().findTile(Position{90, 90, 7});
+    require(poleTile && hasItem(*poleTile, 3004), "isolated wall uses pole piece");
 
     std::cout << "Fantasy Brush Engine tests PASS\n";
     return 0;
