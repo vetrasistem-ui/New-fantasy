@@ -63,6 +63,7 @@ struct MapCommand {
 
 struct MapCommandBatch {
     std::string requestId;
+    std::string label;
     CommandOrigin origin = CommandOrigin::Human;
     std::optional<std::uint64_t> expectedRevision;
     bool previewOnly = false;
