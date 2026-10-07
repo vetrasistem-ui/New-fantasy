@@ -89,6 +89,15 @@ bool isGround(
     return record && record->kind == fantasy::assets::LegacyAssetKind::Ground;
 }
 
+SpawnEntryKind toSpawnEntryKind(fantasy::legacy::LegacySpawnEntryKind kind) {
+    switch (kind) {
+    case fantasy::legacy::LegacySpawnEntryKind::Npc: return SpawnEntryKind::Npc;
+    case fantasy::legacy::LegacySpawnEntryKind::MonsterSet: return SpawnEntryKind::MonsterSet;
+    case fantasy::legacy::LegacySpawnEntryKind::Monster:
+    default: return SpawnEntryKind::Monster;
+    }
+}
+
 } // namespace
 
 LegacyMapAdaptResult LegacyMapAdapter::adapt(
@@ -159,26 +168,46 @@ LegacyMapAdaptResult LegacyMapAdapter::adapt(
         ++result.report.townCount;
     }
 
+    for (const auto& sourceWaypoint : source.import.model.waypoints) {
+        Waypoint waypoint;
+        waypoint.name = sourceWaypoint.name;
+        waypoint.position = toPosition(sourceWaypoint.position);
+        result.map.waypoints().insert_or_assign(waypoint.name, std::move(waypoint));
+    }
+
     for (const auto& sourceHouse : source.import.model.houses) {
         House house;
         house.id = sourceHouse.id;
         house.name = sourceHouse.name;
         house.exit = toPosition(sourceHouse.entry);
+        house.rent = sourceHouse.rent;
+        house.townId = sourceHouse.townId;
+        house.guildhall = sourceHouse.guildhall;
         result.map.houses().insert_or_assign(house.id, std::move(house));
         ++result.report.houseCount;
     }
 
     for (const auto& sourceSpawn : source.import.model.spawns) {
-        Tile& tile = result.map.ensureTile(toPosition(sourceSpawn.position));
-        SpawnPlacement spawn;
-        spawn.radius = sourceSpawn.radius > 0 ? static_cast<std::uint32_t>(sourceSpawn.radius) : 0;
-        tile.spawn = spawn;
+        SpawnArea spawn;
+        spawn.center = toPosition(sourceSpawn.center);
+        spawn.radius = sourceSpawn.radius;
+        spawn.entries.reserve(sourceSpawn.entries.size());
 
-        if (!sourceSpawn.creatureName.empty()) {
-            CreaturePlacement creature;
-            creature.name = sourceSpawn.creatureName;
-            tile.creature = std::move(creature);
+        for (const auto& sourceEntry : sourceSpawn.entries) {
+            SpawnEntry entry;
+            entry.kind = toSpawnEntryKind(sourceEntry.kind);
+            entry.position = toPosition(sourceEntry.position);
+            entry.name = sourceEntry.name;
+            entry.direction = sourceEntry.direction;
+            entry.intervalSeconds = sourceEntry.spawnTimeSeconds;
+            entry.monsters.reserve(sourceEntry.monsters.size());
+            for (const auto& sourceMonster : sourceEntry.monsters) {
+                entry.monsters.push_back(SpawnMonsterOption{sourceMonster.name, sourceMonster.chance});
+            }
+            spawn.entries.push_back(std::move(entry));
         }
+
+        result.map.spawnAreas().push_back(std::move(spawn));
         ++result.report.spawnCount;
     }
 
