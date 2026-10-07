@@ -33,6 +33,9 @@ public:
     void forEachTileInRect(std::int16_t floor, const Rect& rect, const std::function<void(Tile&)>& visitor);
     void forEachTileInRect(std::int16_t floor, const Rect& rect, const std::function<void(const Tile&)>& visitor) const;
 
+    std::unordered_map<std::uint32_t, Town>& towns() noexcept { return towns_; }
+    const std::unordered_map<std::uint32_t, Town>& towns() const noexcept { return towns_; }
+
     std::unordered_map<std::uint32_t, House>& houses() noexcept { return houses_; }
     const std::unordered_map<std::uint32_t, House>& houses() const noexcept { return houses_; }
 
@@ -61,6 +64,7 @@ private:
     [[nodiscard]] static std::uint32_t localKeyFor(const Position& position) noexcept;
 
     std::unordered_map<ChunkKey, Chunk, ChunkKeyHash> chunks_;
+    std::unordered_map<std::uint32_t, Town> towns_;
     std::unordered_map<std::uint32_t, House> houses_;
     std::unordered_map<std::string, Waypoint> waypoints_;
     std::size_t tileCount_ = 0;
