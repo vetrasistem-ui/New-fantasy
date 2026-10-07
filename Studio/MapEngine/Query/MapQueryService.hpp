@@ -15,6 +15,7 @@ struct MapSummary {
     std::size_t townCount = 0;
     std::size_t houseCount = 0;
     std::size_t waypointCount = 0;
+    std::size_t spawnAreaCount = 0;
     std::size_t selectedTileCount = 0;
 };
 
