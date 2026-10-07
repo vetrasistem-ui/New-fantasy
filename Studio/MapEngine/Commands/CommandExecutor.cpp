@@ -50,6 +50,7 @@ std::string labelFor(const MapCommandPayload& payload) {
         if constexpr (std::is_same_v<T, PlaceItemCommand>) return "Place item";
         if constexpr (std::is_same_v<T, RemoveItemCommand>) return "Remove item";
         if constexpr (std::is_same_v<T, EraseTileCommand>) return "Erase tiles";
+        if constexpr (std::is_same_v<T, ReplaceTileCommand>) return "Replace tile";
         return "Map edit";
     }, payload);
 }
@@ -105,6 +106,15 @@ bool appendPayload(
                 if (!before.has_value()) continue;
                 appendChange(action, overlay, position, std::move(before), std::nullopt);
             }
+        } else if constexpr (std::is_same_v<T, ReplaceTileCommand>) {
+            auto before = snapshot(map, overlay, command.position);
+            std::optional<Tile> after;
+            if (command.tile.has_value()) {
+                Tile replacement = *command.tile;
+                replacement.position = command.position;
+                after = normalize(std::move(replacement));
+            }
+            appendChange(action, overlay, command.position, std::move(before), std::move(after));
         }
     }, payload);
 
