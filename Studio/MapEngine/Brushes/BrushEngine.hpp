@@ -4,7 +4,9 @@
 
 #include <cstddef>
 #include <cstdint>
+#include <map>
 #include <optional>
+#include <set>
 #include <string>
 #include <unordered_map>
 #include <vector>
@@ -22,9 +24,31 @@ struct WeightedBrushItem {
     std::uint32_t weight = 1;
 };
 
+enum class BorderPieceKind {
+    North,
+    East,
+    South,
+    West,
+    CornerNorthWest,
+    CornerNorthEast,
+    CornerSouthEast,
+    CornerSouthWest,
+    DiagonalNorthWest,
+    DiagonalNorthEast,
+    DiagonalSouthEast,
+    DiagonalSouthWest,
+};
+
+struct AutoBorderDefinition {
+    std::string id;
+    std::map<BorderPieceKind, Item> pieces;
+};
+
 struct GroundBrushDefinition {
     std::string id;
     std::vector<WeightedBrushItem> variants;
+    std::vector<std::string> friends;
+    std::optional<std::string> outerBorderId;
     std::uint8_t maxRadius = 16;
     bool canDrag = true;
 };
@@ -50,8 +74,10 @@ struct BrushPlanResult {
 
 class BrushEngine {
 public:
+    bool registerAutoBorder(AutoBorderDefinition definition, std::string* error = nullptr);
     bool registerGroundBrush(GroundBrushDefinition definition, std::string* error = nullptr);
 
+    [[nodiscard]] const AutoBorderDefinition* findAutoBorder(const std::string& id) const noexcept;
     [[nodiscard]] const GroundBrushDefinition* findGroundBrush(const std::string& id) const noexcept;
     [[nodiscard]] BrushPlanResult planGroundStroke(const MapDocument& document, const BrushStroke& stroke) const;
     [[nodiscard]] CommandResult executeGroundStroke(MapDocument& document, const BrushStroke& stroke) const;
@@ -63,7 +89,28 @@ private:
         const Position& position,
         std::uint64_t seed) noexcept;
 
+    [[nodiscard]] const GroundBrushDefinition* brushForGround(const std::optional<Item>& ground) const noexcept;
+    [[nodiscard]] bool areFriendly(const GroundBrushDefinition& owner, const GroundBrushDefinition* other) const noexcept;
+    [[nodiscard]] std::vector<BorderPieceKind> selectBorderPieces(
+        const MapDocument& document,
+        const GroundBrushDefinition& owner,
+        const Position& position,
+        const std::map<Position, Item>& groundOverrides) const;
+    [[nodiscard]] std::optional<Item> effectiveGround(
+        const MapDocument& document,
+        const Position& position,
+        const std::map<Position, Item>& groundOverrides) const;
+
+    void removeManagedBorders(Tile& tile) const;
+    void appendOuterBorders(
+        Tile& tile,
+        const GroundBrushDefinition& owner,
+        const std::vector<BorderPieceKind>& pieces) const;
+
+    std::unordered_map<std::string, AutoBorderDefinition> autoBorders_;
     std::unordered_map<std::string, GroundBrushDefinition> groundBrushes_;
+    std::unordered_map<std::uint32_t, std::string> groundServerToBrush_;
+    std::set<std::uint32_t> managedBorderServerIds_;
 };
 
 } // namespace fantasy::studio::mapcore
