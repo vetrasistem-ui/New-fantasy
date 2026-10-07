@@ -53,6 +53,7 @@ add_library(fantasy-map-core
 # feed the shared registry; no DAT/SPR/OTB type leaks into the canonical map core.
 add_library(fantasy-asset-registry
     ../Shared/Assets/LegacyAssetRegistry.cpp
+    ../Shared/Assets/LegacyAssetRegistryBuilder.cpp
     ../Shared/Assets/Legacy/DatReader.cpp
     ../Shared/Assets/Legacy/SprReader.cpp
     ../Shared/Assets/Legacy/OtbReader.cpp
