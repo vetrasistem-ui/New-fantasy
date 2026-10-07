@@ -33,11 +33,13 @@ struct CommandResult {
 class CommandExecutor {
 public:
     [[nodiscard]] CommandResult execute(MapDocument& document, const MapCommand& command) const;
+    [[nodiscard]] CommandResult execute(MapDocument& document, const MapCommandBatch& batch) const;
 
 private:
     [[nodiscard]] static CommandResult buildResult(
         const MapDocument& document,
-        const MapCommand& command,
+        std::string requestId,
+        bool previewOnly,
         MapAction action);
 };
 
