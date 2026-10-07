@@ -105,6 +105,32 @@ int main() {
     require(unresolvedItemResult.status == CommandStatus::Invalid, "unresolved item rejected");
     require(document.map().findTile(Position{302, 400, 7}) == nullptr, "invalid item does not mutate map");
 
+    // A multi-step AI edit is previewed and committed as one atomic history entry.
+    MapCommandBatch batch;
+    batch.requestId = "ai-batch-001";
+    batch.origin = CommandOrigin::AI;
+    batch.expectedRevision = document.revision();
+    batch.previewOnly = true;
+    batch.commands.push_back(PlaceItemCommand{Position{300, 400, 7}, item(5000, 8000), std::nullopt});
+    batch.commands.push_back(PlaceItemCommand{Position{300, 400, 7}, item(5001, 8001), std::nullopt});
+    batch.commands.push_back(RemoveItemCommand{Position{300, 400, 7}, 0});
+    batch.commands.push_back(PaintGroundCommand{{Position{302, 400, 7}}, item(4527, 7813)});
+
+    const CommandResult batchPreview = executor.execute(document, batch);
+    require(batchPreview.status == CommandStatus::Preview, "batch preview status");
+    require(batchPreview.affectedTiles == 2, "batch preview affected tile count");
+    require(document.map().findTile(Position{302, 400, 7}) == nullptr, "batch preview does not mutate map");
+    require(document.map().findTile(Position{300, 400, 7})->items.empty(), "batch preview does not mutate stack");
+
+    batch.previewOnly = false;
+    const CommandResult batchApply = executor.execute(document, batch);
+    require(batchApply.status == CommandStatus::Applied, "batch apply status");
+    require(document.revision() == 2, "batch increments revision once");
+    const Tile* editedTile = document.map().findTile(Position{300, 400, 7});
+    require(editedTile && editedTile->items.size() == 1, "batch overlay preserves sequential item edits");
+    require(editedTile->items.front().serverId == 5001, "batch overlay leaves expected item");
+    require(document.map().findTile(Position{302, 400, 7}) != nullptr, "batch creates second tile");
+
     MapCommand stale = apply;
     stale.requestId = "ai-stale-001";
     stale.expectedRevision = 0;
@@ -113,13 +139,24 @@ int main() {
     require(staleResult.status == CommandStatus::RevisionConflict, "stale AI context must be rejected");
     require(document.map().findTile(Position{300, 400, 7}) != nullptr, "revision conflict must not mutate map");
 
-    require(document.undo(), "undo applied command");
-    require(document.revision() == 2, "revision increments on undo");
-    require(document.map().findTile(Position{300, 400, 7}) == nullptr, "undo restores pre-command state");
+    require(document.undo(), "undo atomic batch");
+    require(document.revision() == 3, "revision increments on batch undo");
+    require(document.map().findTile(Position{302, 400, 7}) == nullptr, "batch undo removes batch-created tile");
+    require(document.map().findTile(Position{300, 400, 7})->items.empty(), "batch undo restores item stack");
+    require(document.map().findTile(Position{300, 400, 7})->ground->serverId == 4526, "batch undo preserves previous action");
 
-    require(document.redo(), "redo applied command");
-    require(document.revision() == 3, "revision increments on redo");
-    require(document.map().findTile(Position{301, 400, 7}) != nullptr, "redo restores command state");
+    require(document.undo(), "undo original paint command");
+    require(document.revision() == 4, "revision increments on second undo");
+    require(document.map().findTile(Position{300, 400, 7}) == nullptr, "second undo restores pre-command state");
+
+    require(document.redo(), "redo original paint command");
+    require(document.revision() == 5, "revision increments on first redo");
+    require(document.map().findTile(Position{301, 400, 7}) != nullptr, "first redo restores paint command");
+
+    require(document.redo(), "redo atomic batch");
+    require(document.revision() == 6, "revision increments on batch redo");
+    require(document.map().findTile(Position{302, 400, 7}) != nullptr, "batch redo restores batch-created tile");
+    require(document.map().findTile(Position{300, 400, 7})->items.front().serverId == 5001, "batch redo restores item stack");
 
     std::cout << "Fantasy Map Core V1 tests PASS\n";
     return 0;
