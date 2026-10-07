@@ -1,6 +1,7 @@
 #include "MapDocument.hpp"
 #include "SelectionModel.hpp"
 #include "../Commands/CommandExecutor.hpp"
+#include "../Query/MapQueryService.hpp"
 
 #include <cstdlib>
 #include <iostream>
@@ -28,7 +29,7 @@ Item item(std::uint32_t serverId, std::uint32_t clientId = 0) {
 int main() {
     MapDocument document;
 
-    // Sparse/chunked storage must support normal and negative coordinates.
+    // Sparse/chunked storage must support normal and negative coordinates internally.
     document.map().ensureTile(Position{10, 20, 7}).ground = item(100, 200);
     document.map().ensureTile(Position{-1, -65, 7}).ground = item(101, 201);
     require(document.map().tileCount() == 2, "chunked storage tile count");
@@ -65,6 +66,44 @@ int main() {
     require(applyResult.status == CommandStatus::Applied, "AI command apply");
     require(document.revision() == 1, "revision increments on apply");
     require(document.map().findTile(Position{300, 400, 7}) != nullptr, "applied command mutates map");
+
+    // AI-facing query surface must be bounded and revision-aware.
+    MapQueryService queries;
+    const MapSummary summary = queries.summarize(document);
+    require(summary.revision == 1, "query summary revision");
+    require(summary.tileCount == 4, "query summary tile count");
+    require(summary.selectedTileCount == 5, "query summary selection count");
+
+    const RegionSnapshot region = queries.getRegion(document, 7, MapStorage::Rect{299, 399, 302, 401}, 8);
+    require(region.revision == 1, "region snapshot revision");
+    require(region.tiles.size() == 2, "region query tile count");
+    require(!region.truncated, "region query not truncated");
+
+    const RegionSnapshot bounded = queries.getRegion(document, 7, MapStorage::Rect{299, 399, 302, 401}, 1);
+    require(bounded.tiles.size() == 1, "bounded region result size");
+    require(bounded.truncated, "bounded region reports truncation");
+
+    const auto matches = queries.findItemsByServerId(document, 4526, 7, MapStorage::Rect{299, 399, 302, 401});
+    require(matches.size() == 2, "server id query finds both painted grounds");
+    require(matches.front().ground, "server id query marks ground match");
+
+    // Commands that cannot be represented by the 10.98 OTBM target are rejected.
+    MapCommand invalidPosition = apply;
+    invalidPosition.requestId = "ai-invalid-position";
+    invalidPosition.expectedRevision = document.revision();
+    invalidPosition.payload = PaintGroundCommand{{Position{-1, 500, 7}}, item(4526, 7812)};
+    const CommandResult invalidPositionResult = executor.execute(document, invalidPosition);
+    require(invalidPositionResult.status == CommandStatus::Invalid, "negative OTBM coordinate rejected");
+    require(document.revision() == 1, "invalid command does not change revision");
+
+    MapCommand unresolvedItem;
+    unresolvedItem.requestId = "ai-unresolved-item";
+    unresolvedItem.origin = CommandOrigin::AI;
+    unresolvedItem.expectedRevision = document.revision();
+    unresolvedItem.payload = PlaceItemCommand{Position{302, 400, 7}, item(0), std::nullopt};
+    const CommandResult unresolvedItemResult = executor.execute(document, unresolvedItem);
+    require(unresolvedItemResult.status == CommandStatus::Invalid, "unresolved item rejected");
+    require(document.map().findTile(Position{302, 400, 7}) == nullptr, "invalid item does not mutate map");
 
     MapCommand stale = apply;
     stale.requestId = "ai-stale-001";
