@@ -40,6 +40,11 @@ add_library(fantasy-studio-project
 add_library(fantasy-map-core
     ../Shared/Formats/FMAP/FmapCore.cpp
     MapEngine/EditorOperations.cpp
+    MapEngine/Core/MapStorage.cpp
+    MapEngine/Core/SelectionModel.cpp
+    MapEngine/Core/ActionHistory.cpp
+    MapEngine/Core/MapDocument.cpp
+    MapEngine/Commands/CommandExecutor.cpp
 )
 
 # F05.5 neutral asset contract plus isolated legacy binary readers. The readers
@@ -162,6 +167,11 @@ target_compile_definitions(fantasy-editor-operations-tests PRIVATE
     FANTASY_REPO_ROOT="${CMAKE_CURRENT_SOURCE_DIR}/.."
 )
 
+add_executable(fantasy-map-core-v1-tests
+    MapEngine/Core/MapCoreV1Tests.cpp
+)
+target_link_libraries(fantasy-map-core-v1-tests PRIVATE fantasy-map-core)
+
 add_executable(fantasy-asset-registry-tests
     ../Shared/Assets/LegacyAssetRegistryTests.cpp
 )
@@ -189,7 +199,7 @@ target_include_directories(fantasy-otbm-reader-tests PRIVATE
 )
 target_link_libraries(fantasy-otbm-reader-tests PRIVATE fantasy-legacy-import)
 
-foreach(target fantasy-asset-registry-tests fantasy-legacy-binary-readers-tests fantasy-otbm-reader-tests)
+foreach(target fantasy-asset-registry-tests fantasy-legacy-binary-readers-tests fantasy-otbm-reader-tests fantasy-map-core-v1-tests)
     if(MSVC)
         target_compile_options(${target} PRIVATE /W4 /permissive-)
     else()
@@ -201,6 +211,7 @@ enable_testing()
 add_test(NAME fantasy-studio-project-tests COMMAND fantasy-studio-project-tests)
 add_test(NAME fantasy-map-core-tests COMMAND fantasy-map-core-tests)
 add_test(NAME fantasy-editor-operations-tests COMMAND fantasy-editor-operations-tests)
+add_test(NAME fantasy-map-core-v1-tests COMMAND fantasy-map-core-v1-tests)
 add_test(NAME fantasy-asset-registry-tests COMMAND fantasy-asset-registry-tests)
 add_test(NAME fantasy-legacy-binary-readers-tests COMMAND fantasy-legacy-binary-readers-tests)
 add_test(NAME fantasy-otbm-reader-tests COMMAND fantasy-otbm-reader-tests)
