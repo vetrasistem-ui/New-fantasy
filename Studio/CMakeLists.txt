@@ -16,6 +16,8 @@ set(SDL_TEST_LIBRARY OFF CACHE BOOL "" FORCE)
 set(SDL_TESTS OFF CACHE BOOL "" FORCE)
 set(SDL_EXAMPLES OFF CACHE BOOL "" FORCE)
 set(SDL_INSTALL OFF CACHE BOOL "" FORCE)
+set(PUGIXML_INSTALL OFF CACHE BOOL "" FORCE)
+set(PUGIXML_BUILD_TESTS OFF CACHE BOOL "" FORCE)
 
 FetchContent_Declare(
     sdl3
@@ -31,7 +33,14 @@ FetchContent_Declare(
     GIT_SHALLOW TRUE
 )
 
-FetchContent_MakeAvailable(sdl3 imgui)
+FetchContent_Declare(
+    pugixml
+    GIT_REPOSITORY https://github.com/zeux/pugixml.git
+    GIT_TAG v1.16
+    GIT_SHALLOW TRUE
+)
+
+FetchContent_MakeAvailable(sdl3 imgui pugixml)
 
 add_library(fantasy-studio-project
     Project/ProjectManager.cpp
@@ -59,11 +68,14 @@ add_library(fantasy-asset-registry
     ../Shared/Assets/Legacy/OtbReader.cpp
 )
 
-# OTBM stays isolated from the canonical map core. It produces only the neutral
-# LegacyMapImportModel. The adapter below is the explicit compatibility boundary.
+# OTBM and its external XML files stay isolated from the canonical map core.
+# They produce a neutral LegacyMapImportModel. The adapter below is the explicit
+# compatibility boundary into the editor domain.
 add_library(fantasy-legacy-import
     ../Shared/Formats/Legacy/OtbmReader.cpp
+    ../Shared/Formats/Legacy/LegacyAuxXmlReader.cpp
 )
+target_link_libraries(fantasy-legacy-import PUBLIC pugixml::pugixml)
 
 add_library(fantasy-map-legacy-bridge
     MapEngine/Import/LegacyMapAdapter.cpp
@@ -217,7 +229,16 @@ target_include_directories(fantasy-otbm-reader-tests PRIVATE
 )
 target_link_libraries(fantasy-otbm-reader-tests PRIVATE fantasy-legacy-import)
 
-foreach(target fantasy-asset-registry-tests fantasy-legacy-binary-readers-tests fantasy-otbm-reader-tests fantasy-map-core-v1-tests fantasy-map-legacy-adapter-tests)
+add_executable(fantasy-legacy-aux-xml-tests
+    ../Shared/Formats/Legacy/LegacyAuxXmlReaderTests.cpp
+)
+target_include_directories(fantasy-legacy-aux-xml-tests PRIVATE
+    ${CMAKE_CURRENT_SOURCE_DIR}
+    ${CMAKE_CURRENT_SOURCE_DIR}/..
+)
+target_link_libraries(fantasy-legacy-aux-xml-tests PRIVATE fantasy-legacy-import)
+
+foreach(target fantasy-asset-registry-tests fantasy-legacy-binary-readers-tests fantasy-otbm-reader-tests fantasy-legacy-aux-xml-tests fantasy-map-core-v1-tests fantasy-map-legacy-adapter-tests)
     if(MSVC)
         target_compile_options(${target} PRIVATE /W4 /permissive-)
     else()
@@ -234,6 +255,7 @@ add_test(NAME fantasy-map-legacy-adapter-tests COMMAND fantasy-map-legacy-adapte
 add_test(NAME fantasy-asset-registry-tests COMMAND fantasy-asset-registry-tests)
 add_test(NAME fantasy-legacy-binary-readers-tests COMMAND fantasy-legacy-binary-readers-tests)
 add_test(NAME fantasy-otbm-reader-tests COMMAND fantasy-otbm-reader-tests)
+add_test(NAME fantasy-legacy-aux-xml-tests COMMAND fantasy-legacy-aux-xml-tests)
 add_test(
     NAME fantasy-studio-open-project
     COMMAND fantasy-studio --open-project "${CMAKE_CURRENT_SOURCE_DIR}/.."
