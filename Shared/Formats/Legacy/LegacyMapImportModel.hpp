@@ -33,16 +33,44 @@ struct LegacyImportedTown {
     LegacyPosition templePosition;
 };
 
+struct LegacyImportedWaypoint {
+    std::string name;
+    LegacyPosition position;
+};
+
 struct LegacyImportedHouse {
     std::uint32_t id = 0;
     std::string name;
     LegacyPosition entry;
+    std::uint32_t rent = 0;
+    std::uint32_t townId = 0;
+    bool guildhall = false;
+};
+
+enum class LegacySpawnEntryKind {
+    Monster,
+    Npc,
+    MonsterSet,
+};
+
+struct LegacySpawnMonsterOption {
+    std::string name;
+    std::uint16_t chance = 0;
+};
+
+struct LegacyImportedSpawnEntry {
+    LegacySpawnEntryKind kind = LegacySpawnEntryKind::Monster;
+    LegacyPosition position;
+    std::string name;
+    std::uint16_t direction = 0;
+    std::uint32_t spawnTimeSeconds = 0;
+    std::vector<LegacySpawnMonsterOption> monsters;
 };
 
 struct LegacyImportedSpawn {
-    LegacyPosition position;
+    LegacyPosition center;
     std::int32_t radius = 0;
-    std::string creatureName;
+    std::vector<LegacyImportedSpawnEntry> entries;
 };
 
 struct LegacyMapImportModel {
@@ -52,6 +80,7 @@ struct LegacyMapImportModel {
     std::uint32_t height = 0;
     std::vector<LegacyImportedTile> tiles;
     std::vector<LegacyImportedTown> towns;
+    std::vector<LegacyImportedWaypoint> waypoints;
     std::vector<LegacyImportedHouse> houses;
     std::vector<LegacyImportedSpawn> spawns;
 };
@@ -60,8 +89,10 @@ struct LegacyImportDiagnostics {
     std::size_t tileCount = 0;
     std::size_t itemCount = 0;
     std::size_t townCount = 0;
+    std::size_t waypointCount = 0;
     std::size_t houseCount = 0;
     std::size_t spawnCount = 0;
+    std::size_t spawnEntryCount = 0;
     std::vector<std::uint32_t> unknownServerIds;
     std::vector<std::string> warnings;
 };
