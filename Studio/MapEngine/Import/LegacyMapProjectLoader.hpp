@@ -4,6 +4,7 @@
 #include "Shared/Assets/LegacyAssetRegistryBuilder.hpp"
 #include "Shared/Formats/Legacy/LegacyAuxXmlReader.hpp"
 
+#include <cstdint>
 #include <filesystem>
 #include <optional>
 #include <string>
@@ -16,6 +17,7 @@ struct LegacyMapProjectConfig {
     std::filesystem::path otbmPath;
     std::filesystem::path otbPath;
     std::filesystem::path datPath;
+    std::filesystem::path sprPath;
     std::optional<std::filesystem::path> houseXmlPath;
     std::optional<std::filesystem::path> spawnXmlPath;
 };
@@ -26,6 +28,9 @@ struct LegacyMapProjectReport {
     fantasy::legacy::LegacyAuxXmlReport houses;
     fantasy::legacy::LegacyAuxXmlReport spawns;
     LegacyMapAdaptReport map;
+    std::uint32_t datSignature = 0;
+    std::uint32_t sprSignature = 0;
+    std::uint32_t sprCount = 0;
     std::vector<std::string> warnings;
     std::vector<std::string> errors;
 };
