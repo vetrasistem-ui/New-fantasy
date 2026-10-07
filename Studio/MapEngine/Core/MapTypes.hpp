@@ -58,6 +58,13 @@ struct Tile {
     bool operator==(const Tile&) const = default;
 };
 
+struct Town {
+    std::uint32_t id = 0;
+    std::string name;
+    Position templePosition;
+    bool operator==(const Town&) const = default;
+};
+
 struct House {
     std::uint32_t id = 0;
     std::string name;
@@ -69,6 +76,17 @@ struct Waypoint {
     std::string name;
     Position position;
     bool operator==(const Waypoint&) const = default;
+};
+
+struct MapMetadata {
+    std::uint32_t width = 0;
+    std::uint32_t height = 0;
+    std::string name;
+    std::string description;
+    std::string spawnFile;
+    std::string houseFile;
+    std::string sourceProfileId;
+    bool operator==(const MapMetadata&) const = default;
 };
 
 } // namespace fantasy::studio::mapcore
