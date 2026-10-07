@@ -46,13 +46,14 @@ struct Tile {
     Position position;
     std::optional<Item> ground;
     std::vector<Item> items;
+    std::map<std::string, AttributeValue> attributes;
     std::optional<CreaturePlacement> creature;
     std::optional<SpawnPlacement> spawn;
     std::uint32_t houseId = 0;
     std::uint32_t flags = 0;
 
     [[nodiscard]] bool empty() const noexcept {
-        return !ground.has_value() && items.empty() && !creature.has_value() && !spawn.has_value() && houseId == 0 && flags == 0;
+        return !ground.has_value() && items.empty() && attributes.empty() && !creature.has_value() && !spawn.has_value() && houseId == 0 && flags == 0;
     }
 
     bool operator==(const Tile&) const = default;
