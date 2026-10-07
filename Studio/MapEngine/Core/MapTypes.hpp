@@ -70,6 +70,9 @@ struct House {
     std::uint32_t id = 0;
     std::string name;
     Position exit;
+    std::uint32_t rent = 0;
+    std::uint32_t townId = 0;
+    bool guildhall = false;
     bool operator==(const House&) const = default;
 };
 
@@ -77,6 +80,35 @@ struct Waypoint {
     std::string name;
     Position position;
     bool operator==(const Waypoint&) const = default;
+};
+
+enum class SpawnEntryKind {
+    Monster,
+    Npc,
+    MonsterSet,
+};
+
+struct SpawnMonsterOption {
+    std::string name;
+    std::uint16_t chance = 0;
+    bool operator==(const SpawnMonsterOption&) const = default;
+};
+
+struct SpawnEntry {
+    SpawnEntryKind kind = SpawnEntryKind::Monster;
+    Position position;
+    std::string name;
+    std::uint16_t direction = 0;
+    std::uint32_t intervalSeconds = 0;
+    std::vector<SpawnMonsterOption> monsters;
+    bool operator==(const SpawnEntry&) const = default;
+};
+
+struct SpawnArea {
+    Position center;
+    std::int32_t radius = 0;
+    std::vector<SpawnEntry> entries;
+    bool operator==(const SpawnArea&) const = default;
 };
 
 struct MapMetadata {
