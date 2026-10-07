@@ -54,6 +54,12 @@ std::vector<std::uint8_t> makeMap() {
     nodeEnd(out);
     nodeEnd(out);
 
+    nodeBegin(out, 15);
+    nodeBegin(out, 16);
+    std::vector<std::uint8_t> waypoint; str(waypoint, "Depot"); u16(waypoint, 321); u16(waypoint, 432); waypoint.push_back(7); props(out, waypoint);
+    nodeEnd(out);
+    nodeEnd(out);
+
     nodeEnd(out); // map data
     nodeEnd(out); // root
     return out;
@@ -91,6 +97,10 @@ int main() {
     assert(r.import.model.towns.size() == 1U);
     assert(r.import.model.towns[0].name == "Fantasy Town");
     assert(r.import.model.towns[0].templePosition.x == 123);
+    assert(r.import.model.waypoints.size() == 1U);
+    assert(r.import.diagnostics.waypointCount == 1U);
+    assert(r.import.model.waypoints[0].name == "Depot");
+    assert(r.import.model.waypoints[0].position.x == 321 && r.import.model.waypoints[0].position.y == 432 && r.import.model.waypoints[0].position.z == 7);
 
     std::error_code ignored; fs::remove_all(root, ignored);
     return 0;
