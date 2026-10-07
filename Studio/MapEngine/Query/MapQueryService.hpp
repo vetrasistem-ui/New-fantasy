@@ -12,6 +12,7 @@ namespace fantasy::studio::mapcore {
 struct MapSummary {
     std::uint64_t revision = 0;
     std::size_t tileCount = 0;
+    std::size_t townCount = 0;
     std::size_t houseCount = 0;
     std::size_t waypointCount = 0;
     std::size_t selectedTileCount = 0;
