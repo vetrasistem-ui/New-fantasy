@@ -56,6 +56,7 @@ add_library(fantasy-map-core
     MapEngine/Commands/CommandValidator.cpp
     MapEngine/Commands/CommandExecutor.cpp
     MapEngine/Clipboard/MapClipboard.cpp
+    MapEngine/Brushes/BrushEngine.cpp
     MapEngine/Query/MapQueryService.cpp
 )
 
@@ -204,6 +205,11 @@ add_executable(fantasy-map-clipboard-tests
 )
 target_link_libraries(fantasy-map-clipboard-tests PRIVATE fantasy-map-core)
 
+add_executable(fantasy-brush-engine-tests
+    MapEngine/Brushes/BrushEngineTests.cpp
+)
+target_link_libraries(fantasy-brush-engine-tests PRIVATE fantasy-map-core)
+
 add_executable(fantasy-map-legacy-adapter-tests
     MapEngine/Import/LegacyMapAdapterTests.cpp
 )
@@ -245,7 +251,7 @@ target_include_directories(fantasy-legacy-aux-xml-tests PRIVATE
 )
 target_link_libraries(fantasy-legacy-aux-xml-tests PRIVATE fantasy-legacy-import)
 
-foreach(target fantasy-asset-registry-tests fantasy-legacy-binary-readers-tests fantasy-otbm-reader-tests fantasy-legacy-aux-xml-tests fantasy-map-core-v1-tests fantasy-map-clipboard-tests fantasy-map-legacy-adapter-tests)
+foreach(target fantasy-asset-registry-tests fantasy-legacy-binary-readers-tests fantasy-otbm-reader-tests fantasy-legacy-aux-xml-tests fantasy-map-core-v1-tests fantasy-map-clipboard-tests fantasy-brush-engine-tests fantasy-map-legacy-adapter-tests)
     if(MSVC)
         target_compile_options(${target} PRIVATE /W4 /permissive-)
     else()
@@ -259,6 +265,7 @@ add_test(NAME fantasy-map-core-tests COMMAND fantasy-map-core-tests)
 add_test(NAME fantasy-editor-operations-tests COMMAND fantasy-editor-operations-tests)
 add_test(NAME fantasy-map-core-v1-tests COMMAND fantasy-map-core-v1-tests)
 add_test(NAME fantasy-map-clipboard-tests COMMAND fantasy-map-clipboard-tests)
+add_test(NAME fantasy-brush-engine-tests COMMAND fantasy-brush-engine-tests)
 add_test(NAME fantasy-map-legacy-adapter-tests COMMAND fantasy-map-legacy-adapter-tests)
 add_test(NAME fantasy-asset-registry-tests COMMAND fantasy-asset-registry-tests)
 add_test(NAME fantasy-legacy-binary-readers-tests COMMAND fantasy-legacy-binary-readers-tests)
