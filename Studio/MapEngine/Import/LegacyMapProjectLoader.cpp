@@ -2,6 +2,7 @@
 
 #include "Shared/Assets/Legacy/DatReader.hpp"
 #include "Shared/Assets/Legacy/OtbReader.hpp"
+#include "Shared/Assets/Legacy/SprReader.hpp"
 #include "Shared/Formats/Legacy/OtbmReader.hpp"
 
 #include <exception>
@@ -46,14 +47,19 @@ LegacyMapProjectLoadResult LegacyMapProjectLoader::load(
     LegacyMapProjectLoadResult output;
 
     try {
-        if (config.otbmPath.empty() || config.otbPath.empty() || config.datPath.empty()) {
-            output.report.errors.push_back("OTBM, OTB and DAT paths are required.");
+        if (config.otbmPath.empty() || config.otbPath.empty() || config.datPath.empty() || config.sprPath.empty()) {
+            output.report.errors.push_back("OTBM, OTB, DAT and SPR paths are required.");
             return output;
         }
 
         fantasy::assets::legacy::OtbReader otb(config.otbPath);
         fantasy::assets::legacy::DatReader1057 dat(config.datPath);
+        fantasy::assets::legacy::SprReader spr(config.sprPath);
         fantasy::legacy::OtbmReader otbm(config.otbmPath);
+
+        output.report.datSignature = dat.header().signature;
+        output.report.sprSignature = spr.info().signature;
+        output.report.sprCount = spr.info().spriteCount;
 
         const auto& header = otbm.result().header;
         if (header.formatVersion == 0 || header.formatVersion > 2) {
@@ -80,6 +86,12 @@ LegacyMapProjectLoadResult LegacyMapProjectLoader::load(
             output.report.warnings.push_back(
                 "DAT signature is " + std::to_string(dat.header().signature) +
                 "; the active 10.98 profile expects 0x42A3.");
+        }
+
+        if (spr.info().signature != 0x57BBD603U) {
+            output.report.warnings.push_back(
+                "SPR signature is " + std::to_string(spr.info().signature) +
+                "; the active 10.98 profile expects 0x57BBD603.");
         }
 
         auto registryBuild = fantasy::assets::LegacyAssetRegistryBuilder{}.build(config.profileId, otb, dat);
