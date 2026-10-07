@@ -17,6 +17,7 @@ struct LegacyPosition {
 struct LegacyImportedItem {
     std::uint32_t serverId = 0;
     std::unordered_map<std::string, std::string> attributes;
+    std::vector<LegacyImportedItem> contents;
 };
 
 struct LegacyImportedTile {
