@@ -37,11 +37,20 @@ struct EraseTileCommand {
     std::vector<Position> positions;
 };
 
+// Low-level but validated domain command used by clipboard/import/advanced AI
+// operations. When tile is present its embedded position is normalized to
+// `position` by the executor; null removes the tile.
+struct ReplaceTileCommand {
+    Position position;
+    std::optional<Tile> tile;
+};
+
 using MapCommandPayload = std::variant<
     PaintGroundCommand,
     PlaceItemCommand,
     RemoveItemCommand,
-    EraseTileCommand
+    EraseTileCommand,
+    ReplaceTileCommand
 >;
 
 struct MapCommand {
