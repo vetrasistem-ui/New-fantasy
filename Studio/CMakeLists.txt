@@ -226,6 +226,11 @@ add_executable(fantasy-map-legacy-adapter-tests
 )
 target_link_libraries(fantasy-map-legacy-adapter-tests PRIVATE fantasy-map-legacy-bridge)
 
+add_executable(fantasy-map-project-loader-tests
+    MapEngine/Import/LegacyMapProjectLoaderTests.cpp
+)
+target_link_libraries(fantasy-map-project-loader-tests PRIVATE fantasy-map-legacy-bridge)
+
 add_executable(fantasy-asset-registry-tests
     ../Shared/Assets/LegacyAssetRegistryTests.cpp
 )
@@ -267,7 +272,7 @@ target_include_directories(fantasy-legacy-aux-xml-tests PRIVATE
 )
 target_link_libraries(fantasy-legacy-aux-xml-tests PRIVATE fantasy-legacy-import)
 
-foreach(target fantasy-asset-registry-tests fantasy-legacy-binary-readers-tests fantasy-legacy-texture-cache-tests fantasy-otbm-reader-tests fantasy-legacy-aux-xml-tests fantasy-map-core-v1-tests fantasy-map-clipboard-tests fantasy-brush-engine-tests fantasy-map-legacy-adapter-tests)
+foreach(target fantasy-asset-registry-tests fantasy-legacy-binary-readers-tests fantasy-legacy-texture-cache-tests fantasy-otbm-reader-tests fantasy-legacy-aux-xml-tests fantasy-map-core-v1-tests fantasy-map-clipboard-tests fantasy-brush-engine-tests fantasy-map-legacy-adapter-tests fantasy-map-project-loader-tests)
     if(MSVC)
         target_compile_options(${target} PRIVATE /W4 /permissive-)
     else()
@@ -283,6 +288,7 @@ add_test(NAME fantasy-map-core-v1-tests COMMAND fantasy-map-core-v1-tests)
 add_test(NAME fantasy-map-clipboard-tests COMMAND fantasy-map-clipboard-tests)
 add_test(NAME fantasy-brush-engine-tests COMMAND fantasy-brush-engine-tests)
 add_test(NAME fantasy-map-legacy-adapter-tests COMMAND fantasy-map-legacy-adapter-tests)
+add_test(NAME fantasy-map-project-loader-tests COMMAND fantasy-map-project-loader-tests)
 add_test(NAME fantasy-asset-registry-tests COMMAND fantasy-asset-registry-tests)
 add_test(NAME fantasy-legacy-binary-readers-tests COMMAND fantasy-legacy-binary-readers-tests)
 add_test(NAME fantasy-legacy-texture-cache-tests COMMAND fantasy-legacy-texture-cache-tests)
