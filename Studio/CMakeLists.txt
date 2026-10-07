@@ -89,7 +89,16 @@ target_link_libraries(fantasy-map-legacy-bridge PUBLIC
     fantasy-legacy-import
 )
 
-foreach(target fantasy-studio-project fantasy-map-core fantasy-asset-registry fantasy-legacy-import fantasy-map-legacy-bridge)
+add_library(fantasy-legacy-rendering
+    Rendering/LegacySpriteTextureCache.cpp
+)
+target_link_libraries(fantasy-legacy-rendering PUBLIC
+    fantasy-map-core
+    fantasy-asset-registry
+    SDL3::SDL3
+)
+
+foreach(target fantasy-studio-project fantasy-map-core fantasy-asset-registry fantasy-legacy-import fantasy-map-legacy-bridge fantasy-legacy-rendering)
     target_include_directories(${target} PUBLIC
         ${CMAKE_CURRENT_SOURCE_DIR}
         ${CMAKE_CURRENT_SOURCE_DIR}/..
@@ -138,6 +147,7 @@ target_link_libraries(fantasy-studio-gui PRIVATE
     fantasy-map-core
     fantasy-asset-registry
     fantasy-map-legacy-bridge
+    fantasy-legacy-rendering
     fantasy-imgui
     SDL3::SDL3
 )
