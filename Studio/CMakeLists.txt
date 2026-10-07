@@ -50,7 +50,7 @@ add_library(fantasy-map-core
 )
 
 # F05.5 neutral asset contract plus isolated legacy binary readers. The readers
-# feed the shared registry; no DAT/SPR/OTB type leaks into FMAP/MapDocument.
+# feed the shared registry; no DAT/SPR/OTB type leaks into the canonical map core.
 add_library(fantasy-asset-registry
     ../Shared/Assets/LegacyAssetRegistry.cpp
     ../Shared/Assets/Legacy/DatReader.cpp
@@ -58,13 +58,22 @@ add_library(fantasy-asset-registry
     ../Shared/Assets/Legacy/OtbReader.cpp
 )
 
-# OTBM stays isolated from the native map core. It produces only the neutral
-# LegacyMapImportModel and never mutates MapDocument directly.
+# OTBM stays isolated from the canonical map core. It produces only the neutral
+# LegacyMapImportModel. The adapter below is the explicit compatibility boundary.
 add_library(fantasy-legacy-import
     ../Shared/Formats/Legacy/OtbmReader.cpp
 )
 
-foreach(target fantasy-studio-project fantasy-map-core fantasy-asset-registry fantasy-legacy-import)
+add_library(fantasy-map-legacy-bridge
+    MapEngine/Import/LegacyMapAdapter.cpp
+)
+target_link_libraries(fantasy-map-legacy-bridge PUBLIC
+    fantasy-map-core
+    fantasy-asset-registry
+    fantasy-legacy-import
+)
+
+foreach(target fantasy-studio-project fantasy-map-core fantasy-asset-registry fantasy-legacy-import fantasy-map-legacy-bridge)
     target_include_directories(${target} PUBLIC
         ${CMAKE_CURRENT_SOURCE_DIR}
         ${CMAKE_CURRENT_SOURCE_DIR}/..
@@ -112,6 +121,7 @@ target_link_libraries(fantasy-studio-gui PRIVATE
     fantasy-studio-project
     fantasy-map-core
     fantasy-asset-registry
+    fantasy-map-legacy-bridge
     fantasy-imgui
     SDL3::SDL3
 )
@@ -174,6 +184,11 @@ add_executable(fantasy-map-core-v1-tests
 )
 target_link_libraries(fantasy-map-core-v1-tests PRIVATE fantasy-map-core)
 
+add_executable(fantasy-map-legacy-adapter-tests
+    MapEngine/Import/LegacyMapAdapterTests.cpp
+)
+target_link_libraries(fantasy-map-legacy-adapter-tests PRIVATE fantasy-map-legacy-bridge)
+
 add_executable(fantasy-asset-registry-tests
     ../Shared/Assets/LegacyAssetRegistryTests.cpp
 )
@@ -201,7 +216,7 @@ target_include_directories(fantasy-otbm-reader-tests PRIVATE
 )
 target_link_libraries(fantasy-otbm-reader-tests PRIVATE fantasy-legacy-import)
 
-foreach(target fantasy-asset-registry-tests fantasy-legacy-binary-readers-tests fantasy-otbm-reader-tests fantasy-map-core-v1-tests)
+foreach(target fantasy-asset-registry-tests fantasy-legacy-binary-readers-tests fantasy-otbm-reader-tests fantasy-map-core-v1-tests fantasy-map-legacy-adapter-tests)
     if(MSVC)
         target_compile_options(${target} PRIVATE /W4 /permissive-)
     else()
@@ -214,6 +229,7 @@ add_test(NAME fantasy-studio-project-tests COMMAND fantasy-studio-project-tests)
 add_test(NAME fantasy-map-core-tests COMMAND fantasy-map-core-tests)
 add_test(NAME fantasy-editor-operations-tests COMMAND fantasy-editor-operations-tests)
 add_test(NAME fantasy-map-core-v1-tests COMMAND fantasy-map-core-v1-tests)
+add_test(NAME fantasy-map-legacy-adapter-tests COMMAND fantasy-map-legacy-adapter-tests)
 add_test(NAME fantasy-asset-registry-tests COMMAND fantasy-asset-registry-tests)
 add_test(NAME fantasy-legacy-binary-readers-tests COMMAND fantasy-legacy-binary-readers-tests)
 add_test(NAME fantasy-otbm-reader-tests COMMAND fantasy-otbm-reader-tests)
