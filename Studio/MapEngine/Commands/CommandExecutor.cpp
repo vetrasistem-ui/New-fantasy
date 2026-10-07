@@ -1,4 +1,5 @@
 #include "CommandExecutor.hpp"
+#include "CommandValidator.hpp"
 
 #include <optional>
 #include <set>
@@ -31,8 +32,14 @@ CommandResult CommandExecutor::execute(MapDocument& document, const MapCommand& 
         return result;
     }
 
+    const ValidationReport validation = CommandValidator{}.validate(document, command);
+    if (!validation.ok()) {
+        result.status = CommandStatus::Invalid;
+        result.message = validation.firstError();
+        return result;
+    }
+
     MapAction action;
-    std::optional<std::string> error;
 
     std::visit([&](const auto& payload) {
         using T = std::decay_t<decltype(payload)>;
@@ -48,30 +55,16 @@ CommandResult CommandExecutor::execute(MapDocument& document, const MapCommand& 
             }
         } else if constexpr (std::is_same_v<T, PlaceItemCommand>) {
             action.label = "Place item";
-            if (payload.item.serverId == 0) {
-                error = "Cannot place an item with serverId 0.";
-                return;
-            }
-
             auto before = snapshot(document.map(), payload.position);
             Tile after = before.value_or(Tile{});
             after.position = payload.position;
 
             const std::size_t index = payload.stackIndex.value_or(after.items.size());
-            if (index > after.items.size()) {
-                error = "Requested stack index is outside the tile item stack.";
-                return;
-            }
             after.items.insert(after.items.begin() + static_cast<std::ptrdiff_t>(index), payload.item);
             action.changes.push_back(TileChange{payload.position, std::move(before), normalize(std::move(after))});
         } else if constexpr (std::is_same_v<T, RemoveItemCommand>) {
             action.label = "Remove item";
             auto before = snapshot(document.map(), payload.position);
-            if (!before.has_value() || payload.stackIndex >= before->items.size()) {
-                error = "Requested item does not exist at the specified stack index.";
-                return;
-            }
-
             Tile after = *before;
             after.items.erase(after.items.begin() + static_cast<std::ptrdiff_t>(payload.stackIndex));
             action.changes.push_back(TileChange{payload.position, std::move(before), normalize(std::move(after))});
@@ -84,12 +77,6 @@ CommandResult CommandExecutor::execute(MapDocument& document, const MapCommand& 
             }
         }
     }, command.payload);
-
-    if (error.has_value()) {
-        result.status = CommandStatus::Invalid;
-        result.message = *error;
-        return result;
-    }
 
     result = buildResult(document, command, std::move(action));
     if (command.previewOnly || result.diff.changes.empty()) return result;
