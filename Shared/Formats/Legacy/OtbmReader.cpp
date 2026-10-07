@@ -22,6 +22,7 @@ constexpr std::uint8_t kTowns = 12;
 constexpr std::uint8_t kTown = 13;
 constexpr std::uint8_t kHouseTile = 14;
 constexpr std::uint8_t kWaypoints = 15;
+constexpr std::uint8_t kWaypoint = 16;
 
 constexpr std::uint8_t kAttrDescription = 1;
 constexpr std::uint8_t kAttrTileFlags = 3;
@@ -228,7 +229,20 @@ void parseMapData(const Node& mapData, OtbmReadResult& result) {
                 ++result.import.diagnostics.townCount;
             }
         } else if (node.type == kWaypoints) {
-            result.import.diagnostics.warnings.push_back("Waypoints preserved only as diagnostics in the first OTBM milestone");
+            for (const auto& waypointNode : node.children) {
+                if (waypointNode.type != kWaypoint) {
+                    result.import.diagnostics.warnings.push_back("Unsupported node in waypoint container " + std::to_string(waypointNode.type));
+                    continue;
+                }
+                std::size_t c = 0;
+                LegacyImportedWaypoint waypoint;
+                waypoint.name = str(waypointNode.properties, c);
+                waypoint.position.x = u16(waypointNode.properties, c);
+                waypoint.position.y = u16(waypointNode.properties, c);
+                waypoint.position.z = u8(waypointNode.properties, c);
+                result.import.model.waypoints.push_back(std::move(waypoint));
+                ++result.import.diagnostics.waypointCount;
+            }
         } else {
             result.import.diagnostics.warnings.push_back("Unsupported OTBM map-data node " + std::to_string(node.type));
         }
