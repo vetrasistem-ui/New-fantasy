@@ -35,6 +35,7 @@ int main() {
     fantasy::assets::FantasyAssetRegistry assets;
     require(assets.registerLegacyAsset(asset("1098:100", fantasy::assets::LegacyAssetKind::Ground, 100, 200)), "register ground asset");
     require(assets.registerLegacyAsset(asset("1098:101", fantasy::assets::LegacyAssetKind::Object, 101, 201)), "register object asset");
+    require(assets.registerLegacyAsset(asset("1098:102", fantasy::assets::LegacyAssetKind::Object, 102, 202)), "register nested object asset");
 
     fantasy::legacy::OtbmReadResult source;
     source.header.formatVersion = 2;
@@ -67,12 +68,21 @@ int main() {
     object.serverId = 101;
     object.attributes["actionId"] = "42";
     object.attributes["teleportDestination"] = "120,220,7";
+    object.attributes["duration"] = "-500";
+    object.attributes["writtenBy"] = "Fantasy Writer";
+    object.attributes["runeCharges"] = "7";
+
+    fantasy::legacy::LegacyImportedItem nested;
+    nested.serverId = 102;
+    nested.attributes["count"] = "4";
+    object.contents.push_back(nested);
     sourceTile.items.push_back(object);
 
     fantasy::legacy::LegacyImportedItem unresolved;
     unresolved.serverId = 999;
     sourceTile.items.push_back(unresolved);
     source.import.model.tiles.push_back(sourceTile);
+    source.import.diagnostics.itemCount = 4;
 
     fantasy::legacy::LegacyImportedTown town;
     town.id = 1;
@@ -115,6 +125,7 @@ int main() {
     require(adapted.map.waypoints().size() == 1, "waypoint imported");
     require(adapted.map.houses().size() == 1, "house imported");
     require(adapted.map.spawnAreas().size() == 1, "spawn area imported");
+    require(adapted.report.itemCount == 4, "nested items included in diagnostics count");
     require(adapted.report.unresolvedServerIds.size() == 1 && adapted.report.unresolvedServerIds.front() == 999, "unknown server id reported");
 
     const Tile* tile = adapted.map.findTile(Position{100, 200, 7});
@@ -126,6 +137,11 @@ int main() {
     require(tile->items[1].serverId == 999 && tile->items[1].clientId == 0, "unresolved item preserved losslessly by server id");
     require(tile->flags == 3, "tile flags imported");
     require(tile->houseId == 7, "house tile id imported");
+
+    require(tile->items[0].contents.size() == 1, "nested container item preserved");
+    require(tile->items[0].contents[0].serverId == 102 && tile->items[0].contents[0].clientId == 202, "nested item ids resolved");
+    require(tile->items[0].contents[0].countOrSubtype == 4, "nested item subtype preserved");
+    require(tile->items[0].countOrSubtype == 7, "rune charges mapped to canonical subtype");
 
     const House& adaptedHouse = adapted.map.houses().at(7);
     require(adaptedHouse.rent == 2500 && adaptedHouse.townId == 1 && adaptedHouse.guildhall, "house metadata adapted");
@@ -143,6 +159,16 @@ int main() {
     require(actionIt != tile->items[0].attributes.end(), "action id preserved");
     const auto* actionId = std::get_if<std::int64_t>(&actionIt->second);
     require(actionId && *actionId == 42, "action id typed as integer");
+
+    const auto durationIt = tile->items[0].attributes.find("duration");
+    require(durationIt != tile->items[0].attributes.end(), "duration preserved");
+    const auto* duration = std::get_if<std::int64_t>(&durationIt->second);
+    require(duration && *duration == -500, "duration typed as signed integer");
+
+    const auto writerIt = tile->items[0].attributes.find("writtenBy");
+    require(writerIt != tile->items[0].attributes.end(), "writer preserved");
+    const auto* writer = std::get_if<std::string>(&writerIt->second);
+    require(writer && *writer == "Fantasy Writer", "writer remains string");
 
     const auto teleIt = tile->items[0].attributes.find("teleportDestination");
     require(teleIt != tile->items[0].attributes.end(), "teleport destination preserved");
