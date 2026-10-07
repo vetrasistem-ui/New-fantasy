@@ -1,4 +1,5 @@
 #include "Shared/Assets/LegacyAssetRegistry.hpp"
+#include "Shared/Assets/LegacyAssetRegistryBuilder.hpp"
 
 #include <cassert>
 #include <string>
@@ -48,6 +49,38 @@ int main() {
 
     assert(FantasyAssetRegistry::bootstrapSemanticKey("PokeFans 10.98", 1515) ==
            "legacy.pokefans_10_98.item.1515");
+
+    // TFS ItemGroup_t uses group 1 for ground. Other OTB item groups are
+    // canonical map objects; border/doodad semantics come from brush materials.
+    assert(classifyOtbItemGroup(1) == LegacyAssetKind::Ground);
+    assert(classifyOtbItemGroup(2) == LegacyAssetKind::Object);
+    assert(classifyOtbItemGroup(13) == LegacyAssetKind::Object);
+
+    fantasy::assets::legacy::OtbItemRecord otbGround;
+    otbGround.group = 1;
+    otbGround.serverId = 600;
+    otbGround.clientId = 700;
+
+    fantasy::assets::legacy::DatAppearance appearance;
+    appearance.id = 700;
+    fantasy::assets::legacy::DatFrameGroup frameGroup;
+    frameGroup.width = 1;
+    frameGroup.height = 1;
+    frameGroup.layers = 1;
+    frameGroup.patternX = 1;
+    frameGroup.patternY = 1;
+    frameGroup.patternZ = 1;
+    frameGroup.frames = 1;
+    frameGroup.spriteIds = {11, 12};
+    appearance.frameGroups.push_back(frameGroup);
+
+    const LegacyAssetRecord mapped = makeLegacyAssetRecord(profile.id, otbGround, &appearance);
+    assert(mapped.kind == LegacyAssetKind::Ground);
+    assert(mapped.serverId == 600);
+    assert(mapped.clientId == 700);
+    assert(mapped.semanticKey == "legacy.pokefans1098.item.600");
+    assert(mapped.spriteIds.size() == 2);
+    assert(mapped.spriteIds[0] == 11 && mapped.spriteIds[1] == 12);
 
     return 0;
 }
