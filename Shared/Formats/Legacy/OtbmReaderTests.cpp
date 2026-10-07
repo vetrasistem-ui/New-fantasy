@@ -39,7 +39,23 @@ std::vector<std::uint8_t> makeMap() {
     nodeBegin(out, 5);
     std::vector<std::uint8_t> tile{1,2,9}; u16(tile, 100); props(out, tile);
     nodeBegin(out, 6);
-    std::vector<std::uint8_t> item; u16(item, 101); item.push_back(4); u16(item, 450); item.push_back(6); str(item, "hello"); props(out, item);
+    std::vector<std::uint8_t> item;
+    u16(item, 101);
+    item.push_back(4); u16(item, 450);
+    item.push_back(6); str(item, "hello");
+    item.push_back(12); item.push_back(7);
+    item.push_back(16); u32(item, static_cast<std::uint32_t>(static_cast<std::int32_t>(-500)));
+    item.push_back(17); item.push_back(1);
+    item.push_back(18); u32(item, 123456);
+    item.push_back(19); str(item, "Fantasy Writer");
+    item.push_back(20); u32(item, 42);
+    item.push_back(21); u32(item, 98765);
+    item.push_back(22); u16(item, 55);
+    props(out, item);
+
+    nodeBegin(out, 6);
+    std::vector<std::uint8_t> nested; u16(nested, 103); nested.push_back(15); nested.push_back(4); props(out, nested);
+    nodeEnd(out);
     nodeEnd(out);
     nodeEnd(out);
 
@@ -87,12 +103,26 @@ int main() {
     assert(r.metadata.houseFile == "map-house.xml");
     assert(r.import.model.tiles.size() == 2U);
     assert(r.import.diagnostics.tileCount == 2U);
-    assert(r.import.diagnostics.itemCount == 3U);
+    assert(r.import.diagnostics.itemCount == 4U);
     assert(r.import.model.tiles[0].position.x == 101 && r.import.model.tiles[0].position.y == 202 && r.import.model.tiles[0].position.z == 7);
     assert(r.import.model.tiles[0].items[0].serverId == 100U);
-    assert(r.import.model.tiles[0].items[1].serverId == 101U);
-    assert(r.import.model.tiles[0].items[1].attributes.at("actionId") == "450");
-    assert(r.import.model.tiles[0].items[1].attributes.at("text") == "hello");
+
+    const auto& parent = r.import.model.tiles[0].items[1];
+    assert(parent.serverId == 101U);
+    assert(parent.attributes.at("actionId") == "450");
+    assert(parent.attributes.at("text") == "hello");
+    assert(parent.attributes.at("runeCharges") == "7");
+    assert(parent.attributes.at("duration") == "-500");
+    assert(parent.attributes.at("decayingState") == "1");
+    assert(parent.attributes.at("writtenDate") == "123456");
+    assert(parent.attributes.at("writtenBy") == "Fantasy Writer");
+    assert(parent.attributes.at("sleeperGuid") == "42");
+    assert(parent.attributes.at("sleepStart") == "98765");
+    assert(parent.attributes.at("charges") == "55");
+    assert(parent.contents.size() == 1U);
+    assert(parent.contents[0].serverId == 103U);
+    assert(parent.contents[0].attributes.at("count") == "4");
+
     assert(r.import.model.tiles[1].houseId.has_value() && *r.import.model.tiles[1].houseId == 77U);
     assert(r.import.model.towns.size() == 1U);
     assert(r.import.model.towns[0].name == "Fantasy Town");
