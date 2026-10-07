@@ -33,8 +33,20 @@ bool parsePosition(std::string_view text, Position& value) {
     if (!parseInteger(text.substr(first + 1, second - first - 1), y)) return false;
     if (!parseInteger(text.substr(second + 1), z)) return false;
 
-    value = Position{static_cast<std::int32_t>(x), static_cast<std::int32_t>(y), static_cast<std::int16_t>(z)};
+    value = Position{
+        static_cast<std::int32_t>(x),
+        static_cast<std::int32_t>(y),
+        static_cast<std::int16_t>(z)
+    };
     return true;
+}
+
+bool isIntegerAttribute(const std::string& key) {
+    return key == "count" || key == "runeCharges" || key == "actionId" ||
+        key == "uniqueId" || key == "depotId" || key == "houseDoorId" ||
+        key == "duration" || key == "decayingState" || key == "writtenDate" ||
+        key == "sleeperGuid" || key == "sleepStart" || key == "charges" ||
+        key == "tileFlags";
 }
 
 AttributeValue toAttributeValue(const std::string& key, const std::string& value) {
@@ -43,8 +55,7 @@ AttributeValue toAttributeValue(const std::string& key, const std::string& value
         if (parsePosition(value, position)) return position;
     }
 
-    if (key == "count" || key == "actionId" || key == "uniqueId" || key == "depotId" ||
-        key == "houseDoorId" || key == "charges" || key == "tileFlags") {
+    if (isIntegerAttribute(key)) {
         std::int64_t number = 0;
         if (parseInteger(value, number)) return number;
     }
@@ -70,12 +81,19 @@ Item convertItem(
         item.attributes[key] = toAttributeValue(key, value);
     }
 
-    const auto countIt = source.attributes.find("count");
-    if (countIt != source.attributes.end()) {
-        std::int64_t count = 0;
-        if (parseInteger(countIt->second, count) && count >= 0 && count <= 65535) {
-            item.countOrSubtype = static_cast<std::uint16_t>(count);
+    for (const char* subtypeKey : {"count", "runeCharges", "charges"}) {
+        const auto it = source.attributes.find(subtypeKey);
+        if (it == source.attributes.end()) continue;
+        std::int64_t subtype = 0;
+        if (parseInteger(it->second, subtype) && subtype >= 0 && subtype <= 65535) {
+            item.countOrSubtype = static_cast<std::uint16_t>(subtype);
         }
+        break;
+    }
+
+    item.contents.reserve(source.contents.size());
+    for (const auto& child : source.contents) {
+        item.contents.push_back(convertItem(child, assets, unresolved));
     }
 
     return item;
@@ -91,10 +109,13 @@ bool isGround(
 
 SpawnEntryKind toSpawnEntryKind(fantasy::legacy::LegacySpawnEntryKind kind) {
     switch (kind) {
-    case fantasy::legacy::LegacySpawnEntryKind::Npc: return SpawnEntryKind::Npc;
-    case fantasy::legacy::LegacySpawnEntryKind::MonsterSet: return SpawnEntryKind::MonsterSet;
+    case fantasy::legacy::LegacySpawnEntryKind::Npc:
+        return SpawnEntryKind::Npc;
+    case fantasy::legacy::LegacySpawnEntryKind::MonsterSet:
+        return SpawnEntryKind::MonsterSet;
     case fantasy::legacy::LegacySpawnEntryKind::Monster:
-    default: return SpawnEntryKind::Monster;
+    default:
+        return SpawnEntryKind::Monster;
     }
 }
 
@@ -114,6 +135,7 @@ LegacyMapAdaptResult LegacyMapAdapter::adapt(
     result.metadata.spawnFile = source.metadata.spawnFile;
     result.metadata.houseFile = source.metadata.houseFile;
     result.metadata.sourceProfileId = source.import.model.sourceProfileId;
+    result.report.itemCount = source.import.diagnostics.itemCount;
 
     for (const auto& sourceTile : source.import.model.tiles) {
         Tile tile;
@@ -152,7 +174,6 @@ LegacyMapAdaptResult LegacyMapAdapter::adapt(
             } else {
                 tile.items.push_back(std::move(item));
             }
-            ++result.report.itemCount;
         }
 
         result.map.setTile(std::move(tile));
