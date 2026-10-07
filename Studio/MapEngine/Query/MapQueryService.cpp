@@ -6,6 +6,7 @@ MapSummary MapQueryService::summarize(const MapDocument& document) const {
     return MapSummary{
         document.revision(),
         document.map().tileCount(),
+        document.map().towns().size(),
         document.map().houses().size(),
         document.map().waypoints().size(),
         document.selection().size()
