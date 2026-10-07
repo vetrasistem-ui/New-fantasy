@@ -1,6 +1,8 @@
 #include "BrushEngine.hpp"
 
 #include <algorithm>
+#include <array>
+#include <cstdlib>
 #include <limits>
 #include <set>
 #include <utility>
@@ -29,12 +31,12 @@ Position offset(const Position& position, std::int32_t dx, std::int32_t dy) {
 
 CommandResult invalidBrushResult(
     const MapDocument& document,
-    const BrushStroke& stroke,
+    std::string requestId,
     std::string message) {
 
     CommandResult result;
     result.status = CommandStatus::Invalid;
-    result.requestId = stroke.requestId;
+    result.requestId = std::move(requestId);
     result.message = std::move(message);
     result.baseRevision = document.revision();
     result.resultRevision = document.revision();
@@ -124,6 +126,62 @@ bool BrushEngine::registerGroundBrush(GroundBrushDefinition definition, std::str
     return true;
 }
 
+bool BrushEngine::registerWallBrush(WallBrushDefinition definition, std::string* error) {
+    if (definition.id.empty()) {
+        if (error) *error = "Wall brush id cannot be empty.";
+        return false;
+    }
+    if (definition.pieces.empty()) {
+        if (error) *error = "Wall brush must define at least one piece group.";
+        return false;
+    }
+    if (wallBrushes_.contains(definition.id)) {
+        if (error) *error = "Wall brush id already registered: " + definition.id;
+        return false;
+    }
+
+    std::set<std::uint32_t> localIds;
+    std::size_t itemCount = 0;
+    for (const auto& [kind, variants] : definition.pieces) {
+        if (variants.empty()) {
+            if (error) *error = "Wall piece group cannot be empty.";
+            return false;
+        }
+        for (const auto& variant : variants) {
+            ++itemCount;
+            if (variant.item.serverId == 0) {
+                if (error) *error = "Wall variant has unresolved serverId=0.";
+                return false;
+            }
+            if (!localIds.insert(variant.item.serverId).second) {
+                if (error) *error = "Wall serverId appears in more than one piece group.";
+                return false;
+            }
+            if (wallServerToBrush_.contains(variant.item.serverId)) {
+                if (error) *error = "Wall serverId already belongs to another wall brush.";
+                return false;
+            }
+            (void)kind;
+        }
+    }
+    if (itemCount == 0) {
+        if (error) *error = "Wall brush has no items.";
+        return false;
+    }
+
+    const std::string brushId = definition.id;
+    for (const auto& [kind, variants] : definition.pieces) {
+        for (const auto& variant : variants) {
+            wallServerToBrush_[variant.item.serverId] = brushId;
+            wallServerToPiece_[variant.item.serverId] = kind;
+            managedWallServerIds_.insert(variant.item.serverId);
+        }
+    }
+    wallBrushes_.emplace(brushId, std::move(definition));
+    if (error) error->clear();
+    return true;
+}
+
 const AutoBorderDefinition* BrushEngine::findAutoBorder(const std::string& id) const noexcept {
     const auto it = autoBorders_.find(id);
     return it == autoBorders_.end() ? nullptr : &it->second;
@@ -132,6 +190,11 @@ const AutoBorderDefinition* BrushEngine::findAutoBorder(const std::string& id) c
 const GroundBrushDefinition* BrushEngine::findGroundBrush(const std::string& id) const noexcept {
     const auto it = groundBrushes_.find(id);
     return it == groundBrushes_.end() ? nullptr : &it->second;
+}
+
+const WallBrushDefinition* BrushEngine::findWallBrush(const std::string& id) const noexcept {
+    const auto it = wallBrushes_.find(id);
+    return it == wallBrushes_.end() ? nullptr : &it->second;
 }
 
 std::vector<Position> BrushEngine::buildFootprint(const BrushStroke& stroke) {
@@ -155,20 +218,68 @@ std::vector<Position> BrushEngine::buildFootprint(const BrushStroke& stroke) {
     return {unique.begin(), unique.end()};
 }
 
+std::vector<Position> BrushEngine::buildWallPath(const WallStroke& stroke) {
+    std::set<Position> unique;
+    if (stroke.centers.empty()) return {};
+    unique.insert(stroke.centers.front());
+
+    for (std::size_t segment = 1; segment < stroke.centers.size(); ++segment) {
+        const Position start = stroke.centers[segment - 1];
+        const Position end = stroke.centers[segment];
+        if (start.z != end.z) {
+            unique.insert(end);
+            continue;
+        }
+
+        std::int32_t x = start.x;
+        std::int32_t y = start.y;
+        const std::int32_t dx = std::abs(end.x - start.x);
+        const std::int32_t sx = start.x < end.x ? 1 : -1;
+        const std::int32_t dy = -std::abs(end.y - start.y);
+        const std::int32_t sy = start.y < end.y ? 1 : -1;
+        std::int32_t error = dx + dy;
+
+        while (true) {
+            unique.insert(Position{x, y, start.z});
+            if (x == end.x && y == end.y) break;
+            const std::int32_t twice = 2 * error;
+            if (twice >= dy) {
+                error += dy;
+                x += sx;
+            }
+            if (twice <= dx) {
+                error += dx;
+                y += sy;
+            }
+        }
+    }
+
+    return {unique.begin(), unique.end()};
+}
+
 std::size_t BrushEngine::selectVariant(
     const GroundBrushDefinition& definition,
     const Position& position,
     std::uint64_t seed) noexcept {
 
+    return selectWeighted(definition.variants, position, seed);
+}
+
+std::size_t BrushEngine::selectWeighted(
+    const std::vector<WeightedBrushItem>& variants,
+    const Position& position,
+    std::uint64_t seed) noexcept {
+
+    if (variants.empty()) return 0;
     std::uint64_t totalWeight = 0;
-    for (const auto& variant : definition.variants) totalWeight += variant.weight;
+    for (const auto& variant : variants) totalWeight += variant.weight;
     if (totalWeight == 0) return 0;
 
     const std::uint64_t choice = positionHash(position, seed) % totalWeight;
     std::uint64_t cursor = 0;
-    for (std::size_t index = 0; index < definition.variants.size(); ++index) {
-        cursor += definition.variants[index].weight;
-        if (definition.variants[index].weight != 0 && choice < cursor) return index;
+    for (std::size_t index = 0; index < variants.size(); ++index) {
+        cursor += variants[index].weight;
+        if (variants[index].weight != 0 && choice < cursor) return index;
     }
     return 0;
 }
@@ -268,6 +379,75 @@ void BrushEngine::appendOuterBorders(
     }
 }
 
+const WallBrushDefinition* BrushEngine::wallBrushAt(
+    const MapDocument& document,
+    const Position& position,
+    const std::map<Position, std::string>& wallOverrides) const noexcept {
+
+    const auto overrideIt = wallOverrides.find(position);
+    if (overrideIt != wallOverrides.end()) return findWallBrush(overrideIt->second);
+
+    const Tile* tile = document.map().findTile(position);
+    if (!tile) return nullptr;
+    for (const Item& item : tile->items) {
+        const auto membership = wallServerToBrush_.find(item.serverId);
+        if (membership != wallServerToBrush_.end()) return findWallBrush(membership->second);
+    }
+    return nullptr;
+}
+
+bool BrushEngine::wallFriends(
+    const WallBrushDefinition& owner,
+    const WallBrushDefinition* other) const noexcept {
+
+    if (!other) return false;
+    if (owner.id == other->id) return true;
+    if (std::find(owner.friends.begin(), owner.friends.end(), other->id) != owner.friends.end()) return true;
+    return std::find(other->friends.begin(), other->friends.end(), owner.id) != other->friends.end();
+}
+
+WallPieceKind BrushEngine::chooseWallPiece(
+    const MapDocument& document,
+    const WallBrushDefinition& owner,
+    const Position& position,
+    const std::map<Position, std::string>& wallOverrides) const {
+
+    const bool north = wallFriends(owner, wallBrushAt(document, offset(position, 0, -1), wallOverrides));
+    const bool east = wallFriends(owner, wallBrushAt(document, offset(position, 1, 0), wallOverrides));
+    const bool south = wallFriends(owner, wallBrushAt(document, offset(position, 0, 1), wallOverrides));
+    const bool west = wallFriends(owner, wallBrushAt(document, offset(position, -1, 0), wallOverrides));
+
+    const bool horizontal = east || west;
+    const bool vertical = north || south;
+    if (horizontal && vertical) return WallPieceKind::Corner;
+    if (horizontal) return WallPieceKind::Horizontal;
+    if (vertical) return WallPieceKind::Vertical;
+    return WallPieceKind::Pole;
+}
+
+std::optional<Item> BrushEngine::chooseWallItem(
+    const WallBrushDefinition& definition,
+    WallPieceKind kind,
+    const Position& position,
+    std::uint64_t seed) const {
+
+    const std::array<WallPieceKind, 5> order{kind, WallPieceKind::Pole, WallPieceKind::Horizontal, WallPieceKind::Vertical, WallPieceKind::Corner};
+    std::set<WallPieceKind> visited;
+    for (const WallPieceKind candidate : order) {
+        if (!visited.insert(candidate).second) continue;
+        const auto found = definition.pieces.find(candidate);
+        if (found == definition.pieces.end() || found->second.empty()) continue;
+        return found->second[selectWeighted(found->second, position, seed)].item;
+    }
+    return std::nullopt;
+}
+
+void BrushEngine::removeManagedWalls(Tile& tile) const {
+    std::erase_if(tile.items, [&](const Item& item) {
+        return managedWallServerIds_.contains(item.serverId);
+    });
+}
+
 BrushPlanResult BrushEngine::planGroundStroke(
     const MapDocument& document,
     const BrushStroke& stroke) const {
@@ -340,7 +520,93 @@ BrushPlanResult BrushEngine::planGroundStroke(
 
 CommandResult BrushEngine::executeGroundStroke(MapDocument& document, const BrushStroke& stroke) const {
     BrushPlanResult plan = planGroundStroke(document, stroke);
-    if (!plan.success) return invalidBrushResult(document, stroke, std::move(plan.message));
+    if (!plan.success) return invalidBrushResult(document, stroke.requestId, std::move(plan.message));
+    return CommandExecutor{}.execute(document, plan.batch);
+}
+
+BrushPlanResult BrushEngine::planWallStroke(
+    const MapDocument& document,
+    const WallStroke& stroke) const {
+
+    BrushPlanResult result;
+    result.batch.requestId = stroke.requestId;
+    result.batch.origin = stroke.origin;
+    result.batch.expectedRevision = stroke.expectedRevision.value_or(document.revision());
+    result.batch.previewOnly = stroke.previewOnly;
+
+    const WallBrushDefinition* definition = findWallBrush(stroke.brushId);
+    if (!definition) {
+        result.message = "Wall brush is not registered: " + stroke.brushId;
+        return result;
+    }
+    if (stroke.centers.empty()) {
+        result.message = "Wall stroke has no control positions.";
+        return result;
+    }
+    if (!definition->canDrag && stroke.centers.size() > 1) {
+        result.message = "This wall brush does not support drag strokes.";
+        return result;
+    }
+
+    const std::vector<Position> path = buildWallPath(stroke);
+    result.footprintTileCount = path.size();
+    result.batch.label = "Wall brush: " + definition->id;
+
+    std::map<Position, std::string> wallOverrides;
+    for (const Position& position : path) wallOverrides[position] = definition->id;
+
+    std::set<Position> impacted(path.begin(), path.end());
+    for (const Position& position : path) {
+        impacted.insert(offset(position, 0, -1));
+        impacted.insert(offset(position, 1, 0));
+        impacted.insert(offset(position, 0, 1));
+        impacted.insert(offset(position, -1, 0));
+    }
+
+    for (const Position& position : impacted) {
+        const Tile* existing = document.map().findTile(position);
+        const WallBrushDefinition* desiredBrush = wallBrushAt(document, position, wallOverrides);
+        if (!desiredBrush && !existing) continue;
+
+        Tile after = existing ? *existing : Tile{};
+        after.position = position;
+
+        std::optional<Item> preserved;
+        if (desiredBrush && existing) {
+            const WallPieceKind desiredKind = chooseWallPiece(document, *desiredBrush, position, wallOverrides);
+            for (const Item& candidate : existing->items) {
+                const auto brushIt = wallServerToBrush_.find(candidate.serverId);
+                const auto pieceIt = wallServerToPiece_.find(candidate.serverId);
+                if (brushIt != wallServerToBrush_.end() && pieceIt != wallServerToPiece_.end() &&
+                    brushIt->second == desiredBrush->id && pieceIt->second == desiredKind) {
+                    preserved = candidate;
+                    break;
+                }
+            }
+        }
+
+        removeManagedWalls(after);
+        if (desiredBrush) {
+            const WallPieceKind desiredKind = chooseWallPiece(document, *desiredBrush, position, wallOverrides);
+            const std::optional<Item> wallItem = preserved.has_value() ? preserved :
+                chooseWallItem(*desiredBrush, desiredKind, position, stroke.seed);
+            if (wallItem.has_value()) after.items.push_back(*wallItem);
+        }
+
+        const std::optional<Tile> before = existing ? std::optional<Tile>{*existing} : std::nullopt;
+        const std::optional<Tile> finalState = after.empty() ? std::nullopt : std::optional<Tile>{std::move(after)};
+        if (before == finalState) continue;
+        result.batch.commands.push_back(ReplaceTileCommand{position, finalState});
+    }
+
+    result.success = !result.batch.commands.empty();
+    result.message = result.success ? "Wall path and neighbor orientations planned." : "Wall stroke produced no changes.";
+    return result;
+}
+
+CommandResult BrushEngine::executeWallStroke(MapDocument& document, const WallStroke& stroke) const {
+    BrushPlanResult plan = planWallStroke(document, stroke);
+    if (!plan.success) return invalidBrushResult(document, stroke.requestId, std::move(plan.message));
     return CommandExecutor{}.execute(document, plan.batch);
 }
 
