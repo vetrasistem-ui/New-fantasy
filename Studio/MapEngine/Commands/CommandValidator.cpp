@@ -1,6 +1,5 @@
 #include "CommandValidator.hpp"
 
-#include <cstddef>
 #include <type_traits>
 
 namespace fantasy::studio::mapcore {
@@ -56,7 +55,7 @@ void CommandValidator::validateItem(
     for (const auto& child : item.contents) validateItem(report, child, position);
 }
 
-ValidationReport CommandValidator::validate(const MapDocument& document, const MapCommand& command) const {
+ValidationReport CommandValidator::validate(const MapDocument&, const MapCommand& command) const {
     ValidationReport report;
 
     std::visit([&](const auto& payload) {
@@ -72,30 +71,8 @@ ValidationReport CommandValidator::validate(const MapDocument& document, const M
         } else if constexpr (std::is_same_v<T, PlaceItemCommand>) {
             validatePosition(report, payload.position);
             validateItem(report, payload.item, payload.position);
-
-            if (payload.stackIndex.has_value()) {
-                const Tile* tile = document.map().findTile(payload.position);
-                const std::size_t stackSize = tile ? tile->items.size() : 0;
-                if (*payload.stackIndex > stackSize) {
-                    report.issues.push_back({
-                        ValidationSeverity::Error,
-                        "item.invalid_stack_index",
-                        "Requested stack index is outside the tile item stack.",
-                        payload.position
-                    });
-                }
-            }
         } else if constexpr (std::is_same_v<T, RemoveItemCommand>) {
             validatePosition(report, payload.position);
-            const Tile* tile = document.map().findTile(payload.position);
-            if (!tile || payload.stackIndex >= tile->items.size()) {
-                report.issues.push_back({
-                    ValidationSeverity::Error,
-                    "item.not_found",
-                    "Requested item does not exist at the specified stack index.",
-                    payload.position
-                });
-            }
         } else if constexpr (std::is_same_v<T, EraseTileCommand>) {
             if (payload.positions.empty()) {
                 report.issues.push_back({ValidationSeverity::Error, "erase.empty", "Erase command has no target positions.", std::nullopt});
