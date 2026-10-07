@@ -9,6 +9,7 @@ MapSummary MapQueryService::summarize(const MapDocument& document) const {
         document.map().towns().size(),
         document.map().houses().size(),
         document.map().waypoints().size(),
+        document.map().spawnAreas().size(),
         document.selection().size()
     };
 }
