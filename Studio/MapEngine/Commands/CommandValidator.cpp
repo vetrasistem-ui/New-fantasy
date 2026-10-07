@@ -79,6 +79,11 @@ ValidationReport CommandValidator::validate(const MapDocument&, const MapCommand
                 return;
             }
             for (const auto& position : payload.positions) validatePosition(report, position);
+        } else if constexpr (std::is_same_v<T, ReplaceTileCommand>) {
+            validatePosition(report, payload.position);
+            if (!payload.tile.has_value()) return;
+            if (payload.tile->ground.has_value()) validateItem(report, *payload.tile->ground, payload.position);
+            for (const auto& item : payload.tile->items) validateItem(report, item, payload.position);
         }
     }, command.payload);
 
