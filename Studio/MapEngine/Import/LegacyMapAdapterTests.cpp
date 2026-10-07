@@ -72,7 +72,6 @@ int main() {
     fantasy::legacy::LegacyImportedItem unresolved;
     unresolved.serverId = 999;
     sourceTile.items.push_back(unresolved);
-
     source.import.model.tiles.push_back(sourceTile);
 
     fantasy::legacy::LegacyImportedTown town;
@@ -81,16 +80,30 @@ int main() {
     town.templePosition = {110, 210, 7};
     source.import.model.towns.push_back(town);
 
+    fantasy::legacy::LegacyImportedWaypoint waypoint;
+    waypoint.name = "Depot";
+    waypoint.position = {120, 220, 7};
+    source.import.model.waypoints.push_back(waypoint);
+
     fantasy::legacy::LegacyImportedHouse house;
     house.id = 7;
     house.name = "House Seven";
     house.entry = {101, 200, 7};
+    house.rent = 2500;
+    house.townId = 1;
+    house.guildhall = true;
     source.import.model.houses.push_back(house);
 
     fantasy::legacy::LegacyImportedSpawn spawn;
-    spawn.position = {100, 200, 7};
+    spawn.center = {100, 200, 7};
     spawn.radius = 3;
-    spawn.creatureName = "Rat";
+    fantasy::legacy::LegacyImportedSpawnEntry spawnEntry;
+    spawnEntry.kind = fantasy::legacy::LegacySpawnEntryKind::Monster;
+    spawnEntry.position = {101, 200, 7};
+    spawnEntry.name = "Rat";
+    spawnEntry.direction = 2;
+    spawnEntry.spawnTimeSeconds = 30;
+    spawn.entries.push_back(spawnEntry);
     source.import.model.spawns.push_back(spawn);
 
     const LegacyMapAdaptResult adapted = LegacyMapAdapter{}.adapt(source, assets);
@@ -99,7 +112,9 @@ int main() {
     require(adapted.metadata.description == "Synthetic 10.98 map", "metadata description");
     require(adapted.map.tileCount() == 1, "adapted tile count");
     require(adapted.map.towns().size() == 1, "town imported");
+    require(adapted.map.waypoints().size() == 1, "waypoint imported");
     require(adapted.map.houses().size() == 1, "house imported");
+    require(adapted.map.spawnAreas().size() == 1, "spawn area imported");
     require(adapted.report.unresolvedServerIds.size() == 1 && adapted.report.unresolvedServerIds.front() == 999, "unknown server id reported");
 
     const Tile* tile = adapted.map.findTile(Position{100, 200, 7});
@@ -111,8 +126,18 @@ int main() {
     require(tile->items[1].serverId == 999 && tile->items[1].clientId == 0, "unresolved item preserved losslessly by server id");
     require(tile->flags == 3, "tile flags imported");
     require(tile->houseId == 7, "house tile id imported");
-    require(tile->spawn.has_value() && tile->spawn->radius == 3, "spawn imported");
-    require(tile->creature.has_value() && tile->creature->name == "Rat", "spawn creature imported");
+
+    const House& adaptedHouse = adapted.map.houses().at(7);
+    require(adaptedHouse.rent == 2500 && adaptedHouse.townId == 1 && adaptedHouse.guildhall, "house metadata adapted");
+    require(adapted.map.waypoints().at("Depot").position == Position{120, 220, 7}, "waypoint position adapted");
+
+    const SpawnArea& adaptedSpawn = adapted.map.spawnAreas().front();
+    require(adaptedSpawn.center == Position{100, 200, 7} && adaptedSpawn.radius == 3, "spawn center and radius adapted");
+    require(adaptedSpawn.entries.size() == 1, "spawn entry count adapted");
+    require(adaptedSpawn.entries[0].kind == SpawnEntryKind::Monster, "spawn entry kind adapted");
+    require(adaptedSpawn.entries[0].name == "Rat", "spawn creature name adapted");
+    require(adaptedSpawn.entries[0].position == Position{101, 200, 7}, "spawn creature position adapted");
+    require(adaptedSpawn.entries[0].intervalSeconds == 30 && adaptedSpawn.entries[0].direction == 2, "spawn properties adapted");
 
     const auto actionIt = tile->items[0].attributes.find("actionId");
     require(actionIt != tile->items[0].attributes.end(), "action id preserved");
@@ -132,6 +157,7 @@ int main() {
     require(document.selection().empty(), "loading map clears selection");
     require(document.metadata().name == "synthetic.otbm", "document metadata loaded");
     require(document.map().findTile(Position{100, 200, 7}) != nullptr, "document map loaded");
+    require(document.map().spawnAreas().size() == 1, "document spawn areas loaded");
 
     std::cout << "Legacy Map Adapter tests PASS\n";
     return 0;
