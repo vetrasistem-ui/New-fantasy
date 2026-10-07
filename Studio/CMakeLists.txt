@@ -79,6 +79,7 @@ target_link_libraries(fantasy-legacy-import PUBLIC pugixml::pugixml)
 
 add_library(fantasy-map-legacy-bridge
     MapEngine/Import/LegacyMapAdapter.cpp
+    MapEngine/Import/LegacyMapProjectLoader.cpp
 )
 target_link_libraries(fantasy-map-legacy-bridge PUBLIC
     fantasy-map-core
