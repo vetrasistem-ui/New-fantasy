@@ -347,8 +347,13 @@ void parseMapData(const Node& mapData, OtbmReadResult& result) {
 OtbmReader::OtbmReader(const std::filesystem::path& path) {
     const auto bytes = readFile(path);
     if (bytes.size() < 5) throw std::runtime_error("OTBM file is too small");
-    if (!(bytes[0] == 'O' && bytes[1] == 'T' && bytes[2] == 'B' && bytes[3] == 'M')) {
-        throw std::runtime_error("OTBM identifier is missing");
+
+    const bool nullIdentifier =
+        bytes[0] == 0U && bytes[1] == 0U && bytes[2] == 0U && bytes[3] == 0U;
+    const bool asciiIdentifier =
+        bytes[0] == 'O' && bytes[1] == 'T' && bytes[2] == 'B' && bytes[3] == 'M';
+    if (!nullIdentifier && !asciiIdentifier) {
+        throw std::runtime_error("Unsupported OTBM identifier");
     }
 
     std::size_t cursor = 4;
