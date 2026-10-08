@@ -3,6 +3,7 @@
 #include "../Core/MapDocument.hpp"
 
 #include <algorithm>
+#include <array>
 #include <bit>
 #include <cstdint>
 #include <filesystem>
@@ -57,7 +58,7 @@ public:
             }
 
             NodeStream out(tempPath);
-            for (int i = 0; i < 4; ++i) out.rawByte(0U); // canonical OTBM identifier
+            for (int i = 0; i < 4; ++i) out.rawByte(0U);
 
             out.beginNode(kRoot);
             out.propertyU32(config.formatVersion);
@@ -71,8 +72,8 @@ public:
             writeTileAreas(out, document, report);
             writeTowns(out, document);
             writeWaypoints(out, document);
-            out.endNode(); // map data
-            out.endNode(); // root
+            out.endNode();
+            out.endNode();
             out.close();
 
             if (report.tileCount != document.map().tileCount()) {
@@ -141,7 +142,8 @@ private:
         }
 
         void rawByte(std::uint8_t value) {
-            stream_.put(static_cast<char>(value));
+            buffer_[bufferSize_++] = static_cast<char>(value);
+            if (bufferSize_ == buffer_.size()) flush();
         }
 
         void propertyByte(std::uint8_t value) {
@@ -182,10 +184,22 @@ private:
             for (const unsigned char byte : value) propertyByte(static_cast<std::uint8_t>(byte));
         }
 
-        void close() { stream_.close(); }
+        void close() {
+            flush();
+            stream_.close();
+        }
 
     private:
+        void flush() {
+            if (bufferSize_ == 0U) return;
+            stream_.write(buffer_.data(), static_cast<std::streamsize>(bufferSize_));
+            bufferSize_ = 0U;
+        }
+
+        static constexpr std::size_t kBufferBytes = 1024U * 1024U;
         std::ofstream stream_;
+        std::array<char, kBufferBytes> buffer_{};
+        std::size_t bufferSize_ = 0U;
     };
 
     static void validateDocument(const MapDocument& document, const LegacyOtbmWriterConfig& config) {
