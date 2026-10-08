@@ -20,7 +20,9 @@ void nodeBegin(std::vector<std::uint8_t>& out, std::uint8_t type) { out.push_bac
 void nodeEnd(std::vector<std::uint8_t>& out) { out.push_back(0xFFU); }
 
 std::vector<std::uint8_t> makeMap() {
-    std::vector<std::uint8_t> out{'O','T','B','M'};
+    // Older RME/OTBM files commonly use a null four-byte identifier. The
+    // reader also keeps ASCII "OTBM" support, covered by the project-loader fixture.
+    std::vector<std::uint8_t> out(4U, 0U);
     nodeBegin(out, 1);
     std::vector<std::uint8_t> root;
     u32(root, 2); u16(root, 512); u16(root, 512); u32(root, 3); u32(root, 57);
