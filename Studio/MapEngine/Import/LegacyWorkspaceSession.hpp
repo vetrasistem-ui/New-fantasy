@@ -3,7 +3,6 @@
 #include "LegacyMapProjectLoader.hpp"
 
 #include <filesystem>
-#include <optional>
 
 namespace fantasy::studio::mapcore {
 
@@ -17,6 +16,7 @@ struct LegacyWorkspaceViewState {
 class LegacyWorkspaceSession {
 public:
     [[nodiscard]] bool open(LegacyMapProjectConfig config);
+    void resetView() noexcept { view_ = initialView_; }
 
     [[nodiscard]] bool ready() const noexcept { return report_.success; }
     [[nodiscard]] MapDocument& document() noexcept { return document_; }
@@ -38,6 +38,7 @@ private:
     MapDocument document_;
     fantasy::assets::FantasyAssetRegistry assets_;
     LegacyMapProjectReport report_;
+    LegacyWorkspaceViewState initialView_;
     LegacyWorkspaceViewState view_;
 };
 
