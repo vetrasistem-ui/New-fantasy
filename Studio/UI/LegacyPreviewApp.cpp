@@ -23,32 +23,67 @@ using fantasy::studio::mapcore::LegacyWorkspaceSession;
 using fantasy::studio::mapcore::Position;
 using fantasy::studio::rendering::LegacySpriteTextureCache;
 using fantasy::studio::ui::LegacyMapCanvasRenderer;
+using fantasy::studio::ui::LegacyMapCanvasStats;
 using fantasy::studio::ui::LegacyMapCanvasView;
 
 namespace {
+
+struct PreviewOptions {
+    LegacyMapProjectConfig config;
+    std::optional<fs::path> screenshotPath;
+};
 
 void usage() {
     std::cout
         << "Fantasy Legacy Preview\n"
         << "Usage:\n"
         << "  fantasy-legacy-preview --otbm <map.otbm> --otb <items.otb> --dat <Tibia.dat> --spr <Tibia.spr>\n"
-        << "      [--house <map-house.xml>] [--spawn <map-spawn.xml>] [--profile <id>]\n";
+        << "      [--house <map-house.xml>] [--spawn <map-spawn.xml>] [--profile <id>]\n"
+        << "      [--screenshot <output.bmp>]\n\n"
+        << "When --screenshot is supplied the preview renders two frames, writes a BMP,\n"
+        << "prints render statistics and exits. This is intended for real-pack visual gates.\n";
 }
 
-LegacyMapProjectConfig parseConfig(int argc, char** argv) {
-    LegacyMapProjectConfig config;
+PreviewOptions parseOptions(int argc, char** argv) {
+    PreviewOptions options;
+    auto& config = options.config;
+
     for (int i = 1; i < argc; ++i) {
         const std::string arg = argv[i];
-        if (arg == "--otbm" && i + 1 < argc) config.otbmPath = argv[++i];
-        else if (arg == "--otb" && i + 1 < argc) config.otbPath = argv[++i];
-        else if (arg == "--dat" && i + 1 < argc) config.datPath = argv[++i];
-        else if (arg == "--spr" && i + 1 < argc) config.sprPath = argv[++i];
-        else if (arg == "--house" && i + 1 < argc) config.houseXmlPath = fs::path(argv[++i]);
-        else if (arg == "--spawn" && i + 1 < argc) config.spawnXmlPath = fs::path(argv[++i]);
-        else if (arg == "--profile" && i + 1 < argc) config.profileId = argv[++i];
-        else throw std::runtime_error("Unknown or incomplete argument: " + arg);
+        const auto takePath = [&](fs::path& target) {
+            if (i + 1 >= argc) throw std::runtime_error("Missing value for " + arg);
+            target = fs::path(argv[++i]);
+        };
+
+        if (arg == "--otbm") takePath(config.otbmPath);
+        else if (arg == "--otb") takePath(config.otbPath);
+        else if (arg == "--dat") takePath(config.datPath);
+        else if (arg == "--spr") takePath(config.sprPath);
+        else if (arg == "--house") {
+            fs::path path;
+            takePath(path);
+            config.houseXmlPath = std::move(path);
+        } else if (arg == "--spawn") {
+            fs::path path;
+            takePath(path);
+            config.spawnXmlPath = std::move(path);
+        } else if (arg == "--profile") {
+            if (i + 1 >= argc) throw std::runtime_error("Missing value for --profile");
+            config.profileId = argv[++i];
+        } else if (arg == "--screenshot") {
+            fs::path path;
+            takePath(path);
+            options.screenshotPath = std::move(path);
+        } else {
+            throw std::runtime_error("Unknown or incomplete argument: " + arg);
+        }
     }
-    return config;
+
+    if (config.otbmPath.empty() || config.otbPath.empty() || config.datPath.empty() || config.sprPath.empty()) {
+        throw std::runtime_error("--otbm, --otb, --dat and --spr are required");
+    }
+    if (config.profileId.empty()) config.profileId = "legacy1098";
+    return options;
 }
 
 void printFailure(const LegacyWorkspaceSession& session) {
@@ -56,7 +91,24 @@ void printFailure(const LegacyWorkspaceSession& session) {
     for (const auto& error : session.report().errors) std::cerr << "ERROR " << error << '\n';
 }
 
-int runPreview(const LegacyMapProjectConfig& config) {
+void saveScreenshot(SDL_Renderer* renderer, const fs::path& output) {
+    if (output.has_parent_path()) fs::create_directories(output.parent_path());
+
+    SDL_Surface* surface = SDL_RenderReadPixels(renderer, nullptr);
+    if (surface == nullptr) {
+        throw std::runtime_error(std::string("SDL_RenderReadPixels failed: ") + SDL_GetError());
+    }
+
+    const std::string outputUtf8 = output.string();
+    const bool saved = SDL_SaveBMP(surface, outputUtf8.c_str());
+    SDL_DestroySurface(surface);
+    if (!saved) {
+        throw std::runtime_error(std::string("SDL_SaveBMP failed: ") + SDL_GetError());
+    }
+}
+
+int runPreview(const PreviewOptions& options) {
+    const auto& config = options.config;
     LegacyWorkspaceSession session;
     if (!session.open(config)) {
         printFailure(session);
@@ -67,11 +119,14 @@ int runPreview(const LegacyMapProjectConfig& config) {
         throw std::runtime_error(std::string("SDL_Init failed: ") + SDL_GetError());
     }
 
+    SDL_WindowFlags windowFlags = SDL_WINDOW_RESIZABLE | SDL_WINDOW_HIGH_PIXEL_DENSITY;
+    if (options.screenshotPath.has_value()) windowFlags |= SDL_WINDOW_HIDDEN;
+
     SDL_Window* window = SDL_CreateWindow(
         "Fantasy Studio - Legacy 10.98 Preview",
         1440,
         900,
-        SDL_WINDOW_RESIZABLE | SDL_WINDOW_HIGH_PIXEL_DENSITY);
+        windowFlags);
     if (window == nullptr) {
         const std::string error = SDL_GetError();
         SDL_Quit();
@@ -85,7 +140,7 @@ int runPreview(const LegacyMapProjectConfig& config) {
         SDL_Quit();
         throw std::runtime_error("SDL_CreateRenderer failed: " + error);
     }
-    (void)SDL_SetRenderVSync(renderer, 1);
+    (void)SDL_SetRenderVSync(renderer, options.screenshotPath.has_value() ? 0 : 1);
 
     IMGUI_CHECKVERSION();
     ImGui::CreateContext();
@@ -102,6 +157,8 @@ int runPreview(const LegacyMapProjectConfig& config) {
     float dragX = 0.0f;
     float dragY = 0.0f;
     bool done = false;
+    int renderedFrames = 0;
+    LegacyMapCanvasStats lastStats;
 
     while (!done) {
         SDL_Event event;
@@ -111,7 +168,7 @@ int runPreview(const LegacyMapProjectConfig& config) {
             if (event.type == SDL_EVENT_WINDOW_CLOSE_REQUESTED && event.window.windowID == SDL_GetWindowID(window)) done = true;
         }
 
-        if (SDL_GetWindowFlags(window) & SDL_WINDOW_MINIMIZED) {
+        if (!options.screenshotPath.has_value() && (SDL_GetWindowFlags(window) & SDL_WINDOW_MINIMIZED)) {
             SDL_Delay(10);
             continue;
         }
@@ -205,7 +262,7 @@ int runPreview(const LegacyMapProjectConfig& config) {
             canvasOrigin,
             ImVec2(canvasOrigin.x + canvasSize.x, canvasOrigin.y + canvasSize.y),
             IM_COL32(5, 13, 25, 255));
-        const auto stats = mapRenderer.draw(
+        lastStats = mapRenderer.draw(
             draw,
             canvasOrigin,
             canvasSize,
@@ -219,14 +276,14 @@ int runPreview(const LegacyMapProjectConfig& config) {
             ImGui::TextDisabled(
                 "Selected %d,%d,%d | visited=%zu ground=%zu items=%zu missing=%zu cached=%zu",
                 selected->x, selected->y, static_cast<int>(selected->z),
-                stats.visitedTiles, stats.renderedGrounds, stats.renderedItems,
-                stats.missingTextures, textures.cachedTextureCount());
+                lastStats.visitedTiles, lastStats.renderedGrounds, lastStats.renderedItems,
+                lastStats.missingTextures, textures.cachedTextureCount());
         } else {
             ImGui::TextDisabled(
                 "Center %d,%d,%d | visited=%zu ground=%zu items=%zu missing=%zu cached=%zu",
                 viewState.center.x, viewState.center.y, static_cast<int>(viewState.floor),
-                stats.visitedTiles, stats.renderedGrounds, stats.renderedItems,
-                stats.missingTextures, textures.cachedTextureCount());
+                lastStats.visitedTiles, lastStats.renderedGrounds, lastStats.renderedItems,
+                lastStats.missingTextures, textures.cachedTextureCount());
         }
 
         ImGui::End();
@@ -236,6 +293,21 @@ int runPreview(const LegacyMapProjectConfig& config) {
         SDL_SetRenderDrawColor(renderer, 5, 13, 25, 255);
         SDL_RenderClear(renderer);
         ImGui_ImplSDLRenderer3_RenderDrawData(ImGui::GetDrawData(), renderer);
+
+        ++renderedFrames;
+        if (options.screenshotPath.has_value() && renderedFrames >= 2) {
+            saveScreenshot(renderer, *options.screenshotPath);
+            std::cout
+                << "SCREENSHOT " << options.screenshotPath->string() << '\n'
+                << "CENTER " << viewState.center.x << ' ' << viewState.center.y << ' ' << viewState.floor << '\n'
+                << "RENDER visited=" << lastStats.visitedTiles
+                << " ground=" << lastStats.renderedGrounds
+                << " items=" << lastStats.renderedItems
+                << " missing=" << lastStats.missingTextures
+                << " cached=" << textures.cachedTextureCount() << '\n';
+            done = true;
+        }
+
         SDL_RenderPresent(renderer);
     }
 
@@ -253,13 +325,14 @@ int runPreview(const LegacyMapProjectConfig& config) {
 
 int main(int argc, char** argv) {
     try {
-        if (argc < 9) {
+        if (argc == 1) {
             usage();
             return 2;
         }
-        return runPreview(parseConfig(argc, argv));
+        return runPreview(parseOptions(argc, argv));
     } catch (const std::exception& error) {
         std::cerr << "Fantasy legacy preview error: " << error.what() << '\n';
+        usage();
         return 1;
     }
 }
