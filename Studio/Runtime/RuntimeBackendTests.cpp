@@ -1,5 +1,6 @@
 #include "Runtime/RuntimeBackend.hpp"
 #include "Runtime/Tfs1098RuntimeBackend.hpp"
+#include "Runtime/Tfs1098RuntimeProfile.hpp"
 
 #include <cassert>
 #include <chrono>
@@ -68,6 +69,52 @@ void testNeutralContract() {
     assert(!unsupportedLaunch.success);
     assert(!unsupportedLaunch.errors.empty());
     assert(backend.status().state == RuntimeState::NotPrepared);
+}
+
+void testTargetProfile() {
+    const fs::path root = fs::temp_directory_path() / "fantasy-tfs1098-profile-tests";
+    std::error_code ignored;
+    fs::remove_all(root, ignored);
+
+    const Tfs1098TargetConfig defaults = Tfs1098RuntimeProfile::load(root);
+    assert(defaults.mapName == "fantasy");
+    assert(defaults.outputDirectory == fs::path{"build"} / "runtime" / "tfs1098");
+
+    Tfs1098TargetConfig configured;
+    configured.mapName = "world_alpha";
+    configured.outputDirectory = fs::path{"build"} / "targets" / "tfs1098";
+    Tfs1098RuntimeProfile::save(root, configured);
+
+    const auto profilePath = Tfs1098RuntimeProfile::pathForProject(root);
+    assert(fs::exists(profilePath));
+    const Tfs1098TargetConfig loaded = Tfs1098RuntimeProfile::load(root);
+    assert(loaded.mapName == configured.mapName);
+    assert(loaded.outputDirectory == configured.outputDirectory);
+    assert(
+        Tfs1098RuntimeProfile::resolveOutputDirectory(root, loaded) ==
+        fs::absolute(root / configured.outputDirectory).lexically_normal());
+
+    bool rejectedTraversal = false;
+    try {
+        Tfs1098TargetConfig invalid = configured;
+        invalid.outputDirectory = fs::path{".."} / "outside";
+        Tfs1098RuntimeProfile::validate(invalid);
+    } catch (const std::runtime_error&) {
+        rejectedTraversal = true;
+    }
+    assert(rejectedTraversal);
+
+    bool rejectedMapName = false;
+    try {
+        Tfs1098TargetConfig invalid = configured;
+        invalid.mapName = "../world";
+        Tfs1098RuntimeProfile::validate(invalid);
+    } catch (const std::runtime_error&) {
+        rejectedMapName = true;
+    }
+    assert(rejectedMapName);
+
+    fs::remove_all(root, ignored);
 }
 
 void testTfsBackend(const fs::path& selfExecutable) {
@@ -160,6 +207,7 @@ int main(int argc, char** argv) {
 
     assert(argc >= 1);
     testNeutralContract();
+    testTargetProfile();
     testTfsBackend(fs::absolute(fs::path(argv[0])));
     return 0;
 }
