@@ -359,9 +359,10 @@ std::vector<BorderPieceKind> BrushEngine::selectBorderPieces(
 }
 
 void BrushEngine::removeManagedBorders(Tile& tile) const {
-    std::erase_if(tile.items, [&](const Item& item) {
+    const auto first = std::remove_if(tile.items.begin(), tile.items.end(), [&](const Item& item) {
         return managedBorderServerIds_.contains(item.serverId);
     });
+    tile.items.erase(first, tile.items.end());
 }
 
 void BrushEngine::appendOuterBorders(
@@ -443,9 +444,10 @@ std::optional<Item> BrushEngine::chooseWallItem(
 }
 
 void BrushEngine::removeManagedWalls(Tile& tile) const {
-    std::erase_if(tile.items, [&](const Item& item) {
+    const auto first = std::remove_if(tile.items.begin(), tile.items.end(), [&](const Item& item) {
         return managedWallServerIds_.contains(item.serverId);
     });
+    tile.items.erase(first, tile.items.end());
 }
 
 BrushPlanResult BrushEngine::planGroundStroke(
