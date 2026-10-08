@@ -1,6 +1,7 @@
 #include "MapEngine/Brushes/BrushEngine.hpp"
 #include "MapEngine/Clipboard/MapClipboard.hpp"
 #include "MapEngine/Core/MapDocument.hpp"
+#include "MapEngine/Export/LegacyOtbmWriter.hpp"
 #include "MapEngine/Import/LegacyMapProjectLoader.hpp"
 #include "MapEngine/Import/LegacyWorkspaceSession.hpp"
 #include "Shared/Assets/Legacy/DatReader.hpp"
@@ -32,7 +33,8 @@ void printUsage() {
               << "  fantasy-legacy-inspect --otbm <map.otbm>\n"
               << "  fantasy-legacy-inspect --project --otbm <map.otbm> --otb <items.otb> --dat <Tibia.dat> --spr <Tibia.spr>\n"
               << "      [--house <map-house.xml>] [--spawn <map-spawn.xml>] [--profile <id>]\n"
-              << "      [--edit-smoke]\n"
+              << "      [--edit-smoke] [--write-otbm <new-map.otbm>]\n"
+              << "  --write-otbm always writes a new file, then reopens and verifies it.\n"
               << "  options may be combined to inspect a matching legacy pack\n";
 }
 
@@ -98,6 +100,21 @@ std::pair<EditCandidate, EditCandidate> findGroundCandidates(
     }
 
     throw std::runtime_error("Unable to find two nearby non-house ground tiles with different server ids");
+}
+
+std::optional<Tile> findSampleTile(const MapDocument& document, const Position& center) {
+    const std::array<std::int32_t, 7> radii{8, 16, 32, 64, 128, 256, 512};
+    for (const std::int32_t radius : radii) {
+        std::optional<Tile> found;
+        document.map().forEachTileInRect(
+            center.z,
+            MapStorage::Rect{center.x - radius, center.y - radius, center.x + radius, center.y + radius},
+            [&](const Tile& tile) {
+                if (!found.has_value()) found = tile;
+            });
+        if (found.has_value()) return found;
+    }
+    return std::nullopt;
 }
 
 void requireEdit(bool condition, const std::string& message) {
@@ -207,6 +224,101 @@ int runEditSmoke(const LegacyMapProjectConfig& config) {
     return 0;
 }
 
+struct RoundtripSnapshot {
+    MapMetadata metadata;
+    std::size_t tiles = 0;
+    std::size_t houses = 0;
+    std::size_t spawns = 0;
+    std::size_t towns = 0;
+    std::size_t waypoints = 0;
+    Tile sample;
+    bool hasSample = false;
+};
+
+int runWriteRoundtrip(LegacyMapProjectConfig config, const fs::path& outputPath) {
+    if (fs::absolute(config.otbmPath).lexically_normal() == fs::absolute(outputPath).lexically_normal()) {
+        throw std::runtime_error("WRITE_OTBM refuses to overwrite the source map");
+    }
+
+    RoundtripSnapshot expected;
+    LegacyOtbmWriteReport writeReport;
+    {
+        LegacyWorkspaceSession session;
+        if (!session.open(config)) {
+            throw std::runtime_error("WRITE_OTBM source project failed to load");
+        }
+
+        const auto sample = findSampleTile(session.document(), session.view().center);
+        if (sample.has_value()) {
+            expected.sample = *sample;
+            expected.hasSample = true;
+        }
+        expected.metadata = session.document().metadata();
+        expected.tiles = session.document().map().tileCount();
+        expected.houses = session.document().map().houses().size();
+        expected.spawns = session.document().map().spawnAreas().size();
+        expected.towns = session.document().map().towns().size();
+        expected.waypoints = session.document().map().waypoints().size();
+
+        const fantasy::assets::legacy::OtbReader otb(config.otbPath);
+        LegacyOtbmWriterConfig writerConfig;
+        writerConfig.formatVersion = 2U;
+        writerConfig.itemsMajorVersion = otb.version().major;
+        writerConfig.itemsMinorVersion = otb.version().minor;
+        writerConfig.overwrite = false;
+
+        writeReport = LegacyOtbmWriter{}.write(outputPath, session.document(), writerConfig);
+        if (!writeReport.success) {
+            const std::string detail = writeReport.errors.empty() ? "unknown writer error" : writeReport.errors.front();
+            throw std::runtime_error("WRITE_OTBM failed: " + detail);
+        }
+        std::cout << "WRITE_OTBM success=yes path=\"" << outputPath.string() << "\""
+                  << " tiles=" << writeReport.tileCount
+                  << " items=" << writeReport.itemCount
+                  << " areas=" << writeReport.tileAreaCount
+                  << " bytes=" << writeReport.bytesWritten << '\n';
+    }
+
+    config.otbmPath = outputPath;
+    MapDocument reopened;
+    const auto reopenedResult = LegacyMapProjectLoader{}.load(reopened, config);
+    if (!reopenedResult.report.success) {
+        const std::string detail = reopenedResult.report.errors.empty()
+            ? "unknown reopen error"
+            : reopenedResult.report.errors.front();
+        throw std::runtime_error("REOPEN failed: " + detail);
+    }
+
+    const auto& metadata = reopened.metadata();
+    if (metadata.width != expected.metadata.width || metadata.height != expected.metadata.height ||
+        metadata.description != expected.metadata.description ||
+        metadata.spawnFile != expected.metadata.spawnFile || metadata.houseFile != expected.metadata.houseFile) {
+        throw std::runtime_error("REOPEN metadata differs from canonical source");
+    }
+    if (reopened.map().tileCount() != expected.tiles ||
+        reopened.map().houses().size() != expected.houses ||
+        reopened.map().spawnAreas().size() != expected.spawns ||
+        reopened.map().towns().size() != expected.towns ||
+        reopened.map().waypoints().size() != expected.waypoints) {
+        throw std::runtime_error("REOPEN semantic collection counts differ from canonical source");
+    }
+    if (expected.hasSample) {
+        const Tile* sample = reopened.map().findTile(expected.sample.position);
+        if (sample == nullptr || *sample != expected.sample) {
+            throw std::runtime_error("REOPEN sample tile differs from canonical source");
+        }
+    }
+
+    std::cout << "REOPEN PASS"
+              << " tiles=" << reopened.map().tileCount()
+              << " houses=" << reopened.map().houses().size()
+              << " spawn_areas=" << reopened.map().spawnAreas().size()
+              << " towns=" << reopened.map().towns().size()
+              << " waypoints=" << reopened.map().waypoints().size()
+              << " sample=" << (expected.hasSample ? "equal" : "none") << '\n';
+    return 0;
+}
+
 } // namespace
 
 int main(int argc, char** argv) {
@@ -222,6 +334,7 @@ int main(int argc, char** argv) {
         fs::path otbmPath;
         fs::path housePath;
         fs::path spawnPath;
+        fs::path writeOtbmPath;
         std::string profileId = "pokefans1098";
         std::uint32_t itemId = 0;
         std::uint32_t spriteId = 0;
@@ -232,6 +345,7 @@ int main(int argc, char** argv) {
             const std::string arg = argv[i];
             if (arg == "--project") projectMode = true;
             else if (arg == "--edit-smoke") editSmoke = true;
+            else if (arg == "--write-otbm" && i + 1 < argc) writeOtbmPath = argv[++i];
             else if (arg == "--dat" && i + 1 < argc) datPath = argv[++i];
             else if (arg == "--spr" && i + 1 < argc) sprPath = argv[++i];
             else if (arg == "--otb" && i + 1 < argc) otbPath = argv[++i];
@@ -244,10 +358,13 @@ int main(int argc, char** argv) {
             else throw std::runtime_error("Unknown or incomplete argument: " + arg);
         }
 
-        if (editSmoke) projectMode = true;
+        if (editSmoke || !writeOtbmPath.empty()) projectMode = true;
         if (projectMode) {
             if (otbmPath.empty() || otbPath.empty() || datPath.empty() || sprPath.empty()) {
                 throw std::runtime_error("--project requires --otbm, --otb, --dat and --spr");
+            }
+            if (editSmoke && !writeOtbmPath.empty()) {
+                throw std::runtime_error("Run --edit-smoke and --write-otbm as separate gates");
             }
 
             LegacyMapProjectConfig config;
@@ -260,6 +377,7 @@ int main(int argc, char** argv) {
             if (!spawnPath.empty()) config.spawnXmlPath = spawnPath;
 
             if (editSmoke) return runEditSmoke(config);
+            if (!writeOtbmPath.empty()) return runWriteRoundtrip(config, writeOtbmPath);
 
             MapDocument document;
             const auto result = LegacyMapProjectLoader{}.load(document, config);
