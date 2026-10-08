@@ -162,15 +162,17 @@ This architectural decision does **not** change the active editor sequence:
 
 This keeps the shortest path to a usable product while preserving long-term independence.
 
-## Legacy laboratories
+## Reference laboratories
 
-Real legacy projects are compatibility/stress laboratories, not the architectural base:
+Real projects and upstreams are laboratories, not the architectural base:
 
+- **Vanilla TFS 1.4.2:** compatibility oracle and first supported external runtime;
+- **Audited Poketibia TFS 1.4 / OTClientV8 base:** primary advanced runtime capability laboratory for extended opcodes, modular UI, zones, appearance extensions, generic capture/collection needs and other mature TFS-backed gameplay patterns; see `POKETIBIA-TFS14-RUNTIME-AUDIT.md` and `FANTASY-TFS1098-CAPABILITY-MATRIX.md`;
 - **PokeJornadas:** functional/reference project for complex gameplay and Studio needs;
 - **PokeAimar:** heavy legacy map/assets/migration stress-test;
 - **BlackTek/RME:** behavior and editor maturity references.
 
-Their code/assets are not silently copied into Fantasy Core. Import/provenance and licensing remain explicit.
+Code/assets from those references are not silently copied into Fantasy Core. Import/provenance and licensing remain explicit. The advanced Poketibia reference does **not** replace the vanilla TFS 1.4.2/10.98 compatibility target.
 
 ## License rule
 
