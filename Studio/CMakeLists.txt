@@ -101,7 +101,13 @@ target_link_libraries(fantasy-legacy-rendering PUBLIC
     SDL3::SDL3
 )
 
-foreach(target fantasy-studio-project fantasy-map-core fantasy-asset-registry fantasy-legacy-import fantasy-map-legacy-bridge fantasy-legacy-rendering)
+# Runtime backends remain outside Fantasy Map Core. TFS 1.4.2 / 10.98 is the
+# first external backend and is staged/launched through this neutral boundary.
+add_library(fantasy-runtime
+    Runtime/Tfs1098RuntimeBackend.cpp
+)
+
+foreach(target fantasy-studio-project fantasy-map-core fantasy-asset-registry fantasy-legacy-import fantasy-map-legacy-bridge fantasy-legacy-rendering fantasy-runtime)
     target_include_directories(${target} PUBLIC
         ${CMAKE_CURRENT_SOURCE_DIR}
         ${CMAKE_CURRENT_SOURCE_DIR}/..
@@ -301,6 +307,7 @@ target_include_directories(fantasy-runtime-backend-tests PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}
     ${CMAKE_CURRENT_SOURCE_DIR}/..
 )
+target_link_libraries(fantasy-runtime-backend-tests PRIVATE fantasy-runtime)
 
 foreach(target fantasy-asset-registry-tests fantasy-legacy-binary-readers-tests fantasy-legacy-texture-cache-tests fantasy-otbm-reader-tests fantasy-legacy-aux-xml-tests fantasy-map-core-v1-tests fantasy-map-clipboard-tests fantasy-brush-engine-tests fantasy-map-legacy-adapter-tests fantasy-map-project-loader-tests fantasy-runtime-backend-tests)
     if(MSVC)
