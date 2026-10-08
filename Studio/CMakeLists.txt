@@ -272,7 +272,15 @@ target_include_directories(fantasy-legacy-aux-xml-tests PRIVATE
 )
 target_link_libraries(fantasy-legacy-aux-xml-tests PRIVATE fantasy-legacy-import)
 
-foreach(target fantasy-asset-registry-tests fantasy-legacy-binary-readers-tests fantasy-legacy-texture-cache-tests fantasy-otbm-reader-tests fantasy-legacy-aux-xml-tests fantasy-map-core-v1-tests fantasy-map-clipboard-tests fantasy-brush-engine-tests fantasy-map-legacy-adapter-tests fantasy-map-project-loader-tests)
+add_executable(fantasy-runtime-backend-tests
+    Runtime/RuntimeBackendTests.cpp
+)
+target_include_directories(fantasy-runtime-backend-tests PRIVATE
+    ${CMAKE_CURRENT_SOURCE_DIR}
+    ${CMAKE_CURRENT_SOURCE_DIR}/..
+)
+
+foreach(target fantasy-asset-registry-tests fantasy-legacy-binary-readers-tests fantasy-legacy-texture-cache-tests fantasy-otbm-reader-tests fantasy-legacy-aux-xml-tests fantasy-map-core-v1-tests fantasy-map-clipboard-tests fantasy-brush-engine-tests fantasy-map-legacy-adapter-tests fantasy-map-project-loader-tests fantasy-runtime-backend-tests)
     if(MSVC)
         target_compile_options(${target} PRIVATE /W4 /permissive-)
     else()
@@ -294,6 +302,7 @@ add_test(NAME fantasy-legacy-binary-readers-tests COMMAND fantasy-legacy-binary-
 add_test(NAME fantasy-legacy-texture-cache-tests COMMAND fantasy-legacy-texture-cache-tests)
 add_test(NAME fantasy-otbm-reader-tests COMMAND fantasy-otbm-reader-tests)
 add_test(NAME fantasy-legacy-aux-xml-tests COMMAND fantasy-legacy-aux-xml-tests)
+add_test(NAME fantasy-runtime-backend-tests COMMAND fantasy-runtime-backend-tests)
 add_test(
     NAME fantasy-studio-open-project
     COMMAND fantasy-studio --open-project "${CMAKE_CURRENT_SOURCE_DIR}/.."
