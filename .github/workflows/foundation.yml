@@ -62,7 +62,7 @@ jobs:
           if-no-files-found: error
           path: |
             build/studio/Release/fantasy-studio.exe
-            build/studio/Release/fantasy-studio-gui.exe
+            build/studio/Release/FantasyStudio.exe
             build/studio/Release/fantasy-legacy-inspect.exe
             build/studio/Release/fantasy-legacy-preview.exe
             build/studio/Release/StudioVisual/
