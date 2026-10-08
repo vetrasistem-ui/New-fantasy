@@ -146,11 +146,11 @@ add_executable(fantasy-studio
 )
 target_link_libraries(fantasy-studio PRIVATE fantasy-studio-project fantasy-map-core)
 
-# V5 implements the approved visual shell. Earlier revisions remain in Git history.
-# StudioAppV5Entry includes that exact V5 source and adds only the optional real
-# 10.98 Map workspace entry path; without legacy arguments behavior is unchanged.
+# V5 keeps the accepted shell as the visual source. The runtime-enabled entry
+# layers the real 10.98 map + Server workspace over that shell while preserving
+# the earlier StudioAppV5Entry.cpp as a rollback/reference point.
 add_executable(fantasy-studio-gui
-    UI/StudioAppV5Entry.cpp
+    UI/StudioAppV5RuntimeEntry.cpp
     UI/StudioTheme.cpp
     UI/LegacyMapCanvasRenderer.cpp
 )
@@ -160,6 +160,7 @@ target_link_libraries(fantasy-studio-gui PRIVATE
     fantasy-asset-registry
     fantasy-map-legacy-bridge
     fantasy-legacy-rendering
+    fantasy-runtime
     fantasy-imgui
     SDL3::SDL3
 )
