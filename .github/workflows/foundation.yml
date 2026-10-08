@@ -104,3 +104,22 @@ jobs:
             build/server/Release/fantasy-server.exe
             build/client/Release/fantasy-client.exe
             build/client/Release/fantasy-client-gui.exe
+
+  legacy-tool-linux:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Configure headless legacy tool
+        run: cmake -S Studio -B build/studio -DCMAKE_BUILD_TYPE=Release
+
+      - name: Build headless legacy inspector
+        run: cmake --build build/studio --target fantasy-legacy-inspect --parallel 2
+
+      - name: Upload Linux legacy inspector
+        uses: actions/upload-artifact@v4
+        with:
+          name: fantasy-legacy-inspect-linux-${{ github.sha }}
+          if-no-files-found: error
+          path: build/studio/fantasy-legacy-inspect
