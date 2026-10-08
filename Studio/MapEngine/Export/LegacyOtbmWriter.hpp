@@ -136,7 +136,7 @@ private:
     class NodeStream {
     public:
         explicit NodeStream(const std::filesystem::path& path)
-            : stream_(path, std::ios::binary | std::ios::trunc) {
+            : stream_(path, std::ios::binary | std::ios::trunc), buffer_(kBufferBytes) {
             if (!stream_) throw std::runtime_error("Unable to open OTBM output: " + path.string());
             stream_.exceptions(std::ios::badbit | std::ios::failbit);
         }
@@ -198,7 +198,7 @@ private:
 
         static constexpr std::size_t kBufferBytes = 1024U * 1024U;
         std::ofstream stream_;
-        std::array<char, kBufferBytes> buffer_{};
+        std::vector<char> buffer_;
         std::size_t bufferSize_ = 0U;
     };
 
