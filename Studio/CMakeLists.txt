@@ -141,8 +141,10 @@ add_executable(fantasy-studio
 target_link_libraries(fantasy-studio PRIVATE fantasy-studio-project fantasy-map-core)
 
 # V5 implements the approved visual shell. Earlier revisions remain in Git history.
+# StudioAppV5Entry includes that exact V5 source and adds only the optional real
+# 10.98 Map workspace entry path; without legacy arguments behavior is unchanged.
 add_executable(fantasy-studio-gui
-    UI/StudioAppV5.cpp
+    UI/StudioAppV5Entry.cpp
     UI/StudioTheme.cpp
     UI/LegacyMapCanvasRenderer.cpp
 )
