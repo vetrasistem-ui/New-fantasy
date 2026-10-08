@@ -6,7 +6,7 @@
 
 Fantasy is our product and our architecture. The Forgotten Server 1.4.2 is the **first supported runtime**, not the source of truth and not the permanent core of the platform.
 
-The shortest path is therefore:
+The current supported path is:
 
 ```text
 Fantasy Studio
@@ -102,19 +102,102 @@ During the current map phase, OTBM remains necessary for real compatibility and 
 
 ## First runtime backend: TFS 1.4.2 / 10.98
 
-The first production-capable backend should generate or manage a complete TFS-compatible runtime package from Fantasy project data.
+`Tfs1098RuntimeBackend` V1 now implements the first real external-runtime boundary.
 
-Initial responsibilities:
+Implemented responsibilities:
 
-1. export/compile map data to TFS-compatible OTBM v3;
-2. export houses and spawns XML;
-3. resolve asset/item identifiers for the selected 10.98 profile;
-4. generate runtime configuration without placing TFS logic in the Studio core;
-5. later generate Lua/configuration from Fantasy Systems where possible;
-6. start/stop an external TFS process through a process boundary;
-7. collect logs/status without linking TFS code into Fantasy.
+1. export the canonical map through the Fantasy OTBM v3 writer;
+2. stage an external TFS 1.4.2 template into a generated runtime directory;
+3. overlay the selected 10.98 `items.otb`;
+4. preserve/copy house and spawn XML files expected by the map metadata;
+5. generate or patch `config.lua` with the Fantasy target map name;
+6. start and stop the external TFS process without linking TFS into Fantasy Core;
+7. expose runtime state, PID and incremental stdout/stderr logs;
+8. provide Windows `CreateProcess` and POSIX `fork/exec` process boundaries;
+9. keep portable target settings in `Game/Config/tfs1098.runtime.json`;
+10. keep the external TFS installation/template path as machine-level Studio configuration.
 
-Communication with an external runtime may use files, process I/O, sockets or a deliberately versioned control API. The TFS executable remains a separate program.
+Future backend work includes generation of Lua/configuration from Fantasy Systems, richer health/status checks, production database setup and deployment-oriented packaging.
+
+## V5 Server workspace
+
+The accepted V5 shell remains the visual baseline. The runtime-enabled V5 entry adds an operational **Server** workspace without moving TFS code into the editor domain.
+
+Current controls:
+
+```text
+TFS template directory   (machine-level)
+Map name                 (project profile)
+Runtime output           (project-relative profile)
+
+Save target
+Export OTBM
+Package runtime
+Start
+Stop
+
+Runtime state / PID
+Incremental runtime log
+```
+
+The Map workspace `Save` action now exports the current canonical `MapDocument` to the configured TFS1098 export path instead of displaying the old writer-frozen placeholder.
+
+The executable build uses `StudioAppV5RuntimeEntry.cpp`; the earlier `StudioAppV5Entry.cpp` remains in the repository as a rollback/reference point for the accepted shell integration.
+
+## Runtime tests
+
+Two isolated tests cover the boundary without third-party game assets:
+
+### Backend lifecycle
+
+`fantasy-runtime-backend-tests` proves:
+
+```text
+synthetic TFS template
+      -> package
+      -> launch real child process
+      -> capture logs
+      -> observe Running/PID
+      -> stop
+      -> observe Stopped
+```
+
+### Export/package workflow
+
+`fantasy-tfs1098-workflow-tests` proves:
+
+```text
+MapDocument
+    -> LegacyOtbmWriter
+    -> Tfs1098RuntimeProfile
+    -> Tfs1098RuntimeBackend::packageProject
+    -> generated TFS-compatible runtime layout
+```
+
+The real large 10.98 homologation remains separate and is documented in `REAL-1098-HOMOLOGATION.md` and `TFS142-OTBM-RUNTIME-HOMOLOGATION.md`.
+
+## MariaDB gate
+
+The earlier 10.98 protocol login/walk homologation used a deterministic MySQL-protocol fixture only for the persistence queries. It proved the TFS map/protocol/runtime path, but not production database persistence.
+
+A manual workflow now prepares the next gate with **real MariaDB** and the official TFS 1.4.2 schema:
+
+```text
+.github/workflows/tfs142-mariadb-homologation.yml
+```
+
+Its intended proof is deliberately narrower than the final login gate:
+
+1. start MariaDB 10.11;
+2. import the official TFS v1.4.2 `schema.sql`;
+3. seed a `fantasy` account and `Fantasy Test` player;
+4. insert a stale `players_online` row;
+5. start the official TFS 1.4.2 binary against that database;
+6. require `Forgotten Server Online!`;
+7. verify TFS startup cleared `players_online`;
+8. verify database version and fixture rows remain valid.
+
+This workflow is manual (`workflow_dispatch`) and must not be reported PASS until it is actually executed successfully. Full MariaDB login/save/relogin persistence remains the next database gate after bootstrap.
 
 ## Native runtime is incremental, not a restart
 
@@ -147,18 +230,21 @@ Native V2
 
 TFS remains available until the native runtime proves enough capability to replace it.
 
-## Current execution order
+## Current execution status
 
-This architectural decision does **not** change the active editor sequence:
-
-1. finish real DAT/SPR renderer in Studio V5;
-2. load a real large map in canonical Map Core;
-3. validate selection/clipboard/brushes on real data;
-4. implement OTBM v3 Writer;
-5. Save -> Reopen;
-6. validate exported map in vanilla TFS 1.4.2;
-7. validate with a compatible 10.98 client;
-8. then grow the TFS runtime backend around the proven export path.
+1. **PASS** — real large 10.98 project -> canonical Map Core;
+2. **PASS** — real DAT/SPR renderer with RGBA variant support;
+3. **PASS** — real selection/brush/Undo-Redo/clipboard edit smoke;
+4. **PASS** — OTBM v3 writer;
+5. **PASS** — Fantasy Save -> Reopen semantic roundtrip;
+6. **PASS** — generated OTBM accepted by official vanilla TFS 1.4.2;
+7. **PASS** — compatible 10.98 login -> character list -> game entry -> movement;
+8. **PASS** — `Tfs1098RuntimeBackend` lifecycle on Windows and Linux;
+9. **PASS** — portable per-project TFS1098 target profile;
+10. **IMPLEMENTED / CI VERIFYING** — V5 Server workspace with Export/Package/Start/Stop/status/PID/logs;
+11. **IMPLEMENTED / CI VERIFYING** — headless MapDocument -> OTBM -> profile -> TFS package test;
+12. **PREPARED, NOT YET PASS** — manual real-MariaDB bootstrap homologation;
+13. **NEXT** — real MariaDB login/save/relogin persistence and selected Windows/OTClient visual acceptance.
 
 This keeps the shortest path to a usable product while preserving long-term independence.
 
