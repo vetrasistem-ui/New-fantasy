@@ -111,15 +111,17 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Configure headless legacy tool
+      - name: Configure legacy tools
         run: cmake -S Studio -B build/studio -DCMAKE_BUILD_TYPE=Release -DSDL_UNIX_CONSOLE_BUILD=ON
 
-      - name: Build headless legacy inspector
-        run: cmake --build build/studio --target fantasy-legacy-inspect --parallel 2
+      - name: Build Linux legacy inspector and preview
+        run: cmake --build build/studio --target fantasy-legacy-inspect fantasy-legacy-preview --parallel 2
 
-      - name: Upload Linux legacy inspector
+      - name: Upload Linux legacy tools
         uses: actions/upload-artifact@v4
         with:
-          name: fantasy-legacy-inspect-linux-${{ github.sha }}
+          name: fantasy-legacy-tools-linux-${{ github.sha }}
           if-no-files-found: error
-          path: build/studio/fantasy-legacy-inspect
+          path: |
+            build/studio/fantasy-legacy-inspect
+            build/studio/fantasy-legacy-preview
