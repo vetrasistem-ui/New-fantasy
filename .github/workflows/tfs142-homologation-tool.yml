@@ -1,7 +1,6 @@
 name: TFS 1.4.2 Homologation Tool
 
 on:
-  pull_request:
   workflow_dispatch:
 
 jobs:
