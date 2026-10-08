@@ -148,7 +148,33 @@ Local homologation output fingerprint:
 SHA-256 ae640e8b3a27b8ef108de56673c5b991ac99de5d6cfacb7516479ea2cbf74bed
 ```
 
-This is a **Fantasy semantic roundtrip PASS**. It is not yet a TFS runtime compatibility PASS. The next mandatory gate is to load the generated OTBM in vanilla TFS 1.4.2 with the pinned 10.98 item profile, then enter/walk with a compatible 10.98 client.
+This is a **Fantasy semantic roundtrip PASS**.
+
+## Vanilla TFS 1.4.2 load — PASS
+
+The generated OTBM was then loaded by the official upstream TFS v1.4.2 Ubuntu GCC release (`31d6e85d`) using the pinned 10.98 `items.otb` profile.
+
+Because this execution environment did not include a MariaDB daemon, a minimal local MySQL-protocol startup harness supplied only the mandatory bootstrap/config replies and empty persistence results. The harness does not parse OTBM, OTB, map XML or items and therefore cannot make an incompatible map pass `IOMap`.
+
+Relevant TFS output:
+
+```text
+The Forgotten Server - Version v1.4.2
+Git SHA1 31d6e85d dated 2022-05-08T20:27:14-04:00
+
+>> Loading items
+>> Loading map
+> Map size: 30000x30000.
+> Map loading time: 2.897 seconds.
+>> Loaded all modules, server starting up...
+>> Forgotten Server Online!
+```
+
+A repeat with the house/spawn XML files placed under the exact filenames preserved by the OTBM metadata produced a map load time of `2.757 s`; after correcting the filenames there were no house/spawn *file-not-found* errors.
+
+The vanilla datapack then warned that project-specific Pokémon/NPC definitions such as `Charizard`, `Dragonite`, `Lucario` and custom NPC XML files were missing. Those warnings are expected content gaps in vanilla TFS, not OTBM compatibility failures. Their appearance confirms that TFS had already accepted the generated map and proceeded to process the real project spawn/NPC references.
+
+Detailed runtime evidence: `docs/TFS142-OTBM-RUNTIME-HOMOLOGATION.md`.
 
 ## Gate status
 
@@ -158,6 +184,6 @@ This is a **Fantasy semantic roundtrip PASS**. It is not yet a TFS runtime compa
 4. **PASS (code path)** — the same `LegacyWorkspaceSession` + renderer is embedded in the V5 Map workspace; interactive/manual V5 visual acceptance can still be repeated on Windows.
 5. **PASS** — real selection, brush preview/apply, Undo/Redo and clipboard operations.
 6. **PASS** — OTBM v3 writer creates a new file and Fantasy reopens it with semantic counts/sample preserved.
-7. **PENDING** — vanilla TFS 1.4.2 loads the generated OTBM successfully.
+7. **PASS** — official vanilla TFS 1.4.2 loads the generated OTBM and reaches server Online.
 8. **PENDING** — compatible 10.98 client logs in, enters the world and walks the generated map.
-9. After those gates, grow the `Tfs1098` runtime backend around the proven export/runtime path.
+9. After that gate, grow the `Tfs1098` runtime backend around the proven export/runtime path.
