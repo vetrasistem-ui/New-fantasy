@@ -1,6 +1,6 @@
-# Vanilla TFS 1.4.2 OTBM Runtime Homologation
+# Vanilla TFS 1.4.2 / 10.98 Runtime Homologation
 
-**Status:** PASS for generated OTBM load/runtime startup.
+**Status:** PASS for Fantasy OTBM load, TFS startup, 10.98 login, character entry and movement.
 
 ## Target runtime
 
@@ -16,7 +16,7 @@ The package was downloaded from the official GitHub release by the repository wo
 
 ## Fantasy output under test
 
-The tested map was the new OTBM written by Fantasy from the pinned real 10.98 `global_dash` project:
+The tested map was the OTBM written by Fantasy from the pinned real 10.98 `global_dash` project:
 
 ```text
 source canonical tiles: 6,106,271
@@ -26,23 +26,23 @@ output bytes:            64,919,912
 SHA-256: ae640e8b3a27b8ef108de56673c5b991ac99de5d6cfacb7516479ea2cbf74bed
 ```
 
-The source OTBM was not overwritten.
+Runtime companions were the pinned 10.98 `items.otb`, `map-house.xml` and `map-spawn.xml`. The source OTBM was never overwritten.
 
-Runtime item/map companions:
+## Database fixture boundary
 
-- pinned 10.98 `items.otb` used by the Fantasy import/export profile;
-- `map-house.xml` from the pinned project;
-- `map-spawn.xml` from the pinned project.
+The execution container did not provide MariaDB/MySQL. TFS requires a MySQL connection before map and login services become available, so homologation used a minimal MySQL-protocol fixture.
 
-## Database harness boundary
+For the map-load gate it returned startup/config responses and empty persistence results. For the login gate it additionally exposed one deterministic account/player fixture:
 
-The local execution environment did not contain a MariaDB/MySQL daemon. TFS performs a mandatory database connection before it reaches `IOMap`, so a minimal local MySQL-protocol startup harness was used only to satisfy the database bootstrap calls.
+```text
+account:   fantasy
+character: Fantasy Test
+position:  714,787,7
+```
 
-The harness returned startup/config responses and empty persistence result sets. It does **not** parse OTBM, OTB, house XML, spawn XML, items, towns, tiles or map nodes. Therefore it cannot make an incompatible map pass the TFS map loader.
+The fixture does not parse OTBM/OTB, create tiles, move creatures or implement the Tibia protocol. Those paths are executed by the unmodified TFS 1.4.2 binary. This proves runtime/protocol compatibility, not production database persistence behavior.
 
-This homologation proves the TFS file/runtime boundary, not production database behavior.
-
-## Vanilla TFS result — PASS
+## Vanilla TFS OTBM result — PASS
 
 Relevant upstream output:
 
@@ -51,28 +51,19 @@ The Forgotten Server - Version v1.4.2
 Git SHA1 31d6e85d dated 2022-05-08T20:27:14-04:00
 
 >> Loading items
-...
 >> Loading map
 > Map size: 30000x30000.
-> Map loading time: 2.897 seconds.
+> Map loading time: 2.757 seconds.
 ...
 >> Loaded all modules, server starting up...
 >> Forgotten Server Online!
 ```
 
-A repeat after placing the auxiliary XML files under the exact names preserved in the OTBM metadata produced:
+There were no `IOMap`/OTBM format rejection messages. Once `map-house.xml` and `map-spawn.xml` were placed under the exact names preserved by the OTBM metadata, there were no auxiliary-file-not-found errors.
 
-```text
->> Loading map
-> Map size: 30000x30000.
-> Map loading time: 2.757 seconds.
-```
+## Expected PokéTibia content warnings
 
-There were no `IOMap`/OTBM format rejection messages and no house/spawn *file-not-found* errors after the filenames were corrected.
-
-## Expected content warnings on vanilla datapack
-
-The real project is a PokéTibia map, while the vanilla TFS datapack does not define its Pokémon/NPC content. Once the real `map-spawn.xml` was present, vanilla TFS correctly parsed the spawn file and emitted warnings such as:
+The real project is a PokéTibia map while the vanilla TFS datapack does not define its Pokémon/NPC content. Vanilla therefore emits expected warnings such as:
 
 ```text
 [Warning - Spawn::addMonster] Can not find Charizard
@@ -80,22 +71,100 @@ The real project is a PokéTibia map, while the vanilla TFS datapack does not de
 [Warning - Spawn::addMonster] Can not find Lucario
 ```
 
-It also reported missing project-specific NPC XML definitions. These are **datapack content gaps**, not OTBM writer failures. The important distinction is that TFS reached and processed the external spawn/NPC references after accepting the generated map.
+These are datapack content gaps, not Writer/OTBM failures. They also prove TFS accepted the OTBM and proceeded to parse the external spawn definitions.
+
+## 10.98 login server — PASS
+
+A headless 10.98 compatibility client reproduced the normal protocol stack used by OTClient/Tibia 10.x:
+
+- 10.98 login packet;
+- RSA login blocks using the runtime public key;
+- Adler checksum framing;
+- XTEA session encryption;
+- account/password authentication;
+- session-key response;
+- character-list response.
+
+Observed result:
+
+```text
+MOTD 31
+Welcome to The Forgotten Server!
+
+SESSION_KEY 'fantasy\nfantasy\n\n...'
+CHAR_LIST [('Fantasy Test', ('Forgotten', '127.0.0.1', 7172, 0))]
+LOGIN_SERVER_PASS
+```
+
+## 10.98 game entry — PASS
+
+The same client connected to the game service on port 7172, parsed the TFS challenge (`0x1F`), sent `ClientPendingGame` with the session key, completed RSA/XTEA negotiation and received the encrypted game startup payload.
+
+Observed startup packet began with normal 10.98 login-success/game data:
+
+```text
+GAME_CHALLENGE <timestamp> <random>
+GAME_PAYLOAD 13130 bytes
+first opcode: 0x17 (GameServerLoginSuccess)
+```
+
+The player was loaded at the real exported-map position:
+
+```text
+714,787,7
+```
+
+## 10.98 movement — PASS
+
+The compatibility client sent the normal north-walk opcode:
+
+```text
+ClientWalkNorth = 0x65
+```
+
+TFS responded with:
+
+```text
+GameServerMoveCreature = 0x6D
+```
+
+The response decodes to the exact coordinate transition:
+
+```text
+before: 714,787,7
+after:  714,786,7
+```
+
+The same response also included the expected map-row update following the movement packet.
+
+This proves that the unmodified TFS 1.4.2 runtime accepted the Fantasy-written map, authenticated a 10.98 client, instantiated a player on that map and executed movement over it.
 
 ## Gate conclusion
 
 ```text
-Fantasy canonical MapDocument
+Fantasy canonical MapDocument          PASS
         ↓
-Fantasy OTBM v3 Writer
+Fantasy OTBM v3 Writer                 PASS
         ↓
-Fantasy semantic reopen        PASS
+Fantasy semantic reopen                PASS
         ↓
-vanilla TFS 1.4.2 IOMap load   PASS
+vanilla TFS 1.4.2 IOMap load           PASS
         ↓
-TFS server startup / Online    PASS
+TFS server startup / Online             PASS
         ↓
-10.98 client login + walk      PENDING
+10.98 login + session + char list       PASS
+        ↓
+10.98 enter exported map                PASS
+        ↓
+10.98 walk 714,787,7 → 714,786,7        PASS
 ```
 
-The next mandatory compatibility gate is to connect a compatible 10.98 client to a TFS runtime backed by a real database/account/player fixture and verify login, character entry and movement on the exported map.
+## Remaining integration work
+
+The compatibility foundation is proven. Remaining work is product/runtime integration rather than proving the basic file/protocol boundary:
+
+1. wire the proven export/start/stop flow into `Tfs1098 RuntimeBackend`;
+2. use a real MariaDB fixture for persistence lifecycle tests;
+3. repeat login/movement with the selected full Windows/OTClient 10.98 UI build;
+4. surface runtime logs/status inside Fantasy Studio;
+5. package server/client deployment workflow for local/VPS use.
