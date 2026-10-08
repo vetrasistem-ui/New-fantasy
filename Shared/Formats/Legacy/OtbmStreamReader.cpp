@@ -14,7 +14,7 @@ constexpr std::uint8_t kNodeStart = 0xFE;
 constexpr std::uint8_t kNodeEnd = 0xFF;
 constexpr std::uint8_t kEscape = 0xFD;
 
-constexpr std::uint8_t kRoot = 1;
+constexpr std::uint8_t kRoot = 0;
 constexpr std::uint8_t kMapData = 2;
 constexpr std::uint8_t kTileArea = 4;
 constexpr std::uint8_t kTile = 5;
@@ -440,7 +440,11 @@ OtbmStreamReader::OtbmStreamReader(
 
     Cursor cursor{bytes, 4U};
     const auto rootType = openNode(cursor);
-    if (rootType != kRoot) throw std::runtime_error("OTBM root node has unexpected type");
+    // RME/BlackTek writers emit node type 0 for the physical root. Older
+    // synthetic fixtures used 1 (OTBM_ROOTV1), so keep that read-compatible.
+    if (rootType != kRoot && rootType != 1U) {
+        throw std::runtime_error("OTBM root node has unexpected type");
+    }
 
     const auto rootProperties = readProperties(cursor);
     std::size_t propertyCursor = 0;
