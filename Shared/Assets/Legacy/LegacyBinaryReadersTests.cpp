@@ -72,6 +72,25 @@ std::vector<std::uint8_t> makeSyntheticSpr() {
     return bytes;
 }
 
+std::vector<std::uint8_t> makeSyntheticSprAlpha() {
+    std::vector<std::uint8_t> bytes;
+    appendU32(bytes, 0x57BBD603U);
+    appendU32(bytes, 1U);
+    appendU32(bytes, 12U); // sprite starts immediately after the offset table
+
+    bytes.push_back(255U);
+    bytes.push_back(0U);
+    bytes.push_back(255U);
+    appendU16(bytes, 8U); // one RLE segment: 1023 transparent + 1 RGBA pixel
+    appendU16(bytes, 1023U);
+    appendU16(bytes, 1U);
+    bytes.push_back(10U);
+    bytes.push_back(20U);
+    bytes.push_back(30U);
+    bytes.push_back(40U);
+    return bytes;
+}
+
 std::vector<std::uint8_t> makeSyntheticOtb() {
     std::vector<std::uint8_t> bytes(4, 0U); // identifier
     bytes.push_back(0xFE);
@@ -163,9 +182,11 @@ int main() {
     const fs::path root = fs::temp_directory_path() / "fantasy-legacy-reader-tests";
     fs::create_directories(root);
     const fs::path sprPath = root / "synthetic.spr";
+    const fs::path alphaSprPath = root / "synthetic-alpha.spr";
     const fs::path otbPath = root / "synthetic.otb";
     const fs::path datPath = root / "synthetic.dat";
     writeBinary(sprPath, makeSyntheticSpr());
+    writeBinary(alphaSprPath, makeSyntheticSprAlpha());
     writeBinary(otbPath, makeSyntheticOtb());
     writeBinary(datPath, makeSyntheticDat1057());
 
@@ -173,6 +194,7 @@ int main() {
         const SprReader reader(sprPath);
         assert(reader.info().signature == 0x57BBD603U);
         assert(reader.info().spriteCount == 2U);
+        assert(reader.info().colorChannels == 3U);
         assert(!reader.hasSprite(1U));
         assert(reader.hasSprite(2U));
         const auto empty = reader.readSprite(1U);
@@ -183,6 +205,20 @@ int main() {
         assert(sprite.pixels[last + 1] == 0U);
         assert(sprite.pixels[last + 2] == 0U);
         assert(sprite.pixels[last + 3] == 255U);
+    }
+
+    {
+        const SprReader reader(alphaSprPath);
+        assert(reader.info().signature == 0x57BBD603U);
+        assert(reader.info().spriteCount == 1U);
+        assert(reader.info().colorChannels == 4U);
+        assert(reader.hasSprite(1U));
+        const auto sprite = reader.readSprite(1U);
+        const std::size_t last = (32U * 32U - 1U) * 4U;
+        assert(sprite.pixels[last + 0] == 10U);
+        assert(sprite.pixels[last + 1] == 20U);
+        assert(sprite.pixels[last + 2] == 30U);
+        assert(sprite.pixels[last + 3] == 40U);
     }
 
     {
