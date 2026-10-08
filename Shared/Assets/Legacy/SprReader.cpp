@@ -1,5 +1,6 @@
 #include "Shared/Assets/Legacy/SprReader.hpp"
 
+#include <algorithm>
 #include <fstream>
 #include <stdexcept>
 #include <string>
@@ -42,6 +43,73 @@ std::vector<std::uint8_t> readFile(const std::filesystem::path& path) {
     return bytes;
 }
 
+bool structurallyValidSprite(
+    const std::vector<std::uint8_t>& bytes,
+    std::uint32_t spriteOffset,
+    std::uint8_t colorChannels) noexcept {
+
+    if (spriteOffset == 0 || colorChannels < 3 || colorChannels > 4) return false;
+    std::size_t cursor = spriteOffset;
+    if (cursor + 5 > bytes.size()) return false;
+
+    cursor += 3; // transparent-color marker
+    const std::uint16_t encodedBytes =
+        static_cast<std::uint16_t>(bytes[cursor]) |
+        (static_cast<std::uint16_t>(bytes[cursor + 1]) << 8U);
+    cursor += 2;
+
+    const std::size_t encodedEnd = cursor + encodedBytes;
+    if (encodedEnd > bytes.size()) return false;
+
+    constexpr std::size_t pixelCount = SpriteRgba::Width * SpriteRgba::Height;
+    std::size_t pixelIndex = 0;
+    while (cursor < encodedEnd) {
+        if (cursor + 4 > encodedEnd) return false;
+
+        const std::uint16_t transparentPixels =
+            static_cast<std::uint16_t>(bytes[cursor]) |
+            (static_cast<std::uint16_t>(bytes[cursor + 1]) << 8U);
+        const std::uint16_t coloredPixels =
+            static_cast<std::uint16_t>(bytes[cursor + 2]) |
+            (static_cast<std::uint16_t>(bytes[cursor + 3]) << 8U);
+        cursor += 4;
+
+        if (pixelIndex + transparentPixels > pixelCount) return false;
+        pixelIndex += transparentPixels;
+
+        const std::size_t colorBytes = static_cast<std::size_t>(coloredPixels) * colorChannels;
+        if (cursor + colorBytes > encodedEnd) return false;
+        if (pixelIndex + coloredPixels > pixelCount) return false;
+
+        cursor += colorBytes;
+        pixelIndex += coloredPixels;
+    }
+
+    return cursor == encodedEnd;
+}
+
+std::uint8_t detectColorChannels(
+    const std::vector<std::uint8_t>& bytes,
+    const std::vector<std::uint32_t>& offsets) noexcept {
+
+    std::size_t rgbScore = 0;
+    std::size_t rgbaScore = 0;
+    std::size_t sampled = 0;
+    constexpr std::size_t sampleLimit = 64;
+
+    for (const std::uint32_t offset : offsets) {
+        if (offset == 0) continue;
+        if (structurallyValidSprite(bytes, offset, 3)) ++rgbScore;
+        if (structurallyValidSprite(bytes, offset, 4)) ++rgbaScore;
+        if (++sampled >= sampleLimit) break;
+    }
+
+    // Preserve classic RGB behavior on ties. A true RGBA SPR normally makes
+    // the RGB interpretation fail quickly because one alpha byte remains per
+    // colored pixel and corrupts the following RLE segment boundary.
+    return rgbaScore > rgbScore ? 4U : 3U;
+}
+
 } // namespace
 
 SprReader::SprReader(const std::filesystem::path& path)
@@ -67,6 +135,8 @@ SprReader::SprReader(const std::filesystem::path& path)
         }
         offsets_.push_back(offset);
     }
+
+    info_.colorChannels = detectColorChannels(bytes_, offsets_);
 }
 
 const SprInfo& SprReader::info() const noexcept {
@@ -117,7 +187,8 @@ SpriteRgba SprReader::readSprite(std::uint32_t spriteId) const {
         }
         pixelIndex += transparentPixels;
 
-        const std::size_t colorBytes = static_cast<std::size_t>(coloredPixels) * 3U;
+        const std::size_t colorBytes =
+            static_cast<std::size_t>(coloredPixels) * static_cast<std::size_t>(info_.colorChannels);
         if (cursor + colorBytes > encodedEnd) {
             throw std::runtime_error("SPR RLE colored run is truncated");
         }
@@ -130,8 +201,8 @@ SpriteRgba SprReader::readSprite(std::uint32_t spriteId) const {
             result.pixels[rgba + 0] = bytes_[cursor + 0];
             result.pixels[rgba + 1] = bytes_[cursor + 1];
             result.pixels[rgba + 2] = bytes_[cursor + 2];
-            result.pixels[rgba + 3] = 255;
-            cursor += 3;
+            result.pixels[rgba + 3] = info_.colorChannels == 4U ? bytes_[cursor + 3] : 255U;
+            cursor += info_.colorChannels;
             ++pixelIndex;
         }
     }
