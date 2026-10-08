@@ -310,7 +310,16 @@ target_include_directories(fantasy-runtime-backend-tests PRIVATE
 )
 target_link_libraries(fantasy-runtime-backend-tests PRIVATE fantasy-runtime)
 
-foreach(target fantasy-asset-registry-tests fantasy-legacy-binary-readers-tests fantasy-legacy-texture-cache-tests fantasy-otbm-reader-tests fantasy-legacy-aux-xml-tests fantasy-map-core-v1-tests fantasy-map-clipboard-tests fantasy-brush-engine-tests fantasy-map-legacy-adapter-tests fantasy-map-project-loader-tests fantasy-runtime-backend-tests)
+add_executable(fantasy-tfs1098-workflow-tests
+    Runtime/Tfs1098ServerWorkflowTests.cpp
+)
+target_include_directories(fantasy-tfs1098-workflow-tests PRIVATE
+    ${CMAKE_CURRENT_SOURCE_DIR}
+    ${CMAKE_CURRENT_SOURCE_DIR}/..
+)
+target_link_libraries(fantasy-tfs1098-workflow-tests PRIVATE fantasy-runtime fantasy-map-core)
+
+foreach(target fantasy-asset-registry-tests fantasy-legacy-binary-readers-tests fantasy-legacy-texture-cache-tests fantasy-otbm-reader-tests fantasy-legacy-aux-xml-tests fantasy-map-core-v1-tests fantasy-map-clipboard-tests fantasy-brush-engine-tests fantasy-map-legacy-adapter-tests fantasy-map-project-loader-tests fantasy-runtime-backend-tests fantasy-tfs1098-workflow-tests)
     if(MSVC)
         target_compile_options(${target} PRIVATE /W4 /permissive-)
     else()
@@ -333,6 +342,7 @@ add_test(NAME fantasy-legacy-texture-cache-tests COMMAND fantasy-legacy-texture-
 add_test(NAME fantasy-otbm-reader-tests COMMAND fantasy-otbm-reader-tests)
 add_test(NAME fantasy-legacy-aux-xml-tests COMMAND fantasy-legacy-aux-xml-tests)
 add_test(NAME fantasy-runtime-backend-tests COMMAND fantasy-runtime-backend-tests)
+add_test(NAME fantasy-tfs1098-workflow-tests COMMAND fantasy-tfs1098-workflow-tests)
 add_test(
     NAME fantasy-studio-open-project
     COMMAND fantasy-studio --open-project "${CMAKE_CURRENT_SOURCE_DIR}/.."
