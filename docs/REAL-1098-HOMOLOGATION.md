@@ -15,6 +15,9 @@ OTBM + OTB + DAT + SPR + house/spawn XML
 LegacyMapProjectLoader
             |
             v
+LegacyWorkspaceSession
+            |
+            v
 canonical MapDocument + FantasyAssetRegistry
             |
             v
@@ -23,6 +26,8 @@ LegacySpriteTextureCache + LegacyMapCanvasRenderer
             v
 Fantasy Studio
 ```
+
+`LegacyWorkspaceSession` is the reusable boundary intended for the permanent V5 Map workspace. The standalone preview uses exactly this session so renderer/loader defects can be isolated without creating a second map engine.
 
 ## Pinned files
 
@@ -74,7 +79,7 @@ The probe must return exit code `0` and report `PROJECT success=yes` before the 
   --spawn C:\path\mapa\map-spawn.xml
 ```
 
-The preview uses the same canonical MapDocument and real DAT/SPR texture path planned for the V5 Map workspace. It exists to isolate loader/renderer defects before wiring them into the permanent shell.
+The preview uses the same canonical `MapDocument`, `LegacyWorkspaceSession`, real DAT/SPR texture cache and canvas renderer planned for the V5 Map workspace. It is a temporary homologation surface, not a second editor UI.
 
 ## Gate order
 
