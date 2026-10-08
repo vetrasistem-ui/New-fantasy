@@ -191,11 +191,13 @@ struct LegacyV5Runtime {
     }
 
     void syncServerProfile(const ProjectInfo& project) {
-        serverProfile.mapName = serverMapName.data();
-        serverProfile.outputDirectory = fs::path(serverOutputDirectory.data()).lexically_normal();
-        Tfs1098RuntimeProfile::validate(serverProfile);
-        Tfs1098RuntimeProfile::save(project.root, serverProfile);
+        Tfs1098TargetConfig candidate = serverProfile;
+        candidate.mapName = serverMapName.data();
+        candidate.outputDirectory = fs::path(serverOutputDirectory.data()).lexically_normal();
+        Tfs1098RuntimeProfile::validate(candidate);
+        Tfs1098RuntimeProfile::save(project.root, candidate);
         if (serverTemplate[0] != '\0') saveMachineTfsTemplate(fs::path(serverTemplate.data()));
+        serverProfile = std::move(candidate);
     }
 
     fs::path serverOutputPath(const ProjectInfo& project) const {
@@ -264,6 +266,8 @@ struct LegacyV5Runtime {
         if (!report.success) {
             throw std::runtime_error(report.errors.empty() ? "TFS1098 packaging failed" : report.errors.front());
         }
+        std::error_code ignored;
+        fs::remove(request.outputDirectory / "fantasy-tfs1098.log", ignored);
         serverLog.clear();
         serverLogCursor = 0;
         serverStatus = "TFS1098 package ready: " + request.outputDirectory.string();
@@ -619,10 +623,7 @@ void drawTfs1098ServerPage(
     ImGui::Spacing();
     ImGui::TextUnformatted("Runtime log");
     ImGui::SameLine();
-    if (ImGui::SmallButton("Clear")) {
-        runtime.serverLog.clear();
-        runtime.serverLogCursor = 0;
-    }
+    if (ImGui::SmallButton("Clear")) runtime.serverLog.clear();
     ImGui::BeginChild("server-log-v5", ImVec2(0.0f, 0.0f), ImGuiChildFlags_Borders, ImGuiWindowFlags_HorizontalScrollbar);
     if (runtime.serverLog.empty()) ImGui::TextDisabled("No TFS output captured yet.");
     else ImGui::TextUnformatted(runtime.serverLog.c_str());
