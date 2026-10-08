@@ -152,8 +152,10 @@ int runPreview(const LegacyMapProjectConfig& config) {
         ImGui::Checkbox("Grid", &viewState.showGrid);
         ImGui::SameLine();
         if (ImGui::SmallButton("Center")) {
-            const auto original = session.view();
-            viewState.center = original.center;
+            session.resetView();
+            selected.reset();
+            dragX = 0.0f;
+            dragY = 0.0f;
         }
 
         ImVec2 canvasSize = ImGui::GetContentRegionAvail();
