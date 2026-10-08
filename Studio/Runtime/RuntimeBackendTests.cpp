@@ -1,11 +1,32 @@
 #include "Runtime/RuntimeBackend.hpp"
+#include "Runtime/Tfs1098RuntimeBackend.hpp"
 
 #include <cassert>
+#include <chrono>
 #include <filesystem>
+#include <fstream>
+#include <iostream>
+#include <string>
+#include <thread>
 
 using namespace fantasy::studio::runtime;
+namespace fs = std::filesystem;
 
 namespace {
+
+void writeText(const fs::path& path, const std::string& text) {
+    fs::create_directories(path.parent_path());
+    std::ofstream output(path, std::ios::binary | std::ios::trunc);
+    assert(output.good());
+    output << text;
+    assert(output.good());
+}
+
+std::string readText(const fs::path& path) {
+    std::ifstream input(path, std::ios::binary);
+    assert(input.good());
+    return std::string(std::istreambuf_iterator<char>(input), std::istreambuf_iterator<char>());
+}
 
 class FakeBackend final : public RuntimeBackend {
 public:
@@ -28,21 +49,117 @@ public:
     }
 };
 
-} // namespace
-
-int main() {
+void testNeutralContract() {
     FakeBackend backend;
     assert(backend.kind() == RuntimeKind::Tfs1098);
     assert(backend.capabilities().canPackageProject);
+    assert(!backend.capabilities().canLaunch);
 
     const RuntimePackageRequest request{
-        std::filesystem::path{"FantasyProject"},
-        std::filesystem::path{"Build/TFS1098"},
+        fs::path{"FantasyProject"},
+        fs::path{"Build/TFS1098"},
     };
     const RuntimePackageReport report = backend.packageProject(request);
     assert(report.success);
     assert(report.generatedFiles.size() == 1);
     assert(report.generatedFiles.front().filename() == "world.otbm");
 
+    const auto unsupportedLaunch = backend.launch(RuntimeLaunchRequest{});
+    assert(!unsupportedLaunch.success);
+    assert(!unsupportedLaunch.errors.empty());
+    assert(backend.status().state == RuntimeState::NotPrepared);
+}
+
+void testTfsBackend(const fs::path& selfExecutable) {
+    const fs::path root = fs::temp_directory_path() / "fantasy-tfs1098-runtime-tests";
+    std::error_code ignored;
+    fs::remove_all(root, ignored);
+
+    const fs::path runtimeTemplate = root / "template";
+    const fs::path inputs = root / "inputs";
+    const fs::path output = root / "runtime";
+
+    writeText(runtimeTemplate / "config.lua.dist",
+        "serverName = \"Synthetic\"\n"
+        "mapName = \"forgotten\"\n"
+        "loginProtocolPort = 7171\n");
+    writeText(runtimeTemplate / "data" / "static.txt", "template-marker\n");
+    writeText(inputs / "world.otbm", "synthetic-otbm\n");
+    writeText(inputs / "items.otb", "synthetic-otb\n");
+    writeText(inputs / "map-house.xml", "<houses/>\n");
+    writeText(inputs / "map-spawn.xml", "<spawns/>\n");
+
+    Tfs1098RuntimeBackend backend;
+    const auto capabilities = backend.capabilities();
+    assert(capabilities.canPackageProject);
+    assert(capabilities.canLaunch);
+    assert(capabilities.canStop);
+    assert(capabilities.canStreamLogs);
+
+    RuntimePackageRequest package;
+    package.projectRoot = root;
+    package.outputDirectory = output;
+    package.runtimeTemplateDirectory = runtimeTemplate;
+    package.exportedMapPath = inputs / "world.otbm";
+    package.itemsOtbPath = inputs / "items.otb";
+    package.houseXmlPath = inputs / "map-house.xml";
+    package.spawnXmlPath = inputs / "map-spawn.xml";
+    package.mapName = "fantasy_test";
+
+    const RuntimePackageReport packaged = backend.packageProject(package);
+    assert(packaged.success);
+    assert(packaged.errors.empty());
+    assert(fs::exists(output / "data" / "world" / "fantasy_test.otbm"));
+    assert(fs::exists(output / "data" / "world" / "map-house.xml"));
+    assert(fs::exists(output / "data" / "world" / "map-spawn.xml"));
+    assert(fs::exists(output / "data" / "items" / "items.otb"));
+    assert(readText(output / "data" / "static.txt") == "template-marker\n");
+    const std::string config = readText(output / "config.lua");
+    assert(config.find("mapName = \"fantasy_test\"") != std::string::npos);
+    assert(config.find("mapName = \"forgotten\"") == std::string::npos);
+    assert(backend.status().state == RuntimeState::Stopped);
+
+    const fs::path logFile = output / "runtime-test.log";
+    RuntimeLaunchRequest launch;
+    launch.runtimeDirectory = output;
+    launch.executable = selfExecutable;
+    launch.arguments = {"--runtime-child"};
+    launch.logFile = logFile;
+
+    const RuntimeLaunchReport launched = backend.launch(launch);
+    assert(launched.success);
+    assert(launched.processId != 0);
+    assert(backend.status().state == RuntimeState::Running);
+
+    bool sawMarker = false;
+    std::uint64_t cursor = 0;
+    for (int attempt = 0; attempt < 40 && !sawMarker; ++attempt) {
+        std::this_thread::sleep_for(std::chrono::milliseconds(50));
+        const RuntimeLogChunk logs = backend.readLogs(cursor);
+        assert(logs.errors.empty());
+        cursor = logs.nextCursor;
+        sawMarker = logs.text.find("FANTASY_RUNTIME_CHILD_READY") != std::string::npos;
+    }
+    assert(sawMarker);
+
+    const RuntimeStopReport stopped = backend.stop();
+    assert(stopped.success);
+    assert(backend.status().state == RuntimeState::Stopped);
+
+    fs::remove_all(root, ignored);
+}
+
+} // namespace
+
+int main(int argc, char** argv) {
+    if (argc >= 2 && std::string(argv[1]) == "--runtime-child") {
+        std::cout << "FANTASY_RUNTIME_CHILD_READY" << std::endl;
+        std::this_thread::sleep_for(std::chrono::seconds(10));
+        return 0;
+    }
+
+    assert(argc >= 1);
+    testNeutralContract();
+    testTfsBackend(fs::absolute(fs::path(argv[0])));
     return 0;
 }
