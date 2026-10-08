@@ -1,5 +1,6 @@
 #include "LegacyWorkspaceSession.hpp"
 
+#include <algorithm>
 #include <utility>
 
 namespace fantasy::studio::mapcore {
@@ -8,7 +9,11 @@ Position LegacyWorkspaceSession::chooseInitialCenter(const MapDocument& document
     const auto& map = document.map();
 
     if (!map.towns().empty()) {
-        return map.towns().begin()->second.templePosition;
+        const auto town = std::min_element(
+            map.towns().begin(),
+            map.towns().end(),
+            [](const auto& left, const auto& right) { return left.first < right.first; });
+        return town->second.templePosition;
     }
 
     if (!map.spawnAreas().empty()) {
@@ -32,14 +37,16 @@ bool LegacyWorkspaceSession::open(LegacyMapProjectConfig config) {
 
     if (!report_.success) {
         document_ = MapDocument{};
-        view_ = LegacyWorkspaceViewState{};
+        initialView_ = LegacyWorkspaceViewState{};
+        view_ = initialView_;
         return false;
     }
 
     document_ = std::move(loadedDocument);
-    view_ = LegacyWorkspaceViewState{};
-    view_.center = chooseInitialCenter(document_);
-    view_.floor = view_.center.z;
+    initialView_ = LegacyWorkspaceViewState{};
+    initialView_.center = chooseInitialCenter(document_);
+    initialView_.floor = initialView_.center.z;
+    view_ = initialView_;
     return true;
 }
 
