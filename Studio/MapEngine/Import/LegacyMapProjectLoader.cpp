@@ -1,9 +1,10 @@
 #include "LegacyMapProjectLoader.hpp"
 
+#include "LegacyCanonicalMapBuilder.hpp"
 #include "Shared/Assets/Legacy/DatReader.hpp"
 #include "Shared/Assets/Legacy/OtbReader.hpp"
 #include "Shared/Assets/Legacy/SprReader.hpp"
-#include "Shared/Formats/Legacy/OtbmReader.hpp"
+#include "Shared/Formats/Legacy/OtbmStreamReader.hpp"
 
 #include <exception>
 #include <filesystem>
@@ -55,32 +56,10 @@ LegacyMapProjectLoadResult LegacyMapProjectLoader::load(
         fantasy::assets::legacy::OtbReader otb(config.otbPath);
         fantasy::assets::legacy::DatReader1057 dat(config.datPath);
         fantasy::assets::legacy::SprReader spr(config.sprPath);
-        fantasy::legacy::OtbmReader otbm(config.otbmPath);
 
         output.report.datSignature = dat.header().signature;
         output.report.sprSignature = spr.info().signature;
         output.report.sprCount = spr.info().spriteCount;
-
-        const auto& header = otbm.result().header;
-        if (header.formatVersion == 0 || header.formatVersion > 2) {
-            output.report.errors.push_back(
-                "OTBM header version " + std::to_string(header.formatVersion) +
-                " is outside the TFS 1.4.2 vanilla gate (expected numeric version 1 or 2; editor OTBM v3 uses 2).");
-            return output;
-        }
-
-        if (header.itemsMajorVersion < 3 || header.itemsMajorVersion > otb.version().major) {
-            output.report.errors.push_back(
-                "OTBM item major version " + std::to_string(header.itemsMajorVersion) +
-                " is incompatible with loaded OTB major version " + std::to_string(otb.version().major) + ".");
-            return output;
-        }
-
-        if (header.itemsMinorVersion > otb.version().minor) {
-            output.report.warnings.push_back(
-                "OTBM item minor version " + std::to_string(header.itemsMinorVersion) +
-                " is newer than loaded OTB minor version " + std::to_string(otb.version().minor) + ".");
-        }
 
         if (dat.header().signature != 0x42A3U) {
             output.report.warnings.push_back(
@@ -98,46 +77,100 @@ LegacyMapProjectLoadResult LegacyMapProjectLoader::load(
         output.report.assetRegistry = registryBuild.report;
         appendMessages(output.report.warnings, registryBuild.report.warnings, "assets: ");
 
-        fantasy::legacy::OtbmReadResult source = otbm.result();
-        source.import.model.sourceProfileId = config.profileId;
+        LegacyCanonicalMapBuilder builder(registryBuild.registry);
+        fantasy::legacy::OtbmStreamCallbacks callbacks;
+        callbacks.onTile = [&builder](fantasy::legacy::LegacyImportedTile&& tile) {
+            builder.addTile(std::move(tile));
+        };
+        callbacks.onTown = [&builder](fantasy::legacy::LegacyImportedTown&& town) {
+            builder.addTown(std::move(town));
+        };
+        callbacks.onWaypoint = [&builder](fantasy::legacy::LegacyImportedWaypoint&& waypoint) {
+            builder.addWaypoint(std::move(waypoint));
+        };
+
+        fantasy::legacy::OtbmStreamReader otbm(config.otbmPath, std::move(callbacks));
+        const auto& stream = otbm.result();
+        const auto& header = stream.header;
+
+        if (header.formatVersion == 0 || header.formatVersion > 2) {
+            output.report.errors.push_back(
+                "OTBM header version " + std::to_string(header.formatVersion) +
+                " is outside the TFS 1.4.2 vanilla gate (expected numeric version 1 or 2; editor OTBM v3 uses 2).");
+            output.assets = std::move(registryBuild.registry);
+            return output;
+        }
+
+        if (header.itemsMajorVersion < 3 || header.itemsMajorVersion > otb.version().major) {
+            output.report.errors.push_back(
+                "OTBM item major version " + std::to_string(header.itemsMajorVersion) +
+                " is incompatible with loaded OTB major version " + std::to_string(otb.version().major) + ".");
+            output.assets = std::move(registryBuild.registry);
+            return output;
+        }
+
+        if (header.itemsMinorVersion > otb.version().minor) {
+            output.report.warnings.push_back(
+                "OTBM item minor version " + std::to_string(header.itemsMinorVersion) +
+                " is newer than loaded OTB minor version " + std::to_string(otb.version().minor) + ".");
+        }
+
+        MapMetadata metadata;
+        metadata.width = header.width;
+        metadata.height = header.height;
+        metadata.name = config.otbmPath.filename().string();
+        metadata.description = stream.metadata.description;
+        metadata.spawnFile = stream.metadata.spawnFile;
+        metadata.houseFile = stream.metadata.houseFile;
+        metadata.sourceProfileId = config.profileId;
+        builder.setMetadata(std::move(metadata));
+        builder.setItemCount(stream.diagnostics.itemCount);
+        appendMessages(output.report.warnings, stream.diagnostics.warnings, "otbm: ");
 
         const auto housePath = resolveAuxPath(
             config.otbmPath,
             config.houseXmlPath,
-            source.metadata.houseFile,
+            stream.metadata.houseFile,
             "-house.xml");
         const auto spawnPath = resolveAuxPath(
             config.otbmPath,
             config.spawnXmlPath,
-            source.metadata.spawnFile,
+            stream.metadata.spawnFile,
             "-spawn.xml");
 
         if (std::filesystem::exists(housePath)) {
-            output.report.houses = fantasy::legacy::LegacyAuxXmlReader::loadHouses(housePath, source.import.model);
+            fantasy::legacy::LegacyMapImportModel housesModel;
+            output.report.houses = fantasy::legacy::LegacyAuxXmlReader::loadHouses(housePath, housesModel);
             appendMessages(output.report.warnings, output.report.houses.warnings, "houses: ");
             appendMessages(output.report.errors, output.report.houses.errors, "houses: ");
+            if (output.report.houses.success) {
+                for (auto& house : housesModel.houses) builder.addHouse(std::move(house));
+            }
         } else {
             output.report.errors.push_back("House XML not found: " + housePath.string());
         }
 
         if (std::filesystem::exists(spawnPath)) {
-            output.report.spawns = fantasy::legacy::LegacyAuxXmlReader::loadSpawns(spawnPath, source.import.model);
+            fantasy::legacy::LegacyMapImportModel spawnsModel;
+            output.report.spawns = fantasy::legacy::LegacyAuxXmlReader::loadSpawns(spawnPath, spawnsModel);
             appendMessages(output.report.warnings, output.report.spawns.warnings, "spawns: ");
             appendMessages(output.report.errors, output.report.spawns.errors, "spawns: ");
+            if (output.report.spawns.success) {
+                for (auto& spawn : spawnsModel.spawns) builder.addSpawn(std::move(spawn));
+            }
         } else {
             output.report.errors.push_back("Spawn XML not found: " + spawnPath.string());
         }
-
-        appendMessages(output.report.warnings, source.import.diagnostics.warnings, "otbm: ");
 
         if (!output.report.errors.empty()) {
             output.assets = std::move(registryBuild.registry);
             return output;
         }
 
-        LegacyMapAdapter adapter;
-        output.report.map = adapter.load(document, source, registryBuild.registry);
+        LegacyMapAdaptResult adapted = builder.finish();
+        output.report.map = adapted.report;
         appendMessages(output.report.warnings, output.report.map.warnings, "adapter: ");
+        document.replaceMap(std::move(adapted.map), std::move(adapted.metadata));
         output.assets = std::move(registryBuild.registry);
 
         output.report.success = true;
