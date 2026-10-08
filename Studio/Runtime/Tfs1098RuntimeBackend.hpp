@@ -2,6 +2,7 @@
 
 #include "RuntimeBackend.hpp"
 
+#include <cstring>
 #include <memory>
 
 namespace fantasy::studio::runtime {
