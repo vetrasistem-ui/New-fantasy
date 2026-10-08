@@ -10,6 +10,7 @@ namespace fantasy::assets::legacy {
 struct SprInfo {
     std::uint32_t signature = 0;
     std::uint32_t spriteCount = 0;
+    std::uint8_t colorChannels = 3;
 };
 
 struct SpriteRgba {
