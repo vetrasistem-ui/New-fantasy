@@ -71,16 +71,18 @@ add_library(fantasy-asset-registry
 )
 
 # OTBM and its external XML files stay isolated from the canonical map core.
-# They produce a neutral LegacyMapImportModel. The adapter below is the explicit
-# compatibility boundary into the editor domain.
+# Small fixtures may still materialize a neutral LegacyMapImportModel; large
+# projects use OtbmStreamReader so the full nodal tree/model is never retained.
 add_library(fantasy-legacy-import
     ../Shared/Formats/Legacy/OtbmReader.cpp
+    ../Shared/Formats/Legacy/OtbmStreamReader.cpp
     ../Shared/Formats/Legacy/LegacyAuxXmlReader.cpp
 )
 target_link_libraries(fantasy-legacy-import PUBLIC pugixml::pugixml)
 
 add_library(fantasy-map-legacy-bridge
     MapEngine/Import/LegacyMapAdapter.cpp
+    MapEngine/Import/LegacyCanonicalMapBuilder.cpp
     MapEngine/Import/LegacyMapProjectLoader.cpp
     MapEngine/Import/LegacyWorkspaceSession.cpp
 )
