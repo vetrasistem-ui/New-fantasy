@@ -1,4 +1,5 @@
 #include "LegacyMapProjectLoader.hpp"
+#include "LegacyWorkspaceSession.hpp"
 
 #include <cstdlib>
 #include <filesystem>
@@ -251,8 +252,21 @@ int main() {
     require(document.map().houses().at(77U).rent == 2500U, "house metadata preserved");
     require(document.map().spawnAreas().front().entries.front().name == "Rat", "spawn creature preserved");
 
+    LegacyWorkspaceSession session;
+    require(session.open(config), "workspace session opens complete project");
+    require(session.ready(), "workspace session reports ready");
+    require(session.document().map().tileCount() == 2U, "workspace session owns canonical map");
+    require(session.assets().size() == 4U, "workspace session owns asset registry");
+    require(session.view().center == Position{123, 234, 7}, "workspace starts at deterministic lowest town temple");
+    require(session.view().floor == 7, "workspace starts on center floor");
+    session.view().center = Position{1, 2, 3};
+    session.view().floor = 3;
+    session.resetView();
+    require(session.view().center == Position{123, 234, 7}, "workspace reset restores initial center");
+    require(session.view().floor == 7, "workspace reset restores initial floor");
+
     std::error_code ignored;
     fs::remove_all(root, ignored);
-    std::cout << "Complete synthetic 10.98 project loader tests PASS\n";
+    std::cout << "Complete synthetic 10.98 project loader/session tests PASS\n";
     return 0;
 }
