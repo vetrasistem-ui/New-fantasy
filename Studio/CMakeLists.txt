@@ -175,7 +175,7 @@ target_include_directories(fantasy-legacy-inspect PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}
     ${CMAKE_CURRENT_SOURCE_DIR}/..
 )
-target_link_libraries(fantasy-legacy-inspect PRIVATE fantasy-asset-registry fantasy-legacy-import)
+target_link_libraries(fantasy-legacy-inspect PRIVATE fantasy-map-legacy-bridge)
 if(MSVC)
     target_compile_options(fantasy-legacy-inspect PRIVATE /W4 /permissive-)
 else()
