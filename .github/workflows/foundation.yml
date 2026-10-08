@@ -111,11 +111,14 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Configure legacy tools
+      - name: Configure legacy tools and runtime backend
         run: cmake -S Studio -B build/studio -DCMAKE_BUILD_TYPE=Release -DSDL_UNIX_CONSOLE_BUILD=ON
 
-      - name: Build Linux legacy inspector and preview
-        run: cmake --build build/studio --target fantasy-legacy-inspect fantasy-legacy-preview --parallel 2
+      - name: Build Linux legacy tools and runtime backend test
+        run: cmake --build build/studio --target fantasy-legacy-inspect fantasy-legacy-preview fantasy-runtime-backend-tests --parallel 2
+
+      - name: Test TFS1098 runtime backend on Linux
+        run: ctest --test-dir build/studio -R '^fantasy-runtime-backend-tests$' --output-on-failure
 
       - name: Upload Linux legacy tools
         uses: actions/upload-artifact@v4
