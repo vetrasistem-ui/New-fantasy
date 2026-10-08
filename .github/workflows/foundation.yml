@@ -112,7 +112,7 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Configure headless legacy tool
-        run: cmake -S Studio -B build/studio -DCMAKE_BUILD_TYPE=Release
+        run: cmake -S Studio -B build/studio -DCMAKE_BUILD_TYPE=Release -DSDL_UNIX_CONSOLE_BUILD=ON
 
       - name: Build headless legacy inspector
         run: cmake --build build/studio --target fantasy-legacy-inspect --parallel 2
