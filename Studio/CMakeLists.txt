@@ -183,6 +183,23 @@ else()
     target_compile_options(fantasy-legacy-inspect PRIVATE -Wall -Wextra -Wpedantic)
 endif()
 
+add_executable(fantasy-legacy-preview
+    UI/LegacyPreviewApp.cpp
+    UI/StudioTheme.cpp
+    UI/LegacyMapCanvasRenderer.cpp
+)
+target_link_libraries(fantasy-legacy-preview PRIVATE
+    fantasy-map-legacy-bridge
+    fantasy-legacy-rendering
+    fantasy-imgui
+    SDL3::SDL3
+)
+if(MSVC)
+    target_compile_options(fantasy-legacy-preview PRIVATE /W4 /permissive-)
+else()
+    target_compile_options(fantasy-legacy-preview PRIVATE -Wall -Wextra -Wpedantic)
+endif()
+
 add_executable(fantasy-studio-project-tests
     Project/ProjectManagerTests.cpp
 )
