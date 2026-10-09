@@ -1,3 +1,4 @@
+#include "Foundation/FantasyFoundationV2Tests.hpp"
 #include "Runtime/RuntimeBackend.hpp"
 #include "Runtime/Tfs1098DeploymentBundle.hpp"
 #include "Runtime/Tfs1098RuntimeBackend.hpp"
@@ -402,6 +403,7 @@ int main(int argc, char** argv) {
     testSemanticRuntimeContracts();
     testSystemChannelRegistry();
     testTargetProfile();
+    fantasy::studio::foundation::tests::runFoundationV2SelfTests();
     testTfsBackend(fs::absolute(fs::path(argv[0])));
     return 0;
 }
