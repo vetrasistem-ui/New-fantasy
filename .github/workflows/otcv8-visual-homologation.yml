@@ -9,6 +9,7 @@ on:
       - .github/workflows/otcv8-visual-homologation.yml
       - Tools/Tfs1098/tfs1098_protocol_probe.py
       - Tools/Tfs1098/tfs1098_mysql_fixture.py
+      - Tools/Tfs1098/tfs1098_windows_protocol_smoke.ps1
 
 jobs:
   stage-linux-client:
@@ -112,130 +113,16 @@ jobs:
       - name: Checkout Fantasy homologation tools
         uses: actions/checkout@v4
 
-      - name: Prepare OpenSSL
+      - name: Run official Windows TFS 1.4.2 protocol smoke
         shell: pwsh
         run: |
           $ErrorActionPreference = 'Stop'
-          $gitOpenSsl = 'C:\Program Files\Git\usr\bin'
-          if ((Test-Path (Join-Path $gitOpenSsl 'openssl.exe')) -and -not (Get-Command openssl -ErrorAction SilentlyContinue)) {
-            $env:Path = "$gitOpenSsl;$env:Path"
-            "PATH=$env:Path" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
-          }
-          openssl version
-          python --version
-
-      - name: Download official TFS 1.4.2 Windows runtime
-        shell: pwsh
-        run: |
-          $ErrorActionPreference = 'Stop'
-          Invoke-WebRequest -Uri 'https://github.com/otland/forgottenserver/releases/download/v1.4.2/tfs-v1.4.2-windows-vcpkg.zip' -OutFile 'tfs-windows.zip'
-          Expand-Archive -Path 'tfs-windows.zip' -DestinationPath 'tfs-windows' -Force
-
-          $config = Get-ChildItem 'tfs-windows' -Recurse -File -Filter 'config.lua.dist' | Select-Object -First 1
-          $key = Get-ChildItem 'tfs-windows' -Recurse -File -Filter 'key.pem' | Select-Object -First 1
-          $candidates = Get-ChildItem 'tfs-windows' -Recurse -File -Filter '*.exe' | Where-Object {
-            $_.BaseName -match '(?i)tfs|forgottenserver'
-          }
-          if (-not $config) { throw 'config.lua.dist was not found in official Windows package' }
-          if (-not $key) { throw 'key.pem was not found in official Windows package' }
-          if (-not $candidates) {
-            Get-ChildItem 'tfs-windows' -Recurse -File | Select-Object -ExpandProperty FullName
-            throw 'TFS executable candidate was not found in official Windows package'
-          }
-
-          $runtime = $config.Directory.FullName
-          $exe = $candidates | Where-Object { $_.Directory.FullName -eq $runtime } | Select-Object -First 1
-          if (-not $exe) { $exe = $candidates | Select-Object -First 1 }
-
-          Write-Host "TFS runtime: $runtime"
-          Write-Host "TFS executable: $($exe.FullName)"
-          "TFS_RUNTIME=$runtime" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
-          "TFS_EXE=$($exe.FullName)" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
-
-      - name: Configure TFS and start deterministic DB fixture
-        shell: pwsh
-        run: |
-          $ErrorActionPreference = 'Stop'
-          $configDist = Join-Path $env:TFS_RUNTIME 'config.lua.dist'
-          $configPath = Join-Path $env:TFS_RUNTIME 'config.lua'
-          $config = Get-Content $configDist -Raw
-          $config = $config.Replace('mysqlPass = ""', 'mysqlPass = "fantasy-ci"')
-          Set-Content -Path $configPath -Value $config -Encoding utf8
-
-          $fixtureOut = Join-Path $PWD 'mysql-fixture.out.log'
-          $fixtureErr = Join-Path $PWD 'mysql-fixture.err.log'
-          $fixtureQueryLog = Join-Path $PWD 'mysql-fixture.queries.log'
-          $fixture = Start-Process -FilePath 'python' -ArgumentList @(
-            'Tools/Tfs1098/tfs1098_mysql_fixture.py', '--host', '127.0.0.1', '--port', '3306', '--log', $fixtureQueryLog
-          ) -PassThru -RedirectStandardOutput $fixtureOut -RedirectStandardError $fixtureErr
-          $fixture.Id | Set-Content 'mysql-fixture.pid'
-
-          $ready = $false
-          for ($i = 0; $i -lt 30; $i++) {
-            if (Test-Path $fixtureOut) {
-              $text = Get-Content $fixtureOut -Raw -ErrorAction SilentlyContinue
-              if ($text -match 'TFS1098_MYSQL_FIXTURE READY') { $ready = $true; break }
-            }
-            if ($fixture.HasExited) {
-              Get-Content $fixtureErr -ErrorAction SilentlyContinue
-              throw 'MySQL fixture exited before readiness'
-            }
-            Start-Sleep -Milliseconds 500
-          }
-          if (-not $ready) { throw 'MySQL fixture did not become ready' }
-
-      - name: Start official Windows TFS and run protocol 10.98 smoke
-        shell: pwsh
-        run: |
-          $ErrorActionPreference = 'Stop'
-          $tfsOut = Join-Path $PWD 'tfs-windows.out.log'
-          $tfsErr = Join-Path $PWD 'tfs-windows.err.log'
-          $tfs = Start-Process -FilePath $env:TFS_EXE -WorkingDirectory $env:TFS_RUNTIME -PassThru -RedirectStandardOutput $tfsOut -RedirectStandardError $tfsErr
-          $tfs.Id | Set-Content 'tfs-windows.pid'
-
-          try {
-            $online = $false
-            for ($i = 0; $i -lt 120; $i++) {
-              if (Test-Path $tfsOut) {
-                $text = Get-Content $tfsOut -Raw -ErrorAction SilentlyContinue
-                if ($text -match 'Forgotten Server Online!') { $online = $true; break }
-              }
-              if ($tfs.HasExited) {
-                Get-Content $tfsOut -ErrorAction SilentlyContinue
-                Get-Content $tfsErr -ErrorAction SilentlyContinue
-                throw 'Official Windows TFS exited before Online'
-              }
-              Start-Sleep -Seconds 1
-            }
-            if (-not $online) { throw 'Official Windows TFS did not reach Online' }
-
-            python Tools/Tfs1098/tfs1098_protocol_probe.py `
-              --host 127.0.0.1 --port 7172 `
-              --key (Join-Path $env:TFS_RUNTIME 'key.pem') `
-              --account fantasy --password fantasy --character 'Fantasy Test' --timeout 15
-          }
-          finally {
-            if (-not $tfs.HasExited) { Stop-Process -Id $tfs.Id -Force -ErrorAction SilentlyContinue }
-          }
-
-      - name: Stop fixture
-        if: always()
-        shell: pwsh
-        run: |
-          if (Test-Path 'mysql-fixture.pid') {
-            $fixturePid = Get-Content 'mysql-fixture.pid'
-            Stop-Process -Id $fixturePid -Force -ErrorAction SilentlyContinue
-          }
+          ./Tools/Tfs1098/tfs1098_windows_protocol_smoke.ps1
 
       - name: Upload Windows runtime smoke logs
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: tfs1098-windows-protocol-smoke-${{ github.sha }}
-          path: |
-            tfs-windows.out.log
-            tfs-windows.err.log
-            mysql-fixture.out.log
-            mysql-fixture.err.log
-            mysql-fixture.queries.log
+          path: build/tfs1098-windows-smoke/*.log
           if-no-files-found: warn
