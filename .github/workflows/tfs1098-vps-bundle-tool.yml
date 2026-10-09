@@ -6,6 +6,9 @@ on:
     branches:
       - main
     paths:
+      - Studio/Runtime/Tfs1098DeploymentBundle.hpp
+      - Studio/Runtime/Tfs1098VpsLifecycle.hpp
+      - Tools/Tfs1098/DeploymentBundleContract/**
       - Tools/Tfs1098/build_vps_bundle.py
       - .github/workflows/tfs1098-vps-bundle-tool.yml
 
@@ -25,6 +28,18 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: '3.12'
+
+      - name: Configure C++ deployment contract
+        shell: pwsh
+        run: cmake -S Tools/Tfs1098/DeploymentBundleContract -B build/vps-cpp
+
+      - name: Build C++ deployment contract
+        shell: pwsh
+        run: cmake --build build/vps-cpp --config Release
+
+      - name: Test C++ deployment contract
+        shell: pwsh
+        run: ctest --test-dir build/vps-cpp -C Release --output-on-failure
 
       - name: Build and validate synthetic VPS bundle
         shell: pwsh
