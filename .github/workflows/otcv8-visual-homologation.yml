@@ -1,0 +1,43 @@
+name: OTCv8 Visual Homologation Client
+
+on:
+  workflow_dispatch:
+  pull_request:
+    branches:
+      - main
+    paths:
+      - .github/workflows/otcv8-visual-homologation.yml
+
+jobs:
+  stage-linux-client:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download clean public OTCv8 package
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl -fL --retry 3 --retry-delay 2 \
+            -o otcv8.zip \
+            https://github.com/OTCv8/otclientv8/archive/refs/heads/master.zip
+          unzip -q otcv8.zip
+          CLIENT_DIR="$(find . -maxdepth 1 -type d -name 'otclientv8-*' | head -n1)"
+          test -n "${CLIENT_DIR}"
+          test -f "${CLIENT_DIR}/otclient_linux"
+          test -d "${CLIENT_DIR}/modules"
+          test -d "${CLIENT_DIR}/data"
+          rm -rf "${CLIENT_DIR}/data/things" || true
+          mkdir -p staged-client
+          cp "${CLIENT_DIR}/otclient_linux" staged-client/
+          cp "${CLIENT_DIR}/init.lua" staged-client/
+          cp -a "${CLIENT_DIR}/modules" staged-client/
+          cp -a "${CLIENT_DIR}/data" staged-client/
+          cp -a "${CLIENT_DIR}/layouts" staged-client/ 2>/dev/null || true
+          chmod +x staged-client/otclient_linux
+          printf 'source=https://github.com/OTCv8/otclientv8\nbranch=master\n' > staged-client/HOMOLOGATION-SOURCE.txt
+
+      - name: Upload homologation client
+        uses: actions/upload-artifact@v4
+        with:
+          name: otcv8-linux-visual-homologation-${{ github.sha }}
+          path: staged-client
+          if-no-files-found: error
