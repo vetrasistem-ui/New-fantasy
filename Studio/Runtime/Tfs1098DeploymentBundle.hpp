@@ -6,6 +6,7 @@
 #include <fstream>
 #include <string>
 #include <system_error>
+#include <utility>
 #include <vector>
 
 namespace fantasy::studio::runtime {
@@ -268,6 +269,7 @@ private:
             "SERVICE_NAME='" + request.serviceName + "'\n"
             "SERVICE_USER='" + request.serviceUser + "'\n"
             "INSTALL_ROOT='" + request.installRoot + "'\n"
+            "TFS_EXECUTABLE='" + request.executableName + "'\n"
             "SCRIPT_DIR=\"$(cd \"$(dirname \"${BASH_SOURCE[0]}\")\" && pwd)\"\n"
             "BUNDLE_ROOT=\"$(cd \"${SCRIPT_DIR}/..\" && pwd)\"\n\n"
             "if ! id \"${SERVICE_USER}\" >/dev/null 2>&1; then\n"
@@ -276,6 +278,7 @@ private:
             "mkdir -p \"${INSTALL_ROOT}\"\n"
             "rm -rf \"${INSTALL_ROOT}/server\"\n"
             "cp -a \"${BUNDLE_ROOT}/server\" \"${INSTALL_ROOT}/server\"\n"
+            "chmod 0755 \"${INSTALL_ROOT}/server/${TFS_EXECUTABLE}\"\n"
             "chown -R \"${SERVICE_USER}:${SERVICE_USER}\" \"${INSTALL_ROOT}\"\n"
             "install -m 0644 \"${SCRIPT_DIR}/${SERVICE_NAME}.service\" \"/etc/systemd/system/${SERVICE_NAME}.service\"\n"
             "systemctl daemon-reload\n"
@@ -295,7 +298,7 @@ private:
             "## Install\n\n"
             "```bash\n"
             "cd deploy\n"
-            "sudo ./install.sh\n"
+            "sudo bash ./install.sh\n"
             "```\n\n"
             "The service is installed as `" + request.serviceName + ".service` under `" + request.installRoot + "`.\n"
             "Logs are available with `journalctl -u " + request.serviceName + " -f`.\n";
