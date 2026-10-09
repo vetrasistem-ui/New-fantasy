@@ -57,10 +57,18 @@ struct ReleasePolicy {
     bool rollbackOnFailedHealthCheck = true;
 
     void validate() const {
-        if (!installRoot.is_absolute()) throw std::invalid_argument("release installRoot must be absolute");
-        if (!backupRoot.is_absolute()) throw std::invalid_argument("release backupRoot must be absolute");
+        if (!linuxAbsolutePath(installRoot)) throw std::invalid_argument("release installRoot must be an absolute Linux path");
+        if (!linuxAbsolutePath(backupRoot)) throw std::invalid_argument("release backupRoot must be an absolute Linux path");
         requireIdentifier(serviceName, "release service name");
-        if (installRoot == backupRoot) throw std::invalid_argument("release install and backup roots must differ");
+        if (installRoot.generic_string() == backupRoot.generic_string()) {
+            throw std::invalid_argument("release install and backup roots must differ");
+        }
+    }
+
+private:
+    [[nodiscard]] static bool linuxAbsolutePath(const std::filesystem::path& path) noexcept {
+        const auto value = path.generic_string();
+        return value.size() > 1U && value.front() == '/' && value.find("..") == std::string::npos;
     }
 };
 
@@ -69,7 +77,8 @@ public:
     static void write(const std::filesystem::path& outputPath, const FantasyBuildManifest& manifest) {
         manifest.validate();
         if (outputPath.empty()) throw std::invalid_argument("build manifest output path is required");
-        std::filesystem::create_directories(outputPath.parent_path());
+        const auto parent = outputPath.parent_path();
+        if (!parent.empty()) std::filesystem::create_directories(parent);
         std::ofstream output(outputPath, std::ios::binary | std::ios::trunc);
         if (!output) throw std::runtime_error("unable to write Fantasy build manifest: " + outputPath.string());
         output << toJson(manifest);
