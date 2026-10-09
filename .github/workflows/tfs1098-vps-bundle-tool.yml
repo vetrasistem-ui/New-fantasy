@@ -73,13 +73,17 @@ jobs:
       - name: Reject unsafe output containment
         shell: pwsh
         run: |
-          $ErrorActionPreference = 'Continue'
-          python Tools/Tfs1098/build_vps_bundle.py `
-            --runtime synthetic-runtime `
-            --output synthetic-runtime/unsafe-child `
-            --force
-          if ($LASTEXITCODE -eq 0) { throw 'Unsafe output inside runtime should have been rejected' }
+          $ErrorActionPreference = 'Stop'
+          $arguments = @(
+            'Tools/Tfs1098/build_vps_bundle.py',
+            '--runtime', 'synthetic-runtime',
+            '--output', 'synthetic-runtime/unsafe-child',
+            '--force'
+          )
+          $process = Start-Process -FilePath 'python' -ArgumentList $arguments -NoNewWindow -Wait -PassThru
+          if ($process.ExitCode -eq 0) { throw 'Unsafe output inside runtime should have been rejected' }
           if (-not (Test-Path 'synthetic-runtime/data/marker.txt')) { throw 'Unsafe validation modified source runtime' }
+          if (Test-Path 'synthetic-runtime/unsafe-child') { throw 'Unsafe output directory should not have been created' }
 
       - name: Upload synthetic bundle
         uses: actions/upload-artifact@v4
