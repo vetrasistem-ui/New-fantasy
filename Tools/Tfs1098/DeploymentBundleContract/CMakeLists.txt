@@ -15,3 +15,6 @@ if(MSVC)
 else()
     target_compile_options(fantasy-tfs1098-deployment-contract PRIVATE -Wall -Wextra -Wpedantic)
 endif()
+
+enable_testing()
+add_test(NAME fantasy-tfs1098-deployment-contract COMMAND fantasy-tfs1098-deployment-contract)
