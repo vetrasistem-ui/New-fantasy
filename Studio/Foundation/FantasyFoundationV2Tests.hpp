@@ -1,11 +1,15 @@
 #pragma once
 
 #include "Foundation/FantasyAssetMigrationEngine.hpp"
+#include "Foundation/FantasyBrushContracts.hpp"
 #include "Foundation/FantasyBuildManifest.hpp"
+#include "Foundation/FantasyClientManifest.hpp"
 #include "Foundation/FantasyFoundationV2.hpp"
+#include "Foundation/FantasyModernAssets.hpp"
 #include "Foundation/FantasyProjectLayoutV2.hpp"
 #include "Foundation/FantasySystemCatalog.hpp"
 #include "Runtime/Tfs1098RuntimePreparation.hpp"
+#include "Runtime/Tfs1098VpsLifecycle.hpp"
 
 #include <filesystem>
 #include <fstream>
@@ -27,6 +31,12 @@ inline void writeText(const fs::path& path, const std::string& text) {
     if (!output) throw std::runtime_error("unable to write foundation test fixture: " + path.string());
     output << text;
     if (!output) throw std::runtime_error("failed while writing foundation test fixture: " + path.string());
+}
+
+inline std::string readText(const fs::path& path) {
+    std::ifstream input(path, std::ios::binary);
+    if (!input) throw std::runtime_error("unable to read foundation test fixture: " + path.string());
+    return std::string(std::istreambuf_iterator<char>(input), std::istreambuf_iterator<char>());
 }
 
 inline void testZones() {
@@ -312,6 +322,34 @@ inline void testAssetMigrationEngine() {
     require(rejectedMissingReplaceTarget, "migration preview must reject replacement of missing target asset");
 }
 
+inline void testModernAssetsAndBrushes() {
+    ModernAssetDefinition grass;
+    grass.id = "asset.ground.grass";
+    grass.kind = ModernAssetKind::Ground;
+    grass.tags = {"terrain.grass", "walkable"};
+    grass.layers.push_back({"base", 0, 0, 0, {{"visual.grass.01", 100}}});
+    grass.transitions.push_back({"terrain.sand", "asset.border.grass_sand", 100});
+    grass.validate();
+
+    BrushDefinition brush;
+    brush.id = "brush.terrain.grass";
+    brush.kind = BrushKind::Terrain;
+    brush.requiredTags = {"terrain.grass"};
+    brush.variants = {{"asset.ground.grass", 3}, {"asset.ground.grass.flowers", 1}};
+    brush.transitions = {
+        {"terrain.sand", "asset.border.grass_sand", 100},
+        {"terrain.water", "asset.border.grass_water", 200},
+    };
+    brush.validate();
+
+    const auto first = FantasyBrushSelector::chooseVariant(brush, 123456U);
+    const auto second = FantasyBrushSelector::chooseVariant(brush, 123456U);
+    require(first == second, "brush randomization must be deterministic for the same seed");
+    const auto transitions = FantasyBrushSelector::orderedTransitions(brush);
+    require(transitions.size() == 2U && transitions.front().neighborTag == "terrain.water",
+        "brush transitions must be ordered by descending priority");
+}
+
 inline void testProjectLayoutV2() {
     const fs::path root = fs::temp_directory_path() / "fantasy-project-layout-v2";
     std::error_code ignored;
@@ -397,6 +435,32 @@ inline void testBuildManifest() {
     policy.validate();
 }
 
+inline void testClientManifest() {
+    FantasyClientManifest manifest;
+    manifest.clientId = "fantasy-client";
+    manifest.version = "v1.0.0";
+    manifest.runtimeId = "tfs1098";
+    manifest.compatibilityProfile = "otc_extended";
+    manifest.assetProfileId = "assets.1098.official";
+    manifest.serverHost = "play.example.com";
+    manifest.loginPort = 7171;
+    manifest.gamePort = 7172;
+    manifest.updateChannel = "stable";
+    manifest.modules = {
+        {"fantasy_runtime_bridge", true, "v1"},
+        {"fantasy_inventory", false, "v1"},
+    };
+    manifest.artifacts = {
+        {fs::path{"bin/otclient.exe"}, std::string(64, 'f')},
+    };
+    manifest.validate();
+    const auto json = manifest.toJson();
+    require(json.find("\"serverHost\": \"play.example.com\"") != std::string::npos,
+        "client manifest must include server host");
+    require(json.find("fantasy_runtime_bridge") != std::string::npos,
+        "client manifest must include required runtime bridge module");
+}
+
 inline void createExtendedRuntimeFixture(const fs::path& runtimeDirectory) {
     writeText(
         runtimeDirectory / "data" / "creaturescripts" / "creaturescripts.xml",
@@ -465,6 +529,38 @@ inline void testRuntimePreparationV2() {
     fs::remove_all(root, ignored);
 }
 
+inline void testVpsLifecycle() {
+    const fs::path root = fs::temp_directory_path() / "fantasy-vps-lifecycle-test";
+    std::error_code ignored;
+    fs::remove_all(root, ignored);
+    writeText(root / "server" / "config.lua", "serverName = \"Fantasy\"\n");
+
+    Tfs1098VpsLifecycleRequest request;
+    request.bundleDirectory = root;
+    request.serviceName = "fantasy-test";
+    request.serviceUser = "fantasytest";
+    request.installRoot = "/opt/fantasy/fantasy-test";
+    request.backupRoot = "/opt/fantasy/backups/fantasy-test";
+
+    const auto report = Tfs1098VpsLifecycle::write(request);
+    require(report.success, "VPS lifecycle generation must succeed");
+    require(fs::is_regular_file(root / "deploy" / "env.example"), "VPS lifecycle env.example missing");
+    require(fs::is_regular_file(root / "deploy" / "healthcheck.sh"), "VPS lifecycle healthcheck missing");
+    require(fs::is_regular_file(root / "deploy" / "update.sh"), "VPS lifecycle update script missing");
+    require(fs::is_regular_file(root / "deploy" / "rollback.sh"), "VPS lifecycle rollback script missing");
+    require(readText(root / "deploy" / "update.sh").find("rolling back") != std::string::npos,
+        "VPS update script must include automatic rollback path");
+    require(readText(root / "deploy" / "env.example").find("CHANGE_ME") != std::string::npos,
+        "VPS env example must contain placeholder rather than a production secret");
+
+    Tfs1098VpsLifecycleRequest invalid = request;
+    invalid.serviceName = "bad;service";
+    const auto rejected = Tfs1098VpsLifecycle::write(invalid);
+    require(!rejected.success, "VPS lifecycle must reject unsafe service names");
+
+    fs::remove_all(root, ignored);
+}
+
 inline void runFoundationV2SelfTests() {
     testZones();
     testAppearanceAndEntities();
@@ -474,10 +570,13 @@ inline void runFoundationV2SelfTests() {
     testSystemCatalog();
     testAssetProfilesAndMigration();
     testAssetMigrationEngine();
+    testModernAssetsAndBrushes();
     testProjectLayoutV2();
     testBuildAndHealthContracts();
     testBuildManifest();
+    testClientManifest();
     testRuntimePreparationV2();
+    testVpsLifecycle();
 }
 
 } // namespace fantasy::studio::foundation::tests
