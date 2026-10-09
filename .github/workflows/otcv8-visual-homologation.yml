@@ -7,6 +7,7 @@ on:
       - main
     paths:
       - .github/workflows/otcv8-visual-homologation.yml
+      - Tools/Tfs1098/package_otcv8_windows_client.ps1
       - Tools/Tfs1098/tfs1098_protocol_probe.py
       - Tools/Tfs1098/tfs1098_mysql_fixture.py
       - Tools/Tfs1098/tfs1098_windows_protocol_smoke.ps1
@@ -56,6 +57,9 @@ jobs:
   stage-windows-client:
     runs-on: windows-latest
     steps:
+      - name: Checkout Fantasy packaging tool
+        uses: actions/checkout@v4
+
       - name: Download clean public OTCv8 package
         shell: pwsh
         run: |
@@ -64,41 +68,15 @@ jobs:
           Expand-Archive -Path 'otcv8.zip' -DestinationPath '.' -Force
           $client = Get-ChildItem -Directory -Filter 'otclientv8-*' | Select-Object -First 1
           if (-not $client) { throw 'OTCv8 extracted directory was not found' }
-          $root = $client.FullName
 
-          foreach ($required in @('otclient_dx.exe', 'otclient_gl.exe', 'init.lua', 'modules', 'data')) {
-            if (-not (Test-Path (Join-Path $root $required))) { throw "Missing OTCv8 package entry: $required" }
-          }
+          ./Tools/Tfs1098/package_otcv8_windows_client.ps1 `
+            -SourceRoot $client.FullName `
+            -OutputRoot 'staged-client-windows'
 
-          Remove-Item -Recurse -Force (Join-Path $root 'data\things') -ErrorAction SilentlyContinue
-          New-Item -ItemType Directory -Path 'staged-client-windows' -Force | Out-Null
-
-          foreach ($file in @('otclient_dx.exe', 'otclient_gl.exe', 'd3dcompiler_47.dll', 'libEGL.dll', 'libGLESv2.dll', 'init.lua')) {
-            $source = Join-Path $root $file
-            if (Test-Path $source) { Copy-Item $source 'staged-client-windows\' -Force }
-          }
-          foreach ($dir in @('modules', 'mods', 'data', 'layouts')) {
-            $source = Join-Path $root $dir
-            if (Test-Path $source) { Copy-Item $source (Join-Path 'staged-client-windows' $dir) -Recurse -Force }
-          }
-
-          @"
-          source=https://github.com/OTCv8/otclientv8
-          branch=master
-          platform=windows
-          "@ | Set-Content -Path 'staged-client-windows\HOMOLOGATION-SOURCE.txt' -Encoding ascii
-
-          @"
-          This public homologation client intentionally contains no Tibia DAT/SPR assets.
-          For Fantasy 10.98 acceptance, place the matching user-owned files at:
-            data\things\1098\Tibia.dat
-            data\things\1098\Tibia.spr
-          Keep the matching OTFI/OTML profile used by the project when required.
-          Use otclient_dx.exe first; otclient_gl.exe is available as an alternate renderer.
-          "@ | Set-Content -Path 'staged-client-windows\ASSETS-REQUIRED.txt' -Encoding ascii
-
-          if ((Get-Item 'staged-client-windows\otclient_dx.exe').Length -le 0) { throw 'DX client is empty' }
-          if ((Get-Item 'staged-client-windows\otclient_gl.exe').Length -le 0) { throw 'GL client is empty' }
+          $manifest = Get-Content 'staged-client-windows\fantasy-client-manifest.json' -Raw | ConvertFrom-Json
+          if ($manifest.protocol -ne 1098) { throw 'Unexpected client protocol in manifest' }
+          if ($manifest.assetsIncluded -ne $false) { throw 'CI package must not contain Tibia DAT/SPR assets' }
+          if (-not (Test-Path 'staged-client-windows\ASSETS-REQUIRED.txt')) { throw 'Missing asset handoff instructions' }
 
       - name: Upload Windows homologation client
         uses: actions/upload-artifact@v4
@@ -106,6 +84,10 @@ jobs:
           name: otcv8-windows-visual-homologation-${{ github.sha }}
           path: staged-client-windows
           if-no-files-found: error
+
+      - name: Post Checkout Fantasy packaging tool
+        if: always()
+        run: echo "checkout cleanup handled by action"
 
   windows-tfs-protocol-smoke:
     runs-on: windows-latest
