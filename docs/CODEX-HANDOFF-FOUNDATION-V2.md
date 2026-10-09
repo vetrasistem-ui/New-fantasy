@@ -1,6 +1,6 @@
 # Codex Handoff — Fantasy Foundation V2
 
-**Validated implementation SHA:** `c72772d7bd755f7cd4b673044b116425a46e0524`
+**Validated implementation SHA:** `909f702e048fc2f390bcdd907839632f19c9046d`
 
 **Repository:** `vetrasistem-ui/New-fantasy`  
 **Branch:** `feature/fantasy-map-core-v1`  
@@ -39,7 +39,7 @@ legacy/runtime build                 PASS
 TFS1098 runtime workflow tests       PASS
 ```
 
-The VPS deployment contract now has two independent implementations under test:
+The VPS deployment contract has two independent implementations under test:
 
 ```text
 C++ Tfs1098DeploymentBundle contract   PASS Windows + Ubuntu
@@ -127,24 +127,65 @@ Assets/
 build/
 ```
 
-### Runtime / Server workspace backend
+### Runtime / Server Workspace V2
 
-Implemented and tested:
+Implemented, bound to V5 and compiled/tested:
 
 - `vanilla` compatibility profile;
 - `otc_extended` compatibility profile;
 - Server Workspace V2 controller;
-- client package selection state;
+- V5 compatibility-profile selector;
+- OTCv8 client package selection;
 - semantic channels derived automatically from authored Systems;
-- project health state;
-- profile-dependent capabilities;
-- Prepare Runtime;
+- runtime capabilities display;
+- Project Health display;
+- Prepare Extended Runtime;
 - Extended Opcode registry;
 - TFS Lua bridge;
 - OTCv8 bridge/module;
-- stable/idempotent channel bindings.
+- stable/idempotent channel bindings;
+- existing Export OTBM / Package Runtime / Start / Stop / Build VPS controls retained;
+- runtime PID/status/log retained.
 
-The remaining V5 Server-page work is visual binding to this controller, not runtime design.
+The Server page is no longer an unbound shell. Codex must visually accept and refine it in a real desktop session, not invent another runtime architecture.
+
+### Foundation V2 authoring surfaces bound to V5
+
+The real runtime V5 now routes the previous placeholder pages into repository-backed authoring surfaces.
+
+Current compiled bindings:
+
+```text
+Items & Assets
+  -> Items
+  -> Appearances
+  -> Modern Assets
+  -> Asset Profiles
+  -> Brushes
+  -> Asset Migrations
+
+Monsters
+  -> Creatures
+  -> Classes
+
+NPCs
+  -> Entity Archetypes
+
+Spells page
+  -> Class / progression compact editor
+
+Quests / Systems
+  -> System Lab compact editor
+  -> Zones
+  -> Project Health
+
+Client
+  -> Project Health / build-readiness surface
+```
+
+These surfaces call `FantasyAuthoringRepository` and domain validators. Widgets do not handcraft JSON or write TFS files directly.
+
+The current editors intentionally expose compact/core fields first. Advanced nested UI such as full component rows, Appearance attachment/effect editors and the final visual block graph for System Lab remains a local UX refinement on top of already implemented domain/persistence contracts. Do not replace the domain model to implement those interactions.
 
 ### Build / distribution
 
@@ -228,7 +269,7 @@ Tools/Tfs1098/package_otcv8_windows_client.ps1
 
 The CI/public package intentionally excludes Tibia DAT/SPR. Inject only user-owned matching assets locally with the packager's `-AssetsRoot` option.
 
-Acceptance must test both the preferred executable and fallback when useful:
+Acceptance should test both the preferred executable and fallback when useful:
 
 ```text
 otclient_dx.exe
@@ -237,24 +278,21 @@ otclient_gl.exe
 
 Do not mark this PASS from a headless protocol smoke alone.
 
-## Codex gate B — V5 UI visual binding/acceptance
+## Codex gate B — V5 visual / interaction acceptance
 
-The logic/controller already exists. Codex should bind the accepted V5 shell to the existing controllers rather than creating a new architecture.
+The functional bindings already compile in the Studio executable. Codex should open them and test the existing implementation rather than rebinding the architecture from scratch.
 
-At minimum, Server V2 should visually expose:
+Server V2 must be visually verified for:
 
 ```text
-Compatibility profile:
-  Vanilla
-  OTC Extended
-
+Vanilla / OTC Extended selector
 TFS template directory
 Runtime output
 OTCv8 client package directory
 Required semantic channels
 Runtime capabilities
 Project Health
-Prepare Runtime
+Prepare Extended Runtime
 Export OTBM
 Package Runtime
 Start / Stop
@@ -266,7 +304,7 @@ When `Vanilla` is selected:
 
 ```text
 system-channel capability = false
-OTC bridge is not generated
+OTC bridge is not required
 client package is not required
 ```
 
@@ -279,36 +317,39 @@ Prepare Runtime generates/updates registry + server/client bridge
 system-channel capability = true
 ```
 
-Visual acceptance should also verify:
+Visually test:
 
-- no broken docking/overlap;
+- docking/overlap;
 - resizing;
 - scroll;
 - DPI scaling;
-- modal focus;
+- focus;
 - keyboard shortcuts;
 - error/status visibility;
-- no regression in Map workspace.
+- Map workspace regression;
+- switching between all new Foundation V2 pages;
+- create/save/load/delete flows where exposed;
+- Project Health refresh after authoring changes.
 
-## Codex gate C — authoring editor surfaces
+## Codex gate C — advanced authoring interaction refinement
 
-The data/persistence/CRUD contracts already exist. Local UI work should consume them instead of writing raw JSON from widgets.
+Core editor surfaces are already wired to the repository/domain layer. Local work is limited to interaction and visual refinement where the compact editor does not yet expose every nested domain field.
 
-Editor surfaces to bind/test visually:
+Priority refinements:
 
 ```text
-Zones Editor
-Appearance Editor
-Item Editor
-Creature / Monsters Editor
-Class / Attribute / Equipment Editor
-System Lab
-Modern Assets / Migration
-Brush configuration
-Project Health / Build
+Appearance attachments / effects / layers
+Entity component rows + property editing
+Item / Creature component rows
+full Trigger / Condition / Action visual graph
+System Lab variables / timers / events / isolated scenarios
+zone selection from the real map viewport
+asset migration preview / conflict visualization
+brush visual preview
+Project Health / Build action presentation
 ```
 
-Required UI architecture rule:
+Required architecture remains:
 
 ```text
 UI
@@ -316,11 +357,11 @@ UI
  -> persistence
 ```
 
-Avoid:
+Never replace it with:
 
 ```text
 UI widget
- -> handcrafted JSON / TFS file directly
+ -> handcrafted JSON / direct TFS file
 ```
 
 ## Codex gate D — real legacy asset migration visual acceptance
@@ -461,9 +502,11 @@ Final expected state:
 
 ```text
 Headless architecture / persistence / build contracts     PASS (already proven by CI)
-C++ + Python VPS deployment contracts                     PASS (already proven by CI)
+Foundation V2 functional V5 bindings                      PASS compile/CTest
+C++ + Python VPS deployment contracts                     PASS Windows + Ubuntu
 Windows OTCv8 interactive graphical acceptance            PASS locally
-V5 visual bindings/editor interaction                     PASS locally
+V5 visual/editor interaction                              PASS locally
+Advanced nested authoring interactions                    PASS locally
 Real asset migration visual/rollback                      PASS locally
 Windows install/uninstall                                 PASS locally
 Real VPS install/login/persistence/update/rollback         PASS remotely
