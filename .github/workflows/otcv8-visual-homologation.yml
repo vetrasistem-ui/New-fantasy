@@ -130,12 +130,27 @@ jobs:
           $ErrorActionPreference = 'Stop'
           Invoke-WebRequest -Uri 'https://github.com/otland/forgottenserver/releases/download/v1.4.2/tfs-v1.4.2-windows-vcpkg.zip' -OutFile 'tfs-windows.zip'
           Expand-Archive -Path 'tfs-windows.zip' -DestinationPath 'tfs-windows' -Force
-          $exe = Get-ChildItem 'tfs-windows' -Recurse -Filter 'tfs.exe' | Select-Object -First 1
-          if (-not $exe) { throw 'Official TFS Windows executable was not found' }
-          $runtime = $exe.Directory.FullName
+
+          $config = Get-ChildItem 'tfs-windows' -Recurse -File -Filter 'config.lua.dist' | Select-Object -First 1
+          $key = Get-ChildItem 'tfs-windows' -Recurse -File -Filter 'key.pem' | Select-Object -First 1
+          $candidates = Get-ChildItem 'tfs-windows' -Recurse -File -Filter '*.exe' | Where-Object {
+            $_.BaseName -match '(?i)tfs|forgottenserver'
+          }
+          if (-not $config) { throw 'config.lua.dist was not found in official Windows package' }
+          if (-not $key) { throw 'key.pem was not found in official Windows package' }
+          if (-not $candidates) {
+            Get-ChildItem 'tfs-windows' -Recurse -File | Select-Object -ExpandProperty FullName
+            throw 'TFS executable candidate was not found in official Windows package'
+          }
+
+          $runtime = $config.Directory.FullName
+          $exe = $candidates | Where-Object { $_.Directory.FullName -eq $runtime } | Select-Object -First 1
+          if (-not $exe) { $exe = $candidates | Select-Object -First 1 }
+
+          Write-Host "TFS runtime: $runtime"
+          Write-Host "TFS executable: $($exe.FullName)"
           "TFS_RUNTIME=$runtime" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
-          if (-not (Test-Path (Join-Path $runtime 'config.lua.dist'))) { throw 'config.lua.dist was not found beside TFS' }
-          if (-not (Test-Path (Join-Path $runtime 'key.pem'))) { throw 'key.pem was not found beside TFS' }
+          "TFS_EXE=$($exe.FullName)" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
 
       - name: Configure TFS and start deterministic DB fixture
         shell: pwsh
@@ -145,7 +160,6 @@ jobs:
           $configPath = Join-Path $env:TFS_RUNTIME 'config.lua'
           $config = Get-Content $configDist -Raw
           $config = $config.Replace('mysqlPass = ""', 'mysqlPass = "fantasy-ci"')
-          $config = $config.Replace('ip = "127.0.0.1"', 'ip = "127.0.0.1"')
           Set-Content -Path $configPath -Value $config -Encoding utf8
 
           $fixtureOut = Join-Path $PWD 'mysql-fixture.out.log'
@@ -174,10 +188,9 @@ jobs:
         shell: pwsh
         run: |
           $ErrorActionPreference = 'Stop'
-          $tfsExe = Join-Path $env:TFS_RUNTIME 'tfs.exe'
           $tfsOut = Join-Path $PWD 'tfs-windows.out.log'
           $tfsErr = Join-Path $PWD 'tfs-windows.err.log'
-          $tfs = Start-Process -FilePath $tfsExe -WorkingDirectory $env:TFS_RUNTIME -PassThru -RedirectStandardOutput $tfsOut -RedirectStandardError $tfsErr
+          $tfs = Start-Process -FilePath $env:TFS_EXE -WorkingDirectory $env:TFS_RUNTIME -PassThru -RedirectStandardOutput $tfsOut -RedirectStandardError $tfsErr
           $tfs.Id | Set-Content 'tfs-windows.pid'
 
           try {
