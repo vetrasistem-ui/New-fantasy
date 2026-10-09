@@ -30,14 +30,76 @@ jobs:
           cp "${CLIENT_DIR}/otclient_linux" staged-client/
           cp "${CLIENT_DIR}/init.lua" staged-client/
           cp -a "${CLIENT_DIR}/modules" staged-client/
+          cp -a "${CLIENT_DIR}/mods" staged-client/ 2>/dev/null || true
           cp -a "${CLIENT_DIR}/data" staged-client/
           cp -a "${CLIENT_DIR}/layouts" staged-client/ 2>/dev/null || true
           chmod +x staged-client/otclient_linux
-          printf 'source=https://github.com/OTCv8/otclientv8\nbranch=master\n' > staged-client/HOMOLOGATION-SOURCE.txt
+          printf 'source=https://github.com/OTCv8/otclientv8\nbranch=master\nplatform=linux\n' > staged-client/HOMOLOGATION-SOURCE.txt
+          cat > staged-client/ASSETS-REQUIRED.txt <<'EOF'
+          This public homologation client intentionally contains no Tibia DAT/SPR assets.
+          For Fantasy 10.98 acceptance, place the matching user-owned files at:
+            data/things/1098/Tibia.dat
+            data/things/1098/Tibia.spr
+          Keep the matching OTFI/OTML profile used by the project when required.
+          EOF
 
-      - name: Upload homologation client
+      - name: Upload Linux homologation client
         uses: actions/upload-artifact@v4
         with:
           name: otcv8-linux-visual-homologation-${{ github.sha }}
           path: staged-client
+          if-no-files-found: error
+
+  stage-windows-client:
+    runs-on: windows-latest
+    steps:
+      - name: Download clean public OTCv8 package
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          Invoke-WebRequest -Uri 'https://github.com/OTCv8/otclientv8/archive/refs/heads/master.zip' -OutFile 'otcv8.zip'
+          Expand-Archive -Path 'otcv8.zip' -DestinationPath '.' -Force
+          $client = Get-ChildItem -Directory -Filter 'otclientv8-*' | Select-Object -First 1
+          if (-not $client) { throw 'OTCv8 extracted directory was not found' }
+          $root = $client.FullName
+
+          foreach ($required in @('otclient_dx.exe', 'otclient_gl.exe', 'init.lua', 'modules', 'data')) {
+            if (-not (Test-Path (Join-Path $root $required))) { throw "Missing OTCv8 package entry: $required" }
+          }
+
+          Remove-Item -Recurse -Force (Join-Path $root 'data\things') -ErrorAction SilentlyContinue
+          New-Item -ItemType Directory -Path 'staged-client-windows' -Force | Out-Null
+
+          foreach ($file in @('otclient_dx.exe', 'otclient_gl.exe', 'd3dcompiler_47.dll', 'libEGL.dll', 'libGLESv2.dll', 'init.lua')) {
+            $source = Join-Path $root $file
+            if (Test-Path $source) { Copy-Item $source 'staged-client-windows\' -Force }
+          }
+          foreach ($dir in @('modules', 'mods', 'data', 'layouts')) {
+            $source = Join-Path $root $dir
+            if (Test-Path $source) { Copy-Item $source (Join-Path 'staged-client-windows' $dir) -Recurse -Force }
+          }
+
+          @"
+          source=https://github.com/OTCv8/otclientv8
+          branch=master
+          platform=windows
+          "@ | Set-Content -Path 'staged-client-windows\HOMOLOGATION-SOURCE.txt' -Encoding ascii
+
+          @"
+          This public homologation client intentionally contains no Tibia DAT/SPR assets.
+          For Fantasy 10.98 acceptance, place the matching user-owned files at:
+            data\things\1098\Tibia.dat
+            data\things\1098\Tibia.spr
+          Keep the matching OTFI/OTML profile used by the project when required.
+          Use otclient_dx.exe first; otclient_gl.exe is available as an alternate renderer.
+          "@ | Set-Content -Path 'staged-client-windows\ASSETS-REQUIRED.txt' -Encoding ascii
+
+          if ((Get-Item 'staged-client-windows\otclient_dx.exe').Length -le 0) { throw 'DX client is empty' }
+          if ((Get-Item 'staged-client-windows\otclient_gl.exe').Length -le 0) { throw 'GL client is empty' }
+
+      - name: Upload Windows homologation client
+        uses: actions/upload-artifact@v4
+        with:
+          name: otcv8-windows-visual-homologation-${{ github.sha }}
+          path: staged-client-windows
           if-no-files-found: error
