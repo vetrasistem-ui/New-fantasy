@@ -36,7 +36,7 @@ public:
         preview.resolutions.reserve(plan.entries.size());
 
         std::uint32_t cursor = firstAllocatableId;
-        const auto allocate = [&]() mutable {
+        auto allocate = [&]() mutable {
             while (cursor == 0 || used.find(cursor) != used.end()) {
                 if (cursor == UINT32_MAX) {
                     throw std::runtime_error("no free target asset id remains for migration");
