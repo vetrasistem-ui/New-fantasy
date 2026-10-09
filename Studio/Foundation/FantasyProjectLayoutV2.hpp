@@ -37,8 +37,16 @@ public:
         return root / "Game" / "Systems";
     }
 
+    [[nodiscard]] static std::filesystem::path brushesDirectory(const std::filesystem::path& root) {
+        return root / "Game" / "Brushes";
+    }
+
     [[nodiscard]] static std::filesystem::path assetProfilesDirectory(const std::filesystem::path& root) {
         return root / "Assets" / "Profiles";
+    }
+
+    [[nodiscard]] static std::filesystem::path modernAssetsDirectory(const std::filesystem::path& root) {
+        return root / "Assets" / "Modern";
     }
 
     [[nodiscard]] static std::filesystem::path migrationsDirectory(const std::filesystem::path& root) {
@@ -77,8 +85,16 @@ public:
         return typedPath(systemsDirectory(root), id, ".system.json", "system");
     }
 
+    [[nodiscard]] static std::filesystem::path brushPath(const std::filesystem::path& root, const std::string& id) {
+        return typedPath(brushesDirectory(root), id, ".brush.json", "brush");
+    }
+
     [[nodiscard]] static std::filesystem::path assetProfilePath(const std::filesystem::path& root, const std::string& id) {
         return typedPath(assetProfilesDirectory(root), id, ".asset-profile.json", "asset profile");
+    }
+
+    [[nodiscard]] static std::filesystem::path modernAssetPath(const std::filesystem::path& root, const std::string& id) {
+        return typedPath(modernAssetsDirectory(root), id, ".asset.json", "modern asset");
     }
 
     [[nodiscard]] static std::filesystem::path migrationPath(const std::filesystem::path& root, const std::string& id) {
@@ -94,7 +110,9 @@ public:
         std::filesystem::create_directories(creaturesDirectory(root));
         std::filesystem::create_directories(classesDirectory(root));
         std::filesystem::create_directories(systemsDirectory(root));
+        std::filesystem::create_directories(brushesDirectory(root));
         std::filesystem::create_directories(assetProfilesDirectory(root));
+        std::filesystem::create_directories(modernAssetsDirectory(root));
         std::filesystem::create_directories(migrationsDirectory(root));
         std::filesystem::create_directories(buildDirectory(root));
     }
