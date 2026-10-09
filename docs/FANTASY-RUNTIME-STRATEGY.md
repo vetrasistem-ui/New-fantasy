@@ -1,6 +1,6 @@
 # Fantasy Runtime Strategy
 
-**Status:** official direction as of 2026-10-08.
+**Status:** official direction as of 2026-10-09.
 
 ## Decision
 
@@ -19,7 +19,7 @@ TFS 1.4.2 / 10.98 exporter-adapter
       |
 Generated runtime package
       |
-TFS 1.4.2 process + compatible 10.98 client
+TFS 1.4.2 process + MariaDB + compatible 10.98 client
 ```
 
 Later, the same Fantasy project may target a native runtime:
@@ -102,7 +102,7 @@ During the current map phase, OTBM remains necessary for real compatibility and 
 
 ## First runtime backend: TFS 1.4.2 / 10.98
 
-`Tfs1098RuntimeBackend` V1 now implements the first real external-runtime boundary.
+`Tfs1098RuntimeBackend` V1 implements the first real external-runtime boundary.
 
 Implemented responsibilities:
 
@@ -117,7 +117,7 @@ Implemented responsibilities:
 9. keep portable target settings in `Game/Config/tfs1098.runtime.json`;
 10. keep the external TFS installation/template path as machine-level Studio configuration.
 
-Future backend work includes generation of Lua/configuration from Fantasy Systems, richer health/status checks, production database setup and deployment-oriented packaging.
+Future backend work includes generation of Lua/configuration from Fantasy Systems, richer health/status checks, user-friendly database provisioning and deployment-oriented packaging.
 
 ## V5 Server workspace
 
@@ -140,15 +140,13 @@ Runtime state / PID
 Incremental runtime log
 ```
 
-The Map workspace `Save` action now exports the current canonical `MapDocument` to the configured TFS1098 export path instead of displaying the old writer-frozen placeholder.
+The Map workspace `Save` action exports the current canonical `MapDocument` to the configured TFS1098 export path.
 
 The executable build uses `StudioAppV5RuntimeEntry.cpp`; the earlier `StudioAppV5Entry.cpp` remains in the repository as a rollback/reference point for the accepted shell integration.
 
 ## Runtime tests
 
-Two isolated tests cover the boundary without third-party game assets:
-
-### Backend lifecycle
+### Backend lifecycle — PASS
 
 `fantasy-runtime-backend-tests` proves:
 
@@ -162,7 +160,9 @@ synthetic TFS template
       -> observe Stopped
 ```
 
-### Export/package workflow
+This passes on Windows and Linux.
+
+### Export/package workflow — PASS
 
 `fantasy-tfs1098-workflow-tests` proves:
 
@@ -174,30 +174,72 @@ MapDocument
     -> generated TFS-compatible runtime layout
 ```
 
-The real large 10.98 homologation remains separate and is documented in `REAL-1098-HOMOLOGATION.md` and `TFS142-OTBM-RUNTIME-HOMOLOGATION.md`.
+This passes on Windows and Linux. The OTBM writer output buffer is heap-backed, avoiding the Windows stack-overflow regression found while adding this workflow test.
 
-## MariaDB gate
+## Real MariaDB and persistence — PASS
 
-The earlier 10.98 protocol login/walk homologation used a deterministic MySQL-protocol fixture only for the persistence queries. It proved the TFS map/protocol/runtime path, but not production database persistence.
+The earlier protocol gate used a deterministic MySQL-protocol fixture only for persistence rows. That was sufficient to prove map/protocol compatibility but intentionally did not count as production database persistence.
 
-A manual workflow now prepares the next gate with **real MariaDB** and the official TFS 1.4.2 schema:
+The real-database homologation now passes through:
 
 ```text
 .github/workflows/tfs142-mariadb-homologation.yml
 ```
 
-Its intended proof is deliberately narrower than the final login gate:
+The workflow is manual (`workflow_dispatch`) and uses:
 
-1. start MariaDB 10.11;
-2. import the official TFS v1.4.2 `schema.sql`;
-3. seed a `fantasy` account and `Fantasy Test` player;
-4. insert a stale `players_online` row;
-5. start the official TFS 1.4.2 binary against that database;
-6. require `Forgotten Server Online!`;
-7. verify TFS startup cleared `players_online`;
-8. verify database version and fixture rows remain valid.
+- MariaDB 10.11;
+- official TFS 1.4.2 `schema.sql`;
+- official TFS 1.4.2 release binary;
+- a real account `fantasy`;
+- a real player `Fantasy Test`;
+- protocol/client version 10.98;
+- `Tools/Tfs1098/tfs1098_protocol_probe.py` for the gameworld handshake.
 
-This workflow is manual (`workflow_dispatch`) and must not be reported PASS until it is actually executed successfully. Full MariaDB login/save/relogin persistence remains the next database gate after bootstrap.
+### Bootstrap proof
+
+Observed:
+
+```text
+players_online_after_start=0
+db_version_after_start=30
+TFS142_MARIADB_BOOTSTRAP PASS
+
+> Updating database to version 29 (account storages)
+> Database has been updated to version 30.
+>> Forgotten Server Online!
+```
+
+This proves that the official schema is accepted, TFS connects to real MariaDB, performs its own schema migration and executes startup persistence maintenance.
+
+### Save / restart / relogin proof
+
+Two complete player sessions were executed with a full TFS process restart between them.
+
+```text
+initial_state=100,100,7|0|0
+
+cycle1_players_online_during_session=1
+GAME_PACKET opcode=0x17
+GAME_LOGIN PASS
+GAME_LOGOUT PASS
+cycle1_players_online_after_logout=0
+state_after_cycle1=95,117,7|1791544061|1791544065
+
+cycle2_players_online_during_session=1
+GAME_PACKET opcode=0x17
+GAME_LOGIN PASS
+GAME_LOGOUT PASS
+cycle2_players_online_after_logout=0
+state_after_cycle2=95,117,7|1791544071|1791544075
+
+TFS1098_MARIADB_PERSISTENCE PASS
+persisted_position=95,117,7
+```
+
+The seeded invalid placement `100,100,7` was resolved by TFS to a valid runtime position `95,117,7`; that position was saved on logout and reused after a complete server restart. `players_online`, `lastlogin` and `lastlogout` also changed through the real database lifecycle.
+
+Detailed evidence is kept in `TFS142-OTBM-RUNTIME-HOMOLOGATION.md`.
 
 ## Native runtime is incremental, not a restart
 
@@ -241,10 +283,12 @@ TFS remains available until the native runtime proves enough capability to repla
 7. **PASS** — compatible 10.98 login -> character list -> game entry -> movement;
 8. **PASS** — `Tfs1098RuntimeBackend` lifecycle on Windows and Linux;
 9. **PASS** — portable per-project TFS1098 target profile;
-10. **IMPLEMENTED / CI VERIFYING** — V5 Server workspace with Export/Package/Start/Stop/status/PID/logs;
-11. **IMPLEMENTED / CI VERIFYING** — headless MapDocument -> OTBM -> profile -> TFS package test;
-12. **PREPARED, NOT YET PASS** — manual real-MariaDB bootstrap homologation;
-13. **NEXT** — real MariaDB login/save/relogin persistence and selected Windows/OTClient visual acceptance.
+10. **PASS** — V5 Server workspace with Export/Package/Start/Stop/status/PID/logs;
+11. **PASS** — headless MapDocument -> OTBM -> profile -> TFS package workflow;
+12. **PASS** — official TFS 1.4.2 + real MariaDB bootstrap and schema migration;
+13. **PASS** — real 10.98 login -> logout/save -> TFS restart -> relogin persistence;
+14. **NEXT** — selected full Windows/OTClient 10.98 visual acceptance and deployment/VPS packaging;
+15. **AFTER** — convert advanced PokéTibia reference capabilities into generic Fantasy-owned systems.
 
 This keeps the shortest path to a usable product while preserving long-term independence.
 
@@ -253,12 +297,12 @@ This keeps the shortest path to a usable product while preserving long-term inde
 Real projects and upstreams are laboratories, not the architectural base:
 
 - **Vanilla TFS 1.4.2:** compatibility oracle and first supported external runtime;
-- **Audited Poketibia TFS 1.4 / OTClientV8 base:** primary advanced runtime capability laboratory for extended opcodes, modular UI, zones, appearance extensions, generic capture/collection needs and other mature TFS-backed gameplay patterns; see `POKETIBIA-TFS14-RUNTIME-AUDIT.md` and `FANTASY-TFS1098-CAPABILITY-MATRIX.md`;
+- **Audited PokéTibia TFS 1.4 / OTClientV8 base:** primary advanced runtime capability laboratory for extended opcodes, modular UI, zones, appearance extensions, generic capture/collection needs and other mature TFS-backed gameplay patterns; see `POKETIBIA-TFS14-RUNTIME-AUDIT.md` and `FANTASY-TFS1098-CAPABILITY-MATRIX.md`;
 - **PokeJornadas:** functional/reference project for complex gameplay and Studio needs;
 - **PokeAimar:** heavy legacy map/assets/migration stress-test;
 - **BlackTek/RME:** behavior and editor maturity references.
 
-Code/assets from those references are not silently copied into Fantasy Core. Import/provenance and licensing remain explicit. The advanced Poketibia reference does **not** replace the vanilla TFS 1.4.2/10.98 compatibility target.
+Code/assets from those references are not silently copied into Fantasy Core. Import/provenance and licensing remain explicit. The advanced PokéTibia reference does **not** replace the vanilla TFS 1.4.2/10.98 compatibility target.
 
 ## License rule
 
