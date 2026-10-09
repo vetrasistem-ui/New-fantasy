@@ -1,6 +1,10 @@
 #pragma once
 
+#include "Foundation/FantasyAssetMigrationEngine.hpp"
+#include "Foundation/FantasyBuildManifest.hpp"
 #include "Foundation/FantasyFoundationV2.hpp"
+#include "Foundation/FantasyProjectLayoutV2.hpp"
+#include "Foundation/FantasySystemCatalog.hpp"
 #include "Runtime/Tfs1098RuntimePreparation.hpp"
 
 #include <filesystem>
@@ -158,7 +162,7 @@ inline void testItemsAndCreatures() {
     creature.validate();
 }
 
-inline void testSystemLabContract() {
+inline SystemDefinition makeWelcomeSystem() {
     SystemDefinition system;
     system.id = "system.zone.welcome";
     system.version = 1;
@@ -167,6 +171,11 @@ inline void testSystemLabContract() {
     system.conditions.push_back({"condition.player", ConditionKind::HasTag, {{"tag.id", "entity.player"}}});
     system.actions.push_back({"action.notify", ActionKind::SendSystemMessage,
         {{"channel.id", "ui.notification"}, {"message.id", "town.welcome"}}});
+    return system;
+}
+
+inline void testSystemLabContract() {
+    const auto system = makeWelcomeSystem();
     system.validate();
 
     bool rejectedDuplicateNode = false;
@@ -190,6 +199,63 @@ inline void testSystemLabContract() {
     require(rejectedNoAction, "System Lab system without actions must be rejected");
 }
 
+inline void testSystemCatalog() {
+    FantasySystemCatalog catalog;
+
+    SystemDefinition persistence;
+    persistence.id = "system.persistence.player";
+    persistence.version = 1;
+    persistence.triggers.push_back({"trigger.login", TriggerKind::Login, {}});
+    persistence.actions.push_back({"action.persist", ActionKind::PersistValue, {{"key.id", "player.state"}}});
+    catalog.add(persistence);
+
+    auto welcome = makeWelcomeSystem();
+    welcome.dependencies = {"system.persistence.player"};
+    catalog.add(welcome);
+
+    catalog.validateDependencies();
+    const auto order = catalog.executionOrder();
+    require(order.size() == 2U, "system catalog must produce two systems in execution order");
+    require(order.front() == "system.persistence.player" && order.back() == "system.zone.welcome",
+        "system dependency must execute before dependent system");
+    const auto channels = catalog.requiredChannels();
+    require(channels.size() == 1U && *channels.begin() == "ui.notification",
+        "system catalog must aggregate semantic channels");
+
+    bool rejectedCycle = false;
+    try {
+        FantasySystemCatalog cyclic;
+        SystemDefinition a;
+        a.id = "system.a";
+        a.dependencies = {"system.b"};
+        a.triggers.push_back({"trigger.a", TriggerKind::Login, {}});
+        a.actions.push_back({"action.a", ActionKind::PersistValue, {{"key.id", "a"}}});
+        SystemDefinition b;
+        b.id = "system.b";
+        b.dependencies = {"system.a"};
+        b.triggers.push_back({"trigger.b", TriggerKind::Login, {}});
+        b.actions.push_back({"action.b", ActionKind::PersistValue, {{"key.id", "b"}}});
+        cyclic.add(a);
+        cyclic.add(b);
+        cyclic.validateDependencies();
+    } catch (const std::runtime_error&) {
+        rejectedCycle = true;
+    }
+    require(rejectedCycle, "system dependency cycles must be rejected");
+}
+
+inline AssetMigrationPlan makeMigrationPlan() {
+    AssetMigrationPlan migration;
+    migration.sourceProfile = "assets.854.legacy";
+    migration.targetProfile = "assets.1524.modern";
+    migration.entries = {
+        {100, 0, AssetMigrationMode::AddAsNew},
+        {101, 5001, AssetMigrationMode::ReplaceObject},
+        {102, 5002, AssetMigrationMode::ReplaceVisualOnly},
+    };
+    return migration;
+}
+
 inline void testAssetProfilesAndMigration() {
     AssetProfile profile;
     profile.id = "assets.1098.official";
@@ -201,14 +267,7 @@ inline void testAssetProfilesAndMigration() {
     };
     profile.validate();
 
-    AssetMigrationPlan migration;
-    migration.sourceProfile = "assets.854.legacy";
-    migration.targetProfile = "assets.1524.modern";
-    migration.entries = {
-        {100, 0, AssetMigrationMode::AddAsNew},
-        {101, 5001, AssetMigrationMode::ReplaceObject},
-        {102, 5002, AssetMigrationMode::ReplaceVisualOnly},
-    };
+    const auto migration = makeMigrationPlan();
     migration.validate();
 
     bool rejectedTraversal = false;
@@ -230,6 +289,51 @@ inline void testAssetProfilesAndMigration() {
         rejectedTargetCollision = true;
     }
     require(rejectedTargetCollision, "asset migration must reject explicit target collisions");
+}
+
+inline void testAssetMigrationEngine() {
+    const auto migration = makeMigrationPlan();
+    const std::set<std::uint32_t> occupied{5000, 5001, 5002, 5003};
+    const auto preview = FantasyAssetMigrationEngine::preview(migration, occupied, 5000);
+    require(preview.resolutions.size() == 3U, "migration preview must resolve every entry");
+    require(preview.resolutions[0].legacyId == 100U && preview.resolutions[0].resolvedTargetId == 5004U,
+        "AddAsNew migration must allocate the next free target id");
+    require(preview.resolutions[1].resolvedTargetId == 5001U,
+        "ReplaceObject migration must preserve explicit target id");
+    require(preview.resolutions[2].resolvedTargetId == 5002U,
+        "ReplaceVisualOnly migration must preserve explicit target id");
+
+    bool rejectedMissingReplaceTarget = false;
+    try {
+        (void)FantasyAssetMigrationEngine::preview(migration, {5000}, 5000);
+    } catch (const std::runtime_error&) {
+        rejectedMissingReplaceTarget = true;
+    }
+    require(rejectedMissingReplaceTarget, "migration preview must reject replacement of missing target asset");
+}
+
+inline void testProjectLayoutV2() {
+    const fs::path root = fs::temp_directory_path() / "fantasy-project-layout-v2";
+    std::error_code ignored;
+    fs::remove_all(root, ignored);
+    FantasyProjectLayoutV2::ensureAuthoringDirectories(root);
+
+    require(fs::is_directory(FantasyProjectLayoutV2::zonesDirectory(root)), "zones directory must be created");
+    require(fs::is_directory(FantasyProjectLayoutV2::systemsDirectory(root)), "systems directory must be created");
+    require(fs::is_directory(FantasyProjectLayoutV2::assetProfilesDirectory(root)), "asset profile directory must be created");
+    require(FantasyProjectLayoutV2::zonePath(root, "zone.town.center").filename() == "zone.town.center.zone.json",
+        "zone path must be deterministic");
+    require(FantasyProjectLayoutV2::systemPath(root, "system.zone.welcome").filename() == "system.zone.welcome.system.json",
+        "system path must be deterministic");
+
+    bool rejectedUnsafeId = false;
+    try {
+        (void)FantasyProjectLayoutV2::itemPath(root, "../outside");
+    } catch (const std::invalid_argument&) {
+        rejectedUnsafeId = true;
+    }
+    require(rejectedUnsafeId, "project layout must reject unsafe object identifiers");
+    fs::remove_all(root, ignored);
 }
 
 inline void testBuildAndHealthContracts() {
@@ -266,6 +370,31 @@ inline void testBuildAndHealthContracts() {
     healthy.hasClientPackage = false;
     const auto missingClient = evaluateProjectHealth(healthy);
     require(!missingClient.ready(), "extended project without client package must not be ready");
+}
+
+inline void testBuildManifest() {
+    FantasyBuildManifest manifest;
+    manifest.projectId = "fantasy.demo";
+    manifest.buildVersion = "v1.0.0";
+    manifest.runtimeId = "tfs1098";
+    manifest.compatibilityProfile = "otc_extended";
+    manifest.assetProfileId = "assets.1098.official";
+    manifest.artifacts = {
+        {"runtime", fs::path{"build/runtime/tfs1098"}, std::string(64, 'd')},
+        {"client", fs::path{"build/client/otcv8"}, std::string(64, 'e')},
+    };
+    manifest.validate();
+    const auto json = FantasyBuildManifestWriter::toJson(manifest);
+    require(json.find("\"runtimeId\": \"tfs1098\"") != std::string::npos,
+        "build manifest JSON must include runtime id");
+    require(json.find("\"compatibilityProfile\": \"otc_extended\"") != std::string::npos,
+        "build manifest JSON must include compatibility profile");
+
+    ReleasePolicy policy;
+    policy.installRoot = fs::path{"/opt/fantasy/demo"};
+    policy.backupRoot = fs::path{"/opt/fantasy/backups/demo"};
+    policy.serviceName = "fantasy-demo";
+    policy.validate();
 }
 
 inline void createExtendedRuntimeFixture(const fs::path& runtimeDirectory) {
@@ -342,8 +471,12 @@ inline void runFoundationV2SelfTests() {
     testEquipmentAndClasses();
     testItemsAndCreatures();
     testSystemLabContract();
+    testSystemCatalog();
     testAssetProfilesAndMigration();
+    testAssetMigrationEngine();
+    testProjectLayoutV2();
     testBuildAndHealthContracts();
+    testBuildManifest();
     testRuntimePreparationV2();
 }
 
