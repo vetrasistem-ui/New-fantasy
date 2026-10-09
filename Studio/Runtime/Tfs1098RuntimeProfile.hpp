@@ -12,11 +12,33 @@
 
 namespace fantasy::studio::runtime {
 
+enum class Tfs1098CompatibilityProfile {
+    Vanilla,
+    OtcExtended,
+};
+
+[[nodiscard]] constexpr const char* tfs1098CompatibilityProfileId(
+    Tfs1098CompatibilityProfile profile) noexcept {
+    switch (profile) {
+        case Tfs1098CompatibilityProfile::Vanilla: return "vanilla";
+        case Tfs1098CompatibilityProfile::OtcExtended: return "otc_extended";
+    }
+    return "vanilla";
+}
+
+[[nodiscard]] inline Tfs1098CompatibilityProfile parseTfs1098CompatibilityProfile(
+    const std::string& value) {
+    if (value == "vanilla") return Tfs1098CompatibilityProfile::Vanilla;
+    if (value == "otc_extended") return Tfs1098CompatibilityProfile::OtcExtended;
+    throw std::runtime_error("Unsupported TFS1098 compatibilityProfile: " + value);
+}
+
 struct Tfs1098TargetConfig {
-    static constexpr std::uint32_t SchemaVersion = 1;
+    static constexpr std::uint32_t SchemaVersion = 2;
 
     std::string mapName = "fantasy";
     std::filesystem::path outputDirectory = std::filesystem::path{"build"} / "runtime" / "tfs1098";
+    Tfs1098CompatibilityProfile compatibilityProfile = Tfs1098CompatibilityProfile::Vanilla;
 };
 
 class Tfs1098RuntimeProfile {
@@ -39,7 +61,7 @@ public:
         const std::string json = buffer.str();
 
         const int schema = extractInteger(json, "schemaVersion");
-        if (schema != static_cast<int>(Tfs1098TargetConfig::SchemaVersion)) {
+        if (schema != 1 && schema != static_cast<int>(Tfs1098TargetConfig::SchemaVersion)) {
             throw std::runtime_error("Unsupported TFS1098 runtime profile schemaVersion");
         }
         const std::string backend = extractString(json, "backend");
@@ -50,6 +72,16 @@ public:
         Tfs1098TargetConfig config;
         config.mapName = extractString(json, "mapName");
         config.outputDirectory = std::filesystem::path(extractString(json, "outputDirectory")).lexically_normal();
+
+        // Schema v1 predates compatibility profiles. Preserve the old official
+        // behavior by migrating it deterministically to the vanilla target.
+        if (schema == 1) {
+            config.compatibilityProfile = Tfs1098CompatibilityProfile::Vanilla;
+        } else {
+            config.compatibilityProfile = parseTfs1098CompatibilityProfile(
+                extractString(json, "compatibilityProfile"));
+        }
+
         validate(config);
         return config;
     }
@@ -69,7 +101,10 @@ public:
             << "  \"schemaVersion\": " << Tfs1098TargetConfig::SchemaVersion << ",\n"
             << "  \"backend\": \"tfs1098\",\n"
             << "  \"mapName\": \"" << escapeJson(config.mapName) << "\",\n"
-            << "  \"outputDirectory\": \"" << escapeJson(config.outputDirectory.generic_string()) << "\"\n"
+            << "  \"outputDirectory\": \"" << escapeJson(config.outputDirectory.generic_string()) << "\",\n"
+            << "  \"compatibilityProfile\": \""
+            << tfs1098CompatibilityProfileId(config.compatibilityProfile)
+            << "\"\n"
             << "}\n";
         if (!output) throw std::runtime_error("Failed while writing TFS1098 runtime profile: " + path.string());
     }
@@ -89,6 +124,7 @@ public:
         if (!safeRelative(config.outputDirectory)) {
             throw std::runtime_error("TFS1098 outputDirectory must be a safe relative project path");
         }
+        (void)tfs1098CompatibilityProfileId(config.compatibilityProfile);
     }
 
 private:
