@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Foundation/FantasyFoundationV2.hpp"
+#include "Foundation/FantasyJsonOptional.hpp"
 
 #include <algorithm>
 #include <cstdint>
