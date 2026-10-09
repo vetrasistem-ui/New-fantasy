@@ -18,6 +18,7 @@ set(SDL_EXAMPLES OFF CACHE BOOL "" FORCE)
 set(SDL_INSTALL OFF CACHE BOOL "" FORCE)
 set(PUGIXML_INSTALL OFF CACHE BOOL "" FORCE)
 set(PUGIXML_BUILD_TESTS OFF CACHE BOOL "" FORCE)
+set(JSON_BuildTests OFF CACHE INTERNAL "" FORCE)
 
 FetchContent_Declare(
     sdl3
@@ -40,7 +41,24 @@ FetchContent_Declare(
     GIT_SHALLOW TRUE
 )
 
-FetchContent_MakeAvailable(sdl3 imgui pugixml)
+FetchContent_Declare(
+    nlohmann_json
+    GIT_REPOSITORY https://github.com/nlohmann/json.git
+    GIT_TAG v3.11.3
+    GIT_SHALLOW TRUE
+)
+
+FetchContent_MakeAvailable(sdl3 imgui pugixml nlohmann_json)
+
+# Foundation V2 authoring/persistence contracts are runtime-neutral. The
+# interface target centralizes include paths and the pinned JSON dependency so
+# Studio editors and tests consume the same schema implementation.
+add_library(fantasy-foundation INTERFACE)
+target_include_directories(fantasy-foundation INTERFACE
+    ${CMAKE_CURRENT_SOURCE_DIR}
+    ${CMAKE_CURRENT_SOURCE_DIR}/..
+)
+target_link_libraries(fantasy-foundation INTERFACE nlohmann_json::nlohmann_json)
 
 add_library(fantasy-studio-project
     Project/ProjectManager.cpp
@@ -161,6 +179,7 @@ target_link_libraries(fantasy-studio-gui PRIVATE
     fantasy-map-legacy-bridge
     fantasy-legacy-rendering
     fantasy-runtime
+    fantasy-foundation
     fantasy-imgui
     SDL3::SDL3
 )
@@ -308,7 +327,7 @@ target_include_directories(fantasy-runtime-backend-tests PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}
     ${CMAKE_CURRENT_SOURCE_DIR}/..
 )
-target_link_libraries(fantasy-runtime-backend-tests PRIVATE fantasy-runtime)
+target_link_libraries(fantasy-runtime-backend-tests PRIVATE fantasy-runtime fantasy-foundation)
 
 add_executable(fantasy-tfs1098-workflow-tests
     Runtime/Tfs1098ServerWorkflowTests.cpp
