@@ -1,7 +1,6 @@
 #pragma once
 
 #include "RuntimeBackend.hpp"
-#include "Tfs1098RuntimeProfile.hpp"
 
 #include <cstring>
 #include <memory>
@@ -10,8 +9,7 @@ namespace fantasy::studio::runtime {
 
 class Tfs1098RuntimeBackend final : public RuntimeBackend {
 public:
-    explicit Tfs1098RuntimeBackend(
-        Tfs1098CompatibilityProfile compatibilityProfile = Tfs1098CompatibilityProfile::Vanilla);
+    Tfs1098RuntimeBackend();
     ~Tfs1098RuntimeBackend() override;
 
     Tfs1098RuntimeBackend(const Tfs1098RuntimeBackend&) = delete;
@@ -21,12 +19,6 @@ public:
     [[nodiscard]] const char* id() const noexcept override { return "tfs1098"; }
     [[nodiscard]] const char* displayName() const noexcept override { return "TFS 1.4.2 / 10.98"; }
     [[nodiscard]] RuntimeCapabilities capabilities() const noexcept override;
-    [[nodiscard]] std::vector<RuntimeChannelBinding> systemChannelBindings() const override;
-
-    [[nodiscard]] Tfs1098CompatibilityProfile compatibilityProfile() const noexcept {
-        return compatibilityProfile_;
-    }
-    void setCompatibilityProfile(Tfs1098CompatibilityProfile profile);
 
     [[nodiscard]] RuntimePackageReport packageProject(
         const RuntimePackageRequest& request) override;
@@ -45,7 +37,6 @@ private:
         const std::string& mapName,
         std::string& error);
 
-    Tfs1098CompatibilityProfile compatibilityProfile_ = Tfs1098CompatibilityProfile::Vanilla;
     std::filesystem::path preparedDirectory_;
     mutable std::filesystem::path logFile_;
     mutable RuntimeState state_ = RuntimeState::NotPrepared;
