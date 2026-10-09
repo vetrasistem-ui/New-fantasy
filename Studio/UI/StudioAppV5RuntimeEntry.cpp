@@ -5,12 +5,15 @@
 #include "StudioAppV5.cpp"
 #undef main
 
+#include "Foundation/FantasyServerWorkspaceController.hpp"
 #include "MapEngine/Export/LegacyOtbmWriter.hpp"
 #include "MapEngine/Import/LegacyWorkspaceSession.hpp"
 #include "Rendering/LegacySpriteTextureCache.hpp"
 #include "Runtime/Tfs1098DeploymentBundle.hpp"
 #include "Runtime/Tfs1098RuntimeBackend.hpp"
 #include "Runtime/Tfs1098RuntimeProfile.hpp"
+#include "UI/FantasyFoundationPanels.hpp"
+#include "UI/FantasyServerWorkspacePanel.hpp"
 #include "UI/LegacyMapCanvasRenderer.hpp"
 
 #include <cstdlib>
@@ -36,6 +39,8 @@ using Tfs1098TargetConfig = fantasy::studio::runtime::Tfs1098TargetConfig;
 using RuntimePackageRequest = fantasy::studio::runtime::RuntimePackageRequest;
 using RuntimeLaunchRequest = fantasy::studio::runtime::RuntimeLaunchRequest;
 using RuntimeState = fantasy::studio::runtime::RuntimeState;
+namespace FoundationPanels = fantasy::studio::ui::foundation_panels;
+namespace ServerWorkspacePanel = fantasy::studio::ui::server_workspace_panel;
 
 struct LegacyLaunchOptions {
     fs::path projectPath;
@@ -166,6 +171,7 @@ struct LegacyV5Runtime {
     std::array<char, 768> serverTemplate{};
     std::array<char, 128> serverMapName{};
     std::array<char, 256> serverOutputDirectory{};
+    std::array<char, 768> serverClientPackage{};
     std::string serverStatus = "TFS1098 runtime not prepared";
     std::string serverLog;
     std::uint64_t serverLogCursor = 0;
@@ -183,6 +189,7 @@ struct LegacyV5Runtime {
         copyField(serverTemplate, loadMachineTfsTemplate());
         copyField(serverMapName, serverProfile.mapName);
         copyField(serverOutputDirectory, serverProfile.outputDirectory.generic_string());
+        copyField(serverClientPackage, (project.root / "build" / "client" / "otcv8").string());
     }
 
     void attachRenderer(SDL_Renderer* renderer) {
@@ -590,7 +597,7 @@ void drawTfs1098ServerPage(
     else ImGui::TextDisabled("%s", serverState.message.c_str());
 
     ImGui::Spacing();
-    ImGui::BeginChild("server-config-v5", ImVec2(0.0f, 270.0f), ImGuiChildFlags_Borders);
+    ImGui::BeginChild("server-config-v5", ImVec2(0.0f, 248.0f), ImGuiChildFlags_Borders);
     ImGui::TextUnformatted("Runtime target");
     ImGui::Separator();
     ImGui::SetNextItemWidth(-1.0f);
@@ -599,7 +606,7 @@ void drawTfs1098ServerPage(
     ImGui::InputText("Map name", runtime.serverMapName.data(), runtime.serverMapName.size());
     ImGui::SetNextItemWidth(-1.0f);
     ImGui::InputText("Runtime output (project relative)", runtime.serverOutputDirectory.data(), runtime.serverOutputDirectory.size());
-    ImGui::TextDisabled("Template = configuração desta máquina. Map/output = Game/Config/tfs1098.runtime.json.");
+    ImGui::TextDisabled("Template = configuração desta máquina. Map/output/profile = Game/Config/tfs1098.runtime.json.");
 
     const bool running = serverState.state == RuntimeState::Running || serverState.state == RuntimeState::Starting;
     if (accentButton("Save target", ImVec2(112, 30))) {
@@ -672,8 +679,22 @@ void drawTfs1098ServerPage(
     }
     ImGui::EndDisabled();
     ImGui::SameLine();
-    ImGui::TextDisabled("Linux bundle: server/ + deploy/ + systemd + install.sh + manifest.json");
+    ImGui::TextDisabled("Lifecycle bundle: server/ + deploy/ + install/health/update/rollback.");
     ImGui::EndChild();
+
+    ImGui::Spacing();
+    ImGui::SeparatorText("Server Workspace V2");
+    const auto workspaceResult = ServerWorkspacePanel::draw(
+        project,
+        runtime.serverTemplate,
+        runtime.serverClientPackage,
+        runtime.serverProfile,
+        runtime.serverStatus);
+    if (workspaceResult.profileChanged) {
+        copyField(runtime.serverMapName, runtime.serverProfile.mapName);
+        copyField(runtime.serverOutputDirectory, runtime.serverProfile.outputDirectory.generic_string());
+    }
+    if (workspaceResult.prepared) state.status = runtime.serverStatus;
 
     ImGui::Spacing();
     ImGui::TextColored(kCyan, "%s", runtime.serverStatus.c_str());
@@ -685,12 +706,28 @@ void drawTfs1098ServerPage(
     ImGui::TextUnformatted("Runtime log");
     ImGui::SameLine();
     if (ImGui::SmallButton("Clear")) runtime.serverLog.clear();
-    ImGui::BeginChild("server-log-v5", ImVec2(0.0f, 0.0f), ImGuiChildFlags_Borders, ImGuiWindowFlags_HorizontalScrollbar);
+    ImGui::BeginChild("server-log-v5", ImVec2(0.0f, 220.0f), ImGuiChildFlags_Borders, ImGuiWindowFlags_HorizontalScrollbar);
     if (runtime.serverLog.empty()) ImGui::TextDisabled("No TFS output captured yet.");
     else ImGui::TextUnformatted(runtime.serverLog.c_str());
     if (ImGui::GetScrollY() >= ImGui::GetScrollMaxY() - 4.0f) ImGui::SetScrollHereY(1.0f);
     ImGui::EndChild();
     ImGui::End();
+}
+
+void drawFoundationWorkspace(
+    FoundationPanels::WorkspaceKind kind,
+    const ProjectInfo& project,
+    const WorkspaceLayout& layout,
+    EditorState& state,
+    const LegacyV5Runtime& runtime) {
+
+    FoundationPanels::drawAuthoringWorkspace(
+        kind,
+        project,
+        {layout.contentPos, layout.contentSize},
+        state.status,
+        fs::path(runtime.serverTemplate.data()),
+        fs::path(runtime.serverClientPackage.data()));
 }
 
 int runStudioLegacyV5(const fs::path& projectInput, const LegacyConfig& config) {
@@ -841,13 +878,26 @@ int runStudioLegacyV5(const fs::path& projectInput, const LegacyConfig& config) 
                 drawLegacyMapPage(legacy, state, project, layout);
                 break;
             case StudioPage::ItemsAssets:
-                drawItemsAssetsPage(fmapDocument, state, layout);
+                drawFoundationWorkspace(FoundationPanels::WorkspaceKind::ItemsAssets, project, layout, state, legacy);
+                break;
+            case StudioPage::Monsters:
+                drawFoundationWorkspace(FoundationPanels::WorkspaceKind::Creatures, project, layout, state, legacy);
+                break;
+            case StudioPage::Npcs:
+                drawFoundationWorkspace(FoundationPanels::WorkspaceKind::Entities, project, layout, state, legacy);
+                break;
+            case StudioPage::Spells:
+                drawFoundationWorkspace(FoundationPanels::WorkspaceKind::Classes, project, layout, state, legacy);
+                break;
+            case StudioPage::Quests:
+            case StudioPage::Systems:
+                drawFoundationWorkspace(FoundationPanels::WorkspaceKind::Systems, project, layout, state, legacy);
                 break;
             case StudioPage::Server:
                 drawTfs1098ServerPage(legacy, state, project, layout);
                 break;
-            default:
-                drawModuleShell(state.page, layout);
+            case StudioPage::Client:
+                drawFoundationWorkspace(FoundationPanels::WorkspaceKind::ClientBuild, project, layout, state, legacy);
                 break;
         }
 
