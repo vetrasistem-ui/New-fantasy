@@ -334,6 +334,21 @@ add_executable(fantasy-foundation-persistence-tests
 )
 target_link_libraries(fantasy-foundation-persistence-tests PRIVATE fantasy-foundation)
 
+add_executable(fantasy-authoring-repository-tests
+    Foundation/FantasyAuthoringRepositoryTests.cpp
+)
+target_link_libraries(fantasy-authoring-repository-tests PRIVATE fantasy-foundation)
+
+add_executable(fantasy-build-pipeline-tests
+    Foundation/FantasyBuildPipelineTests.cpp
+)
+target_link_libraries(fantasy-build-pipeline-tests PRIVATE fantasy-foundation fantasy-runtime)
+
+add_executable(fantasy-extended-foundation-tests
+    Foundation/FantasyExtendedFoundationTests.cpp
+)
+target_link_libraries(fantasy-extended-foundation-tests PRIVATE fantasy-foundation)
+
 add_executable(fantasy-tfs1098-workflow-tests
     Runtime/Tfs1098ServerWorkflowTests.cpp
 )
@@ -343,7 +358,7 @@ target_include_directories(fantasy-tfs1098-workflow-tests PRIVATE
 )
 target_link_libraries(fantasy-tfs1098-workflow-tests PRIVATE fantasy-runtime fantasy-map-core)
 
-foreach(target fantasy-asset-registry-tests fantasy-legacy-binary-readers-tests fantasy-legacy-texture-cache-tests fantasy-otbm-reader-tests fantasy-legacy-aux-xml-tests fantasy-map-core-v1-tests fantasy-map-clipboard-tests fantasy-brush-engine-tests fantasy-map-legacy-adapter-tests fantasy-map-project-loader-tests fantasy-runtime-backend-tests fantasy-foundation-persistence-tests fantasy-tfs1098-workflow-tests)
+foreach(target fantasy-asset-registry-tests fantasy-legacy-binary-readers-tests fantasy-legacy-texture-cache-tests fantasy-otbm-reader-tests fantasy-legacy-aux-xml-tests fantasy-map-core-v1-tests fantasy-map-clipboard-tests fantasy-brush-engine-tests fantasy-map-legacy-adapter-tests fantasy-map-project-loader-tests fantasy-runtime-backend-tests fantasy-foundation-persistence-tests fantasy-authoring-repository-tests fantasy-build-pipeline-tests fantasy-extended-foundation-tests fantasy-tfs1098-workflow-tests)
     if(MSVC)
         target_compile_options(${target} PRIVATE /W4 /permissive-)
     else()
@@ -367,6 +382,9 @@ add_test(NAME fantasy-otbm-reader-tests COMMAND fantasy-otbm-reader-tests)
 add_test(NAME fantasy-legacy-aux-xml-tests COMMAND fantasy-legacy-aux-xml-tests)
 add_test(NAME fantasy-runtime-backend-tests COMMAND fantasy-runtime-backend-tests)
 add_test(NAME fantasy-foundation-persistence-tests COMMAND fantasy-foundation-persistence-tests)
+add_test(NAME fantasy-authoring-repository-tests COMMAND fantasy-authoring-repository-tests)
+add_test(NAME fantasy-build-pipeline-tests COMMAND fantasy-build-pipeline-tests)
+add_test(NAME fantasy-extended-foundation-tests COMMAND fantasy-extended-foundation-tests)
 add_test(NAME fantasy-tfs1098-workflow-tests COMMAND fantasy-tfs1098-workflow-tests)
 add_test(
     NAME fantasy-studio-open-project
