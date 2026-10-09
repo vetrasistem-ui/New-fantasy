@@ -1,6 +1,6 @@
 # Codex Handoff — Fantasy Foundation V2
 
-**Validated implementation SHA:** `40a14c437f56e0a309aafbe7193ae6e87d88f78b`
+**Validated implementation SHA:** `c72772d7bd755f7cd4b673044b116425a46e0524`
 
 **Repository:** `vetrasistem-ui/New-fantasy`  
 **Branch:** `feature/fantasy-map-core-v1`  
@@ -39,7 +39,19 @@ legacy/runtime build                 PASS
 TFS1098 runtime workflow tests       PASS
 ```
 
-The VPS builder contract also passes on both Windows and Ubuntu.
+The VPS deployment contract now has two independent implementations under test:
+
+```text
+C++ Tfs1098DeploymentBundle contract   PASS Windows + Ubuntu
+Python operational bundle builder      PASS Windows + Ubuntu
+unsafe output/backup-path rejection    PASS Windows + Ubuntu
+```
+
+The standalone C++ contract lives at:
+
+```text
+Tools/Tfs1098/DeploymentBundleContract/
+```
 
 ## Architecture frozen for acceptance
 
@@ -153,6 +165,8 @@ Implemented and tested:
 - automatic rollback on failed health check;
 - explicit rollback script;
 - release policy manifest;
+- standalone C++ deployment contract test;
+- cross-platform Python deployment builder contract;
 - Windows per-user installer/uninstaller bundle contract.
 
 Production credentials are deliberately excluded from generated source-controlled artifacts.
@@ -175,6 +189,14 @@ cmake --build build/client --config Release
 ctest --test-dir build/client -C Release --output-on-failure
 
 ./scripts/run-native-play.ps1 -Configuration Release -Port 17171 -Character "Codex Hero"
+```
+
+The deployment contract can also be reproduced independently:
+
+```powershell
+cmake -S Tools/Tfs1098/DeploymentBundleContract -B build/vps-cpp
+cmake --build build/vps-cpp --config Release
+ctest --test-dir build/vps-cpp -C Release --output-on-failure
 ```
 
 Do not promote a local change when these regressions fail.
@@ -439,6 +461,7 @@ Final expected state:
 
 ```text
 Headless architecture / persistence / build contracts     PASS (already proven by CI)
+C++ + Python VPS deployment contracts                     PASS (already proven by CI)
 Windows OTCv8 interactive graphical acceptance            PASS locally
 V5 visual bindings/editor interaction                     PASS locally
 Real asset migration visual/rollback                      PASS locally
