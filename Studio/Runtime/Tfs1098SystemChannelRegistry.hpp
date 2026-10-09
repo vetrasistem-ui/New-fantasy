@@ -54,7 +54,7 @@ public:
 
         std::vector<RuntimeChannelBinding> bindings;
         const std::regex entry(
-            R"(\{\s*"channel"\s*:\s*"([^"]+)"\s*,\s*"opcode"\s*:\s*([0-9]+)\s*\})");
+            R"FANTASY_REGEX(\{\s*"channel"\s*:\s*"([^"]+)"\s*,\s*"opcode"\s*:\s*([0-9]+)\s*\})FANTASY_REGEX");
         for (std::sregex_iterator it(json.begin(), json.end(), entry), end; it != end; ++it) {
             const auto channel = SystemChannelId::parse((*it)[1].str());
             const auto opcode = static_cast<std::uint32_t>(std::stoul((*it)[2].str()));
