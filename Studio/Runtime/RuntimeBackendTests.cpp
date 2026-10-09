@@ -56,6 +56,8 @@ void testNeutralContract() {
     assert(backend.kind() == RuntimeKind::Tfs1098);
     assert(backend.capabilities().canPackageProject);
     assert(!backend.capabilities().canLaunch);
+    assert(!backend.capabilities().canUseSystemChannels);
+    assert(backend.systemChannelBindings().empty());
 
     const RuntimePackageRequest request{
         fs::path{"FantasyProject"},
@@ -72,6 +74,57 @@ void testNeutralContract() {
     assert(backend.status().state == RuntimeState::NotPrepared);
 }
 
+void testSemanticRuntimeContracts() {
+    const auto inventoryChannel = SystemChannelId::parse("ui.inventory");
+    const auto questChannel = SystemChannelId::parse("system.quest:v1");
+    const auto assetProfile = AssetProfileId::parse("assets.1098.official");
+    const auto interactable = SemanticTag::parse("entity.interactable");
+
+    assert(inventoryChannel.value == "ui.inventory");
+    assert(questChannel.value == "system.quest:v1");
+    assert(assetProfile.value == "assets.1098.official");
+    assert(interactable.value == "entity.interactable");
+
+    RuntimeMessage message;
+    message.channel = inventoryChannel;
+    message.version = 2;
+    message.payload = {0x01, 0x02, 0x03};
+    assert(message.version == 2);
+    assert(message.payload.size() == 3);
+
+    RuntimeChannelBinding binding{inventoryChannel, 17};
+    assert(binding.channel == inventoryChannel);
+    assert(binding.wireCode == 17);
+
+    EntityDefinition entity;
+    entity.id = "npc.merchant.basic";
+    entity.tags.push_back(interactable);
+    entity.components.push_back(SemanticComponent{
+        "interaction.shop",
+        {{"catalog.id", "starter-store"}, {"currency.id", "gold"}},
+    });
+    validateEntityDefinition(entity);
+
+    bool rejectedUnsafeChannel = false;
+    try {
+        (void)SystemChannelId::parse("../inventory");
+    } catch (const std::invalid_argument&) {
+        rejectedUnsafeChannel = true;
+    }
+    assert(rejectedUnsafeChannel);
+
+    bool rejectedUnsafeComponent = false;
+    try {
+        EntityDefinition invalid;
+        invalid.id = "entity.valid";
+        invalid.components.push_back(SemanticComponent{"bad component", {}});
+        validateEntityDefinition(invalid);
+    } catch (const std::invalid_argument&) {
+        rejectedUnsafeComponent = true;
+    }
+    assert(rejectedUnsafeComponent);
+}
+
 void testTargetProfile() {
     const fs::path root = fs::temp_directory_path() / "fantasy-tfs1098-profile-tests";
     std::error_code ignored;
@@ -80,10 +133,12 @@ void testTargetProfile() {
     const Tfs1098TargetConfig defaults = Tfs1098RuntimeProfile::load(root);
     assert(defaults.mapName == "fantasy");
     assert(defaults.outputDirectory == fs::path{"build"} / "runtime" / "tfs1098");
+    assert(defaults.compatibilityProfile == Tfs1098CompatibilityProfile::Vanilla);
 
     Tfs1098TargetConfig configured;
     configured.mapName = "world_alpha";
     configured.outputDirectory = fs::path{"build"} / "targets" / "tfs1098";
+    configured.compatibilityProfile = Tfs1098CompatibilityProfile::OtcExtended;
     Tfs1098RuntimeProfile::save(root, configured);
 
     const auto profilePath = Tfs1098RuntimeProfile::pathForProject(root);
@@ -91,9 +146,26 @@ void testTargetProfile() {
     const Tfs1098TargetConfig loaded = Tfs1098RuntimeProfile::load(root);
     assert(loaded.mapName == configured.mapName);
     assert(loaded.outputDirectory == configured.outputDirectory);
+    assert(loaded.compatibilityProfile == Tfs1098CompatibilityProfile::OtcExtended);
+    assert(readText(profilePath).find("\"schemaVersion\": 2") != std::string::npos);
+    assert(readText(profilePath).find("\"compatibilityProfile\": \"otc_extended\"") != std::string::npos);
     assert(
         Tfs1098RuntimeProfile::resolveOutputDirectory(root, loaded) ==
         fs::absolute(root / configured.outputDirectory).lexically_normal());
+
+    // Schema v1 projects predate runtime variants. They must remain compatible
+    // and migrate deterministically to the official vanilla profile.
+    writeText(
+        profilePath,
+        "{\n"
+        "  \"schemaVersion\": 1,\n"
+        "  \"backend\": \"tfs1098\",\n"
+        "  \"mapName\": \"legacy_world\",\n"
+        "  \"outputDirectory\": \"build/runtime/tfs1098\"\n"
+        "}\n");
+    const auto migratedV1 = Tfs1098RuntimeProfile::load(root);
+    assert(migratedV1.mapName == "legacy_world");
+    assert(migratedV1.compatibilityProfile == Tfs1098CompatibilityProfile::Vanilla);
 
     bool rejectedTraversal = false;
     try {
@@ -114,6 +186,14 @@ void testTargetProfile() {
         rejectedMapName = true;
     }
     assert(rejectedMapName);
+
+    bool rejectedUnknownProfile = false;
+    try {
+        (void)parseTfs1098CompatibilityProfile("unknown-runtime");
+    } catch (const std::runtime_error&) {
+        rejectedUnknownProfile = true;
+    }
+    assert(rejectedUnknownProfile);
 
     fs::remove_all(root, ignored);
 }
@@ -144,6 +224,11 @@ void testTfsBackend(const fs::path& selfExecutable) {
     assert(capabilities.canLaunch);
     assert(capabilities.canStop);
     assert(capabilities.canStreamLogs);
+    assert(!capabilities.canUseSystemChannels);
+    assert(!capabilities.canUseSemanticTags);
+    assert(!capabilities.canUseZones);
+    assert(!capabilities.canUseAppearanceExtensions);
+    assert(backend.systemChannelBindings().empty());
 
     RuntimePackageRequest package;
     package.projectRoot = root;
@@ -257,6 +342,7 @@ int main(int argc, char** argv) {
 
     assert(argc >= 1);
     testNeutralContract();
+    testSemanticRuntimeContracts();
     testTargetProfile();
     testTfsBackend(fs::absolute(fs::path(argv[0])));
     return 0;
