@@ -47,7 +47,12 @@ jobs:
             'build/vps-bundle/deploy/fantasy-tfs1098.service',
             'build/vps-bundle/deploy/install.sh',
             'build/vps-bundle/deploy/README.md',
-            'build/vps-bundle/deploy/manifest.json'
+            'build/vps-bundle/deploy/manifest.json',
+            'build/vps-bundle/deploy/env.example',
+            'build/vps-bundle/deploy/healthcheck.sh',
+            'build/vps-bundle/deploy/update.sh',
+            'build/vps-bundle/deploy/rollback.sh',
+            'build/vps-bundle/deploy/release-policy.json'
           )) {
             if (-not (Test-Path $required)) { throw "Missing bundle entry: $required" }
           }
@@ -56,6 +61,14 @@ jobs:
           if ($manifest.runtime -ne 'tfs1098') { throw 'Unexpected runtime manifest value' }
           if ($manifest.serviceName -ne 'fantasy-tfs1098') { throw 'Unexpected service name' }
           if ($manifest.containsSecrets -ne $false) { throw 'Bundle manifest must not claim embedded secrets' }
+          if ($manifest.supportsHealthCheck -ne $true) { throw 'Bundle manifest must advertise health-check support' }
+          if ($manifest.supportsUpdate -ne $true) { throw 'Bundle manifest must advertise update support' }
+          if ($manifest.supportsRollback -ne $true) { throw 'Bundle manifest must advertise rollback support' }
+
+          $policy = Get-Content 'build/vps-bundle/deploy/release-policy.json' -Raw | ConvertFrom-Json
+          if ($policy.backupBeforeUpdate -ne $true) { throw 'Release policy must require backup before update' }
+          if ($policy.rollbackOnFailedHealthCheck -ne $true) { throw 'Release policy must enable health rollback' }
+          if ($policy.backupRoot -ne '/opt/fantasy/backups/fantasy-tfs1098') { throw 'Unexpected default backup root' }
 
           $service = Get-Content 'build/vps-bundle/deploy/fantasy-tfs1098.service' -Raw
           if ($service -notmatch 'Restart=on-failure') { throw 'Missing systemd restart policy' }
@@ -65,6 +78,21 @@ jobs:
           $installer = Get-Content 'build/vps-bundle/deploy/install.sh' -Raw
           if ($installer -notmatch 'systemctl enable --now') { throw 'Installer does not enable/start service' }
           if ($installer -notmatch 'chmod 0755') { throw 'Installer does not restore TFS executable permission' }
+
+          $health = Get-Content 'build/vps-bundle/deploy/healthcheck.sh' -Raw
+          if ($health -notmatch 'systemctl is-active --quiet fantasy-tfs1098') { throw 'Health check does not verify service state' }
+          if ($health -notmatch 'FANTASY_VPS_HEALTH PASS') { throw 'Health check PASS marker missing' }
+
+          $update = Get-Content 'build/vps-bundle/deploy/update.sh' -Raw
+          if ($update -notmatch 'BACKUP_ROOT') { throw 'Update script does not configure backup root' }
+          if ($update -notmatch 'healthcheck.sh') { throw 'Update script does not execute health check' }
+          if ($update -notmatch 'rolling back') { throw 'Update script does not include automatic rollback' }
+
+          $rollback = Get-Content 'build/vps-bundle/deploy/rollback.sh' -Raw
+          if ($rollback -notmatch 'FANTASY_VPS_ROLLBACK PASS') { throw 'Rollback script PASS marker missing' }
+
+          $envExample = Get-Content 'build/vps-bundle/deploy/env.example' -Raw
+          if ($envExample -notmatch 'DB_PASSWORD=CHANGE_ME') { throw 'env.example must contain only placeholder password' }
 
           if ((Get-Content 'synthetic-runtime/data/marker.txt' -Raw).Trim() -ne 'keep-me') {
             throw 'Source runtime was modified while building bundle'
@@ -84,6 +112,21 @@ jobs:
           if ($process.ExitCode -eq 0) { throw 'Unsafe output inside runtime should have been rejected' }
           if (-not (Test-Path 'synthetic-runtime/data/marker.txt')) { throw 'Unsafe validation modified source runtime' }
           if (Test-Path 'synthetic-runtime/unsafe-child') { throw 'Unsafe output directory should not have been created' }
+
+      - name: Reject unsafe backup root
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $arguments = @(
+            'Tools/Tfs1098/build_vps_bundle.py',
+            '--runtime', 'synthetic-runtime',
+            '--output', 'build/unsafe-backup-test',
+            '--backup-root', '../unsafe',
+            '--force'
+          )
+          $process = Start-Process -FilePath 'python' -ArgumentList $arguments -NoNewWindow -Wait -PassThru
+          if ($process.ExitCode -eq 0) { throw 'Unsafe backup root should have been rejected' }
+          if (Test-Path 'build/unsafe-backup-test') { throw 'Unsafe backup validation should not create output' }
 
       - name: Upload synthetic bundle
         uses: actions/upload-artifact@v4
