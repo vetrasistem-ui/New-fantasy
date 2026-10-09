@@ -75,9 +75,9 @@ private:
         if (request.bundleDirectory.empty()) throw std::runtime_error("bundleDirectory is required");
         if (!safeToken(request.serviceName)) throw std::runtime_error("invalid VPS lifecycle serviceName");
         if (!safeToken(request.serviceUser)) throw std::runtime_error("invalid VPS lifecycle serviceUser");
-        if (!safeAbsolutePath(request.installRoot)) throw std::runtime_error("invalid VPS lifecycle installRoot");
-        if (!safeAbsolutePath(request.backupRoot)) throw std::runtime_error("invalid VPS lifecycle backupRoot");
-        if (request.installRoot == request.backupRoot) {
+        if (!safeLinuxAbsolutePath(request.installRoot)) throw std::runtime_error("invalid VPS lifecycle installRoot");
+        if (!safeLinuxAbsolutePath(request.backupRoot)) throw std::runtime_error("invalid VPS lifecycle backupRoot");
+        if (request.installRoot.generic_string() == request.backupRoot.generic_string()) {
             throw std::runtime_error("VPS lifecycle installRoot and backupRoot must differ");
         }
     }
@@ -91,10 +91,9 @@ private:
         });
     }
 
-    [[nodiscard]] static bool safeAbsolutePath(const std::filesystem::path& path) noexcept {
-        if (!path.is_absolute()) return false;
+    [[nodiscard]] static bool safeLinuxAbsolutePath(const std::filesystem::path& path) noexcept {
         const auto text = path.generic_string();
-        if (text.empty() || text == "/") return false;
+        if (text.size() <= 1U || text.front() != '/' || text.find("..") != std::string::npos) return false;
         return std::all_of(text.begin(), text.end(), [](unsigned char ch) {
             return (ch >= '0' && ch <= '9') ||
                    (ch >= 'A' && ch <= 'Z') ||
@@ -124,9 +123,11 @@ private:
             << "BACKUP_ROOT='" << request.backupRoot.generic_string() << "'\n"
             << "STAMP=\"$(date -u +%Y%m%dT%H%M%SZ)\"\n"
             << "BACKUP=\"${BACKUP_ROOT}/${STAMP}\"\n"
-            << "mkdir -p \"${BACKUP}\" \"${INSTALL_ROOT}/server\"\n"
+            << "mkdir -p \"${BACKUP}\"\n"
             << "if [[ -d \"${INSTALL_ROOT}/server\" ]]; then cp -a \"${INSTALL_ROOT}/server/.\" \"${BACKUP}/\" || true; fi\n"
             << "systemctl stop " << request.serviceName << " || true\n"
+            << "rm -rf \"${INSTALL_ROOT}/server\"\n"
+            << "mkdir -p \"${INSTALL_ROOT}/server\"\n"
             << "cp -a \"${BUNDLE_ROOT}/server/.\" \"${INSTALL_ROOT}/server/\"\n"
             << "chown -R " << request.serviceUser << ':' << request.serviceUser << " \"${INSTALL_ROOT}/server\"\n"
             << "systemctl start " << request.serviceName << "\n"
