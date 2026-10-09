@@ -1,6 +1,6 @@
 # Vanilla TFS 1.4.2 / 10.98 Runtime Homologation
 
-**Status:** PASS for Fantasy OTBM load, TFS startup, protocol 10.98 login/game entry/movement, real MariaDB bootstrap and save/restart/relogin persistence.
+**Status:** PASS for Fantasy OTBM load, TFS startup, protocol 10.98 login/game entry/movement, real MariaDB bootstrap, save/restart/relogin persistence and selected OTCv8 visual acceptance.
 
 ## Target runtime
 
@@ -196,6 +196,50 @@ The seeded position `100,100,7` was not a valid player placement for the vanilla
 
 Therefore this gate proves real persistence through the official TFS + MariaDB path rather than a mocked query layer.
 
+## OTCv8 10.98 visual acceptance — PASS (Linux)
+
+A clean public OTCv8 package was staged by:
+
+```text
+.github/workflows/otcv8-visual-homologation.yml
+```
+
+The packaged client itself does not contain proprietary Tibia assets. For the local acceptance run, the user-supplied matching 10.98 `Tibia.dat` and `Tibia.spr` were injected only into the local test copy under `data/things/1098`.
+
+Observed client startup:
+
+```text
+OTCv8 3.2 rev 0 (devel)
+OpenGL 4.5
+FANTASY_HOMOLOGATION setting client 1098
+FANTASY_HOMOLOGATION things_loaded=true
+```
+
+Observed complete client login:
+
+```text
+Connecting to: 127.0.0.1:7171
+FANTASY_HOMOLOGATION charlist=1
+FANTASY_HOMOLOGATION character_login
+Login to 127.0.0.1:7172
+FANTASY_VISUAL onGameStart online=true
+```
+
+The captured frame visibly contains:
+
+- the local player `Fantasy Test`;
+- real 10.98 terrain/walls/floor sprites;
+- creature/NPC rendering;
+- health/mana HUD;
+- inventory/equipment widgets;
+- live gameworld UI rather than the login screen.
+
+For the deterministic screenshot, the local homologation copy suppressed the automatic outfit modal after login so the map remained visible. This modification was not committed to the OTCv8 source or to the user's client base.
+
+This proves that the vanilla TFS 1.4.2 / 10.98 boundary is usable by a real graphical OTClient, not only by the headless protocol probe.
+
+Windows-specific packaging/acceptance remains a separate gate; Linux visual PASS must not be presented as a Windows PASS.
+
 ## Gate conclusion
 
 ```text
@@ -222,13 +266,17 @@ players_online lifecycle                       PASS
 logout/save -> TFS restart -> relogin          PASS
         ↓
 persisted position + login/logout timestamps   PASS
+        ↓
+OTCv8 10.98 graphical login/render (Linux)      PASS
 ```
 
 ## Remaining integration work
 
-The file, runtime, protocol and persistence foundations are now proven. Remaining work is primarily product acceptance and higher-level runtime integration:
+The file, runtime, protocol, persistence and selected graphical-client foundations are now proven. Remaining work is primarily product/deployment acceptance and higher-level runtime integration:
 
-1. selected full Windows/OTClient 10.98 visual acceptance;
-2. expose/manage database/runtime configuration cleanly through the Studio/VPS deployment path;
-3. package server/client deployment for local and 24/7 VPS operation;
+1. Windows-specific OTCv8/client packaging and visual acceptance;
+2. finish and surface the TFS1098 VPS deployment bundle through the Studio;
+3. real remote-VPS smoke test with MariaDB/service restart on an actual target machine;
 4. begin mapping advanced PokéTibia runtime capabilities into Fantasy-owned generic systems without copying the reference fork into Fantasy Core.
+
+Deployment design is documented separately in `docs/TFS1098-VPS-DEPLOYMENT.md`.
