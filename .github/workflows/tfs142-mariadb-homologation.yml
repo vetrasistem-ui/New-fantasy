@@ -135,11 +135,15 @@ jobs:
           fi
 
           cd ..
-          test "$(mariadb -N -B -h127.0.0.1 -P3306 -uforgottenserver forgottenserver -e "SELECT COUNT(*) FROM players_online WHERE player_id=1")" = "0"
-          test "$(mariadb -N -B -h127.0.0.1 -P3306 -uforgottenserver forgottenserver -e "SELECT value FROM server_config WHERE config='db_version'")" = "29"
+          ONLINE_ROWS="$(mariadb -N -B -h127.0.0.1 -P3306 -uforgottenserver forgottenserver -e "SELECT COUNT(*) FROM players_online WHERE player_id=1")"
+          DB_VERSION="$(mariadb -N -B -h127.0.0.1 -P3306 -uforgottenserver forgottenserver -e "SELECT value FROM server_config WHERE config='db_version'")"
+          echo "players_online_after_start=${ONLINE_ROWS}"
+          echo "db_version_after_start=${DB_VERSION}"
+          test "${ONLINE_ROWS}" = "0"
+          test "${DB_VERSION}" = "30"
 
           echo "TFS142_MARIADB_BOOTSTRAP PASS"
-          grep -E "The Forgotten Server|Loading map|Map size|Forgotten Server Online" tfs-mariadb.log || true
+          grep -E "The Forgotten Server|Updating database|Database has been updated|Loading map|Map size|Forgotten Server Online" tfs-mariadb.log || true
 
           kill -TERM "${TFS_PID}" 2>/dev/null || true
           wait "${TFS_PID}" || true
