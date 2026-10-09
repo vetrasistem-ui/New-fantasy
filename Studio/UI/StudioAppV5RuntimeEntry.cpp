@@ -8,6 +8,7 @@
 #include "MapEngine/Export/LegacyOtbmWriter.hpp"
 #include "MapEngine/Import/LegacyWorkspaceSession.hpp"
 #include "Rendering/LegacySpriteTextureCache.hpp"
+#include "Runtime/Tfs1098DeploymentBundle.hpp"
 #include "Runtime/Tfs1098RuntimeBackend.hpp"
 #include "Runtime/Tfs1098RuntimeProfile.hpp"
 #include "UI/LegacyMapCanvasRenderer.hpp"
@@ -27,6 +28,8 @@ using LegacyOtbmWriterConfig = fantasy::studio::mapcore::LegacyOtbmWriterConfig;
 using LegacyTextureCache = fantasy::studio::rendering::LegacySpriteTextureCache;
 using LegacyCanvasRenderer = fantasy::studio::ui::LegacyMapCanvasRenderer;
 using LegacyCanvasView = fantasy::studio::ui::LegacyMapCanvasView;
+using Tfs1098DeploymentBundle = fantasy::studio::runtime::Tfs1098DeploymentBundle;
+using Tfs1098DeploymentBundleRequest = fantasy::studio::runtime::Tfs1098DeploymentBundleRequest;
 using Tfs1098RuntimeBackend = fantasy::studio::runtime::Tfs1098RuntimeBackend;
 using Tfs1098RuntimeProfile = fantasy::studio::runtime::Tfs1098RuntimeProfile;
 using Tfs1098TargetConfig = fantasy::studio::runtime::Tfs1098TargetConfig;
@@ -167,6 +170,7 @@ struct LegacyV5Runtime {
     std::string serverLog;
     std::uint64_t serverLogCursor = 0;
     fs::path exportedMapPath;
+    fs::path vpsBundlePath;
 
     void load(const LegacyConfig& config, const ProjectInfo& project) {
         if (!session.open(config)) {
@@ -202,6 +206,10 @@ struct LegacyV5Runtime {
 
     fs::path serverOutputPath(const ProjectInfo& project) const {
         return Tfs1098RuntimeProfile::resolveOutputDirectory(project.root, serverProfile);
+    }
+
+    fs::path vpsBundleOutputPath(const ProjectInfo& project) const {
+        return (project.root / "build" / "deploy" / "tfs1098-vps").lexically_normal();
     }
 
     fs::path exportCanonicalMap(const ProjectInfo& project) {
@@ -271,6 +279,43 @@ struct LegacyV5Runtime {
         serverLog.clear();
         serverLogCursor = 0;
         serverStatus = "TFS1098 package ready: " + request.outputDirectory.string();
+        status = serverStatus;
+    }
+
+    void buildVpsBundle(const ProjectInfo& project) {
+        const RuntimeState currentState = server.status().state;
+        if (currentState == RuntimeState::Running || currentState == RuntimeState::Starting) {
+            throw std::runtime_error("Stop TFS1098 before building the VPS deployment bundle");
+        }
+
+        syncServerProfile(project);
+        const fs::path runtimePath = serverOutputPath(project);
+        if (!fs::is_directory(runtimePath)) {
+            throw std::runtime_error("Package the TFS1098 runtime before building the VPS deployment bundle");
+        }
+        if (!fs::is_regular_file(runtimePath / "tfs")) {
+            if (fs::is_regular_file(runtimePath / "tfs.exe")) {
+                throw std::runtime_error(
+                    "VPS bundle requires a Linux TFS runtime executable named 'tfs'; the current package is Windows ('tfs.exe')");
+            }
+            throw std::runtime_error("VPS bundle requires the Linux TFS runtime executable 'tfs'");
+        }
+
+        Tfs1098DeploymentBundleRequest request;
+        request.runtimeDirectory = runtimePath;
+        request.outputDirectory = vpsBundleOutputPath(project);
+
+        const auto report = Tfs1098DeploymentBundle::build(request);
+        if (!report.success) {
+            throw std::runtime_error(report.errors.empty() ? "VPS bundle build failed" : report.errors.front());
+        }
+
+        vpsBundlePath = request.outputDirectory;
+        std::ostringstream message;
+        message << "VPS bundle ready: " << vpsBundlePath.string()
+                << " · generated " << report.generatedFiles.size() << " entries";
+        if (!report.warnings.empty()) message << " · warnings " << report.warnings.size();
+        serverStatus = message.str();
         status = serverStatus;
     }
 
@@ -545,7 +590,7 @@ void drawTfs1098ServerPage(
     else ImGui::TextDisabled("%s", serverState.message.c_str());
 
     ImGui::Spacing();
-    ImGui::BeginChild("server-config-v5", ImVec2(0.0f, 224.0f), ImGuiChildFlags_Borders);
+    ImGui::BeginChild("server-config-v5", ImVec2(0.0f, 270.0f), ImGuiChildFlags_Borders);
     ImGui::TextUnformatted("Runtime target");
     ImGui::Separator();
     ImGui::SetNextItemWidth(-1.0f);
@@ -613,12 +658,28 @@ void drawTfs1098ServerPage(
         }
     }
     ImGui::EndDisabled();
+
+    ImGui::Spacing();
+    ImGui::BeginDisabled(running);
+    if (ImGui::Button("Build VPS bundle", ImVec2(148, 30))) {
+        try {
+            runtime.buildVpsBundle(project);
+            state.status = runtime.serverStatus;
+        } catch (const std::exception& error) {
+            runtime.serverStatus = error.what();
+            state.status = runtime.serverStatus;
+        }
+    }
+    ImGui::EndDisabled();
+    ImGui::SameLine();
+    ImGui::TextDisabled("Linux bundle: server/ + deploy/ + systemd + install.sh + manifest.json");
     ImGui::EndChild();
 
     ImGui::Spacing();
     ImGui::TextColored(kCyan, "%s", runtime.serverStatus.c_str());
     ImGui::TextDisabled("Export: %s", runtime.exportedMapPath.empty() ? "not generated in this session" : runtime.exportedMapPath.string().c_str());
     ImGui::TextDisabled("Package: %s", runtime.serverOutputPath(project).string().c_str());
+    ImGui::TextDisabled("VPS bundle: %s", runtime.vpsBundlePath.empty() ? runtime.vpsBundleOutputPath(project).string().c_str() : runtime.vpsBundlePath.string().c_str());
 
     ImGui::Spacing();
     ImGui::TextUnformatted("Runtime log");
