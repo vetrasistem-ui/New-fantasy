@@ -13,7 +13,7 @@ $ErrorActionPreference = 'Stop'
 function Require-Path {
     param([string]$Path, [string]$Description)
     if (-not (Test-Path -LiteralPath $Path)) {
-        throw "Missing $Description: $Path"
+        throw "Missing ${Description}: $Path"
     }
 }
 
