@@ -1,5 +1,7 @@
 #pragma once
 
+#include "Tfs1098VpsLifecycle.hpp"
+
 #include <algorithm>
 #include <cctype>
 #include <filesystem>
@@ -141,10 +143,29 @@ public:
             ec);
         if (ec) {
             report.warnings.emplace_back("unable to mark install.sh executable: " + ec.message());
+            ec.clear();
         }
 #endif
 
         report.generatedFiles = {serverDirectory, servicePath, installPath, readmePath, manifestPath};
+
+        Tfs1098VpsLifecycleRequest lifecycleRequest;
+        lifecycleRequest.bundleDirectory = output;
+        lifecycleRequest.serviceName = request.serviceName;
+        lifecycleRequest.serviceUser = request.serviceUser;
+        lifecycleRequest.installRoot = request.installRoot;
+        lifecycleRequest.backupRoot = std::filesystem::path{"/opt/fantasy/backups"} / request.serviceName;
+        const auto lifecycleReport = Tfs1098VpsLifecycle::write(lifecycleRequest);
+        if (!lifecycleReport.success) {
+            report.errors = lifecycleReport.errors;
+            if (report.errors.empty()) report.errors.emplace_back("VPS lifecycle generation failed without error detail");
+            return report;
+        }
+        report.generatedFiles.insert(
+            report.generatedFiles.end(),
+            lifecycleReport.generatedFiles.begin(),
+            lifecycleReport.generatedFiles.end());
+
         report.success = true;
         return report;
     }
@@ -295,11 +316,18 @@ private:
             "2. Review `server/config.lua` and set the production database credentials, public IP and ports.\n"
             "3. Keep `config.lua` and database credentials out of source control.\n"
             "4. Open only the required login/game/status ports in the VPS firewall.\n\n"
-            "## Install\n\n"
+            "## First install\n\n"
             "```bash\n"
             "cd deploy\n"
             "sudo bash ./install.sh\n"
             "```\n\n"
+            "## Update / health / rollback\n\n"
+            "```bash\n"
+            "sudo bash ./update.sh\n"
+            "sudo bash ./healthcheck.sh\n"
+            "sudo bash ./rollback.sh\n"
+            "```\n\n"
+            "Copy `env.example` to your private deployment configuration workflow; do not commit production secrets.\n\n"
             "The service is installed as `" + request.serviceName + ".service` under `" + request.installRoot + "`.\n"
             "Logs are available with `journalctl -u " + request.serviceName + " -f`.\n";
     }
@@ -312,7 +340,11 @@ private:
             "  \"serviceName\": \"" + request.serviceName + "\",\n"
             "  \"serviceUser\": \"" + request.serviceUser + "\",\n"
             "  \"installRoot\": \"" + request.installRoot + "\",\n"
-            "  \"executable\": \"" + request.executableName + "\"\n"
+            "  \"executable\": \"" + request.executableName + "\",\n"
+            "  \"containsSecrets\": false,\n"
+            "  \"supportsHealthCheck\": true,\n"
+            "  \"supportsUpdate\": true,\n"
+            "  \"supportsRollback\": true\n"
             "}\n";
     }
 };
