@@ -2,6 +2,7 @@
 #include "Runtime/Tfs1098DeploymentBundle.hpp"
 #include "Runtime/Tfs1098RuntimeBackend.hpp"
 #include "Runtime/Tfs1098RuntimeProfile.hpp"
+#include "Runtime/Tfs1098SystemChannelRegistry.hpp"
 
 #include <cassert>
 #include <chrono>
@@ -125,6 +126,64 @@ void testSemanticRuntimeContracts() {
     assert(rejectedUnsafeComponent);
 }
 
+void testSystemChannelRegistry() {
+    const fs::path root = fs::temp_directory_path() / "fantasy-tfs1098-channel-registry-tests";
+    std::error_code ignored;
+    fs::remove_all(root, ignored);
+
+    auto bindings = Tfs1098SystemChannelRegistry::load(root);
+    assert(bindings.empty());
+
+    const auto inventory = SystemChannelId::parse("ui.inventory");
+    const auto quests = SystemChannelId::parse("ui.quests");
+    const auto inventoryBinding = Tfs1098SystemChannelRegistry::bind(bindings, inventory);
+    const auto questBinding = Tfs1098SystemChannelRegistry::bind(bindings, quests);
+    assert(inventoryBinding.wireCode == Tfs1098SystemChannelRegistry::MinFantasyOpcode);
+    assert(questBinding.wireCode == Tfs1098SystemChannelRegistry::MinFantasyOpcode + 1U);
+
+    const auto inventoryAgain = Tfs1098SystemChannelRegistry::bind(bindings, inventory);
+    assert(inventoryAgain.wireCode == inventoryBinding.wireCode);
+    assert(bindings.size() == 2U);
+
+    Tfs1098SystemChannelRegistry::save(root, bindings);
+    const auto loaded = Tfs1098SystemChannelRegistry::load(root);
+    assert(loaded.size() == 2U);
+    assert(loaded[0].channel == inventory);
+    assert(loaded[0].wireCode == inventoryBinding.wireCode);
+    assert(loaded[1].channel == quests);
+    assert(loaded[1].wireCode == questBinding.wireCode);
+
+    const auto registryText = readText(Tfs1098SystemChannelRegistry::pathForProject(root));
+    assert(registryText.find("\"profile\": \"otc_extended\"") != std::string::npos);
+    assert(registryText.find("\"opcode\": 200") != std::string::npos);
+    assert(registryText.find("\"opcode\": 201") != std::string::npos);
+
+    bool rejectedDuplicateOpcode = false;
+    try {
+        std::vector<RuntimeChannelBinding> invalid{
+            {SystemChannelId::parse("ui.inventory"), 200},
+            {SystemChannelId::parse("ui.quests"), 200},
+        };
+        Tfs1098SystemChannelRegistry::validate(invalid);
+    } catch (const std::runtime_error&) {
+        rejectedDuplicateOpcode = true;
+    }
+    assert(rejectedDuplicateOpcode);
+
+    bool rejectedOutOfRange = false;
+    try {
+        std::vector<RuntimeChannelBinding> invalid{
+            {SystemChannelId::parse("ui.inventory"), 1},
+        };
+        Tfs1098SystemChannelRegistry::validate(invalid);
+    } catch (const std::runtime_error&) {
+        rejectedOutOfRange = true;
+    }
+    assert(rejectedOutOfRange);
+
+    fs::remove_all(root, ignored);
+}
+
 void testTargetProfile() {
     const fs::path root = fs::temp_directory_path() / "fantasy-tfs1098-profile-tests";
     std::error_code ignored;
@@ -153,8 +212,6 @@ void testTargetProfile() {
         Tfs1098RuntimeProfile::resolveOutputDirectory(root, loaded) ==
         fs::absolute(root / configured.outputDirectory).lexically_normal());
 
-    // Schema v1 projects predate runtime variants. They must remain compatible
-    // and migrate deterministically to the official vanilla profile.
     writeText(
         profilePath,
         "{\n"
@@ -343,6 +400,7 @@ int main(int argc, char** argv) {
     assert(argc >= 1);
     testNeutralContract();
     testSemanticRuntimeContracts();
+    testSystemChannelRegistry();
     testTargetProfile();
     testTfsBackend(fs::absolute(fs::path(argv[0])));
     return 0;
