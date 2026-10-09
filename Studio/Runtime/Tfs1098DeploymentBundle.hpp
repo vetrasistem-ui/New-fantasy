@@ -64,8 +64,8 @@ public:
             report.errors.emplace_back("unable to resolve outputDirectory: " + ec.message());
             return report;
         }
-        if (runtime == output || isWithin(output, runtime)) {
-            report.errors.emplace_back("deployment output must not be the runtime directory or a child of it");
+        if (runtime == output || isWithin(output, runtime) || isWithin(runtime, output)) {
+            report.errors.emplace_back("deployment output and runtime directory must not contain one another");
             return report;
         }
 
@@ -77,7 +77,10 @@ public:
         const auto manifestPath = deployDirectory / "manifest.json";
 
         std::filesystem::remove_all(output, ec);
-        ec.clear();
+        if (ec) {
+            report.errors.emplace_back("unable to clear deployment output: " + ec.message());
+            return report;
+        }
         std::filesystem::create_directories(serverDirectory, ec);
         if (ec) {
             report.errors.emplace_back("unable to create deployment output: " + ec.message());
