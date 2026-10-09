@@ -1,4 +1,5 @@
 #include "Runtime/RuntimeBackend.hpp"
+#include "Runtime/Tfs1098DeploymentBundle.hpp"
 #include "Runtime/Tfs1098RuntimeBackend.hpp"
 #include "Runtime/Tfs1098RuntimeProfile.hpp"
 
@@ -131,6 +132,7 @@ void testTfsBackend(const fs::path& selfExecutable) {
         "mapName = \"forgotten\"\n"
         "loginProtocolPort = 7171\n");
     writeText(runtimeTemplate / "data" / "static.txt", "template-marker\n");
+    writeText(runtimeTemplate / "tfs", "synthetic-tfs-binary\n");
     writeText(inputs / "world.otbm", "synthetic-otbm\n");
     writeText(inputs / "items.otb", "synthetic-otb\n");
     writeText(inputs / "map-house.xml", "<houses/>\n");
@@ -165,6 +167,40 @@ void testTfsBackend(const fs::path& selfExecutable) {
     assert(config.find("mapName = \"fantasy_test\"") != std::string::npos);
     assert(config.find("mapName = \"forgotten\"") == std::string::npos);
     assert(backend.status().state == RuntimeState::Stopped);
+
+    Tfs1098DeploymentBundleRequest deployment;
+    deployment.runtimeDirectory = output;
+    deployment.outputDirectory = root / "vps-bundle";
+    deployment.serviceName = "fantasy-test";
+    deployment.serviceUser = "fantasytest";
+    deployment.installRoot = "/opt/fantasy/fantasy-test";
+    deployment.executableName = "tfs";
+
+    const Tfs1098DeploymentBundleReport deployed = Tfs1098DeploymentBundle::build(deployment);
+    assert(deployed.success);
+    assert(deployed.errors.empty());
+    assert(fs::exists(deployment.outputDirectory / "server" / "config.lua"));
+    assert(fs::exists(deployment.outputDirectory / "server" / "data" / "world" / "fantasy_test.otbm"));
+    assert(fs::exists(deployment.outputDirectory / "deploy" / "fantasy-test.service"));
+    assert(fs::exists(deployment.outputDirectory / "deploy" / "install.sh"));
+    assert(fs::exists(deployment.outputDirectory / "deploy" / "manifest.json"));
+
+    const std::string service = readText(deployment.outputDirectory / "deploy" / "fantasy-test.service");
+    assert(service.find("User=fantasytest") != std::string::npos);
+    assert(service.find("WorkingDirectory=/opt/fantasy/fantasy-test/server") != std::string::npos);
+    assert(service.find("Restart=on-failure") != std::string::npos);
+
+    const std::string installer = readText(deployment.outputDirectory / "deploy" / "install.sh");
+    assert(installer.find("systemctl enable --now") != std::string::npos);
+    const std::string manifest = readText(deployment.outputDirectory / "deploy" / "manifest.json");
+    assert(manifest.find("\"runtime\": \"tfs1098\"") != std::string::npos);
+
+    Tfs1098DeploymentBundleRequest invalidDeployment = deployment;
+    invalidDeployment.outputDirectory = root / "invalid-vps-bundle";
+    invalidDeployment.installRoot = "../unsafe";
+    const auto rejectedDeployment = Tfs1098DeploymentBundle::build(invalidDeployment);
+    assert(!rejectedDeployment.success);
+    assert(!rejectedDeployment.errors.empty());
 
     const fs::path logFile = output / "runtime-test.log";
     RuntimeLaunchRequest launch;
