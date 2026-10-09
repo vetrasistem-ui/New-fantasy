@@ -88,6 +88,8 @@ struct RuntimeMessage {
 struct RuntimeChannelBinding {
     SystemChannelId channel;
     std::uint32_t wireCode = 0;
+
+    friend bool operator==(const RuntimeChannelBinding&, const RuntimeChannelBinding&) = default;
 };
 
 struct SemanticComponent {
