@@ -1,6 +1,5 @@
 #pragma once
 
-#include <cctype>
 #include <cstdint>
 #include <map>
 #include <stdexcept>
@@ -10,6 +9,12 @@
 
 namespace fantasy::studio::runtime {
 
+[[nodiscard]] constexpr bool asciiAlphaNumeric(unsigned char ch) noexcept {
+    return (ch >= '0' && ch <= '9') ||
+           (ch >= 'A' && ch <= 'Z') ||
+           (ch >= 'a' && ch <= 'z');
+}
+
 // Stable Fantasy-owned identifiers intentionally do not expose TFS opcodes or
 // external-runtime implementation details. Backends map these semantic IDs to
 // their own wire representation.
@@ -18,7 +23,7 @@ namespace fantasy::studio::runtime {
     bool hasAlphaNumeric = false;
     for (const char* cursor = value; *cursor != '\0'; ++cursor) {
         const unsigned char ch = static_cast<unsigned char>(*cursor);
-        if (std::isalnum(ch) != 0) {
+        if (asciiAlphaNumeric(ch)) {
             hasAlphaNumeric = true;
             continue;
         }
