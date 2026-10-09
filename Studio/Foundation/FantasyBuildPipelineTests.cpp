@@ -1,4 +1,5 @@
 #include "Foundation/FantasyBuildPipeline.hpp"
+#include "Foundation/FantasyServerWorkspaceController.hpp"
 
 #include <filesystem>
 #include <fstream>
@@ -164,6 +165,38 @@ void testExtendedPipeline(const fs::path& root) {
         "pipeline did not generate OTCv8 bridge");
 }
 
+void testServerWorkspaceController(const fs::path& root) {
+    const auto project = createProjectFixture(root / "project-controller");
+    populateAuthoring(project.root);
+    configureExtendedProfile(project.root);
+
+    const fs::path runtimeTemplate = root / "runtime-template-controller";
+    const fs::path runtime = project.root / "build" / "runtime" / "tfs1098";
+    const fs::path client = project.root / "build" / "client" / "otcv8";
+    fs::create_directories(runtimeTemplate);
+    createTfsFixture(runtime);
+    fs::create_directories(client);
+
+    FantasyServerWorkspaceController controller(project, runtimeTemplate, client);
+    require(controller.state().health.ready(), "Server workspace controller health must be ready");
+    require(controller.state().requiredChannels == std::vector<std::string>({"system.quest:v1", "ui.inventory"}),
+        "Server workspace must derive semantic channels from authored systems");
+    require(controller.state().profile.compatibilityProfile == Tfs1098CompatibilityProfile::OtcExtended,
+        "Server workspace must load persisted OTC Extended profile");
+    require(controller.state().capabilities.canUseSystemChannels,
+        "OTC Extended Server workspace must advertise semantic channels");
+
+    const auto prepared = controller.prepareRuntime();
+    require(prepared.success && prepared.bindings.size() == 2U,
+        "Server workspace Prepare Runtime must generate extended channel bindings");
+
+    controller.setCompatibilityProfile(Tfs1098CompatibilityProfile::Vanilla);
+    require(controller.state().profile.compatibilityProfile == Tfs1098CompatibilityProfile::Vanilla,
+        "Server workspace must persist profile switch to vanilla");
+    require(!controller.state().capabilities.canUseSystemChannels,
+        "Vanilla Server workspace must not advertise semantic channels");
+}
+
 void testVpsLifecyclePipeline(const fs::path& root) {
     const auto project = createProjectFixture(root / "project-vps");
     populateAuthoring(project.root);
@@ -217,6 +250,7 @@ int main() {
 
     try {
         testExtendedPipeline(root);
+        testServerWorkspaceController(root);
         testVpsLifecyclePipeline(root);
         testHealthBlocksInvalidBuild(root);
         fs::remove_all(root, ignored);
