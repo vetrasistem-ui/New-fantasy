@@ -2,6 +2,7 @@
 
 #include "Foundation/FantasyFoundationV2.hpp"
 
+#include <algorithm>
 #include <cstdint>
 #include <stdexcept>
 #include <string>
@@ -65,7 +66,6 @@ public:
         for (const auto& variant : brush.variants) total += variant.weight;
         if (total == 0) throw std::runtime_error("brush variant total weight cannot be zero");
 
-        // Deterministic xorshift64* step. Same project command + seed => same preview/result.
         seed ^= seed >> 12;
         seed ^= seed << 25;
         seed ^= seed >> 27;
