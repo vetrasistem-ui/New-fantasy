@@ -149,10 +149,139 @@ jobs:
           wait "${TFS_PID}" || true
           trap - EXIT
 
-      - name: Upload MariaDB homologation log
+      - name: Prove 10.98 login save restart relogin persistence
+        shell: bash
+        env:
+          MYSQL_PWD: fantasy-ci
+          LD_LIBRARY_PATH: /usr/lib/x86_64-linux-gnu
+        run: |
+          set -euo pipefail
+
+          db_scalar() {
+            mariadb -N -B -h127.0.0.1 -P3306 -uforgottenserver forgottenserver -e "$1"
+          }
+
+          start_tfs() {
+            local log_file="$1"
+            rm -f "${log_file}"
+            pushd forgottenserver >/dev/null
+            ./tfs > "../${log_file}" 2>&1 &
+            TFS_PID=$!
+            popd >/dev/null
+
+            local online=0
+            for _ in $(seq 1 90); do
+              if grep -q "Forgotten Server Online!" "${log_file}"; then
+                online=1
+                break
+              fi
+              if ! kill -0 "${TFS_PID}" 2>/dev/null; then
+                echo "TFS exited before Online"
+                cat "${log_file}"
+                exit 1
+              fi
+              sleep 1
+            done
+            test "${online}" = "1"
+          }
+
+          stop_tfs() {
+            kill -TERM "${TFS_PID}" 2>/dev/null || true
+            wait "${TFS_PID}" || true
+          }
+
+          run_probe() {
+            local cycle="$1"
+            local ready_file="protocol-cycle${cycle}.ready"
+            local protocol_log="protocol-cycle${cycle}.log"
+            rm -f "${ready_file}" "${protocol_log}"
+
+            python3 Tools/Tfs1098/tfs1098_protocol_probe.py \
+              --host 127.0.0.1 \
+              --port 7172 \
+              --key forgottenserver/key.pem \
+              --account fantasy \
+              --password fantasy \
+              --character "Fantasy Test" \
+              --ready-file "${ready_file}" \
+              --hold-seconds 4 \
+              > "${protocol_log}" 2>&1 &
+            PROBE_PID=$!
+
+            local ready=0
+            for _ in $(seq 1 50); do
+              if [ -f "${ready_file}" ]; then
+                ready=1
+                break
+              fi
+              if ! kill -0 "${PROBE_PID}" 2>/dev/null; then
+                echo "Protocol probe exited before login became ready"
+                cat "${protocol_log}"
+                exit 1
+              fi
+              sleep 0.2
+            done
+            test "${ready}" = "1"
+
+            local online_rows
+            online_rows="$(db_scalar "SELECT COUNT(*) FROM players_online WHERE player_id=1")"
+            echo "cycle${cycle}_players_online_during_session=${online_rows}"
+            test "${online_rows}" = "1"
+
+            wait "${PROBE_PID}"
+            cat "${protocol_log}"
+
+            for _ in $(seq 1 50); do
+              online_rows="$(db_scalar "SELECT COUNT(*) FROM players_online WHERE player_id=1")"
+              if [ "${online_rows}" = "0" ]; then
+                break
+              fi
+              sleep 0.2
+            done
+            echo "cycle${cycle}_players_online_after_logout=${online_rows}"
+            test "${online_rows}" = "0"
+          }
+
+          INITIAL_STATE="$(db_scalar "SELECT CONCAT(posx,',',posy,',',posz,'|',lastlogin,'|',lastlogout) FROM players WHERE id=1")"
+          echo "initial_state=${INITIAL_STATE}"
+
+          start_tfs tfs-persistence-cycle1.log
+          run_probe 1
+          STATE1="$(db_scalar "SELECT CONCAT(posx,',',posy,',',posz,'|',lastlogin,'|',lastlogout) FROM players WHERE id=1")"
+          echo "state_after_cycle1=${STATE1}"
+          stop_tfs
+
+          IFS='|' read -r POS1 LOGIN1 LOGOUT1 <<< "${STATE1}"
+          test -n "${POS1}"
+          test "${LOGIN1}" -gt 0
+          test "${LOGOUT1}" -gt 0
+
+          sleep 2
+
+          start_tfs tfs-persistence-cycle2.log
+          run_probe 2
+          STATE2="$(db_scalar "SELECT CONCAT(posx,',',posy,',',posz,'|',lastlogin,'|',lastlogout) FROM players WHERE id=1")"
+          echo "state_after_cycle2=${STATE2}"
+          stop_tfs
+
+          IFS='|' read -r POS2 LOGIN2 LOGOUT2 <<< "${STATE2}"
+          test "${POS2}" = "${POS1}"
+          test "${LOGIN2}" -gt "${LOGIN1}"
+          test "${LOGOUT2}" -ge "${LOGOUT1}"
+          test "$(db_scalar "SELECT value FROM server_config WHERE config='db_version'")" = "30"
+
+          echo "TFS1098_MARIADB_PERSISTENCE PASS"
+          echo "persisted_position=${POS2}"
+          echo "lastlogin=${LOGIN1}->${LOGIN2}"
+          echo "lastlogout=${LOGOUT1}->${LOGOUT2}"
+
+      - name: Upload MariaDB homologation logs
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: tfs142-mariadb-homologation-${{ github.sha }}
           if-no-files-found: warn
-          path: tfs-mariadb.log
+          path: |
+            tfs-mariadb.log
+            tfs-persistence-cycle*.log
+            protocol-cycle*.log
