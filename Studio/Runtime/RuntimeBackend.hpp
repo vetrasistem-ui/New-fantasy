@@ -1,5 +1,7 @@
 #pragma once
 
+#include "RuntimeMessaging.hpp"
+
 #include <cstdint>
 #include <filesystem>
 #include <string>
@@ -25,6 +27,13 @@ struct RuntimeCapabilities {
     bool canLaunch = false;
     bool canStop = false;
     bool canStreamLogs = false;
+
+    // Neutral Fantasy-owned system/runtime capabilities. These deliberately do
+    // not expose protocol opcodes or TFS implementation details.
+    bool canUseSystemChannels = false;
+    bool canUseSemanticTags = false;
+    bool canUseZones = false;
+    bool canUseAppearanceExtensions = false;
 };
 
 struct RuntimePackageRequest {
@@ -87,6 +96,10 @@ public:
     [[nodiscard]] virtual const char* id() const noexcept = 0;
     [[nodiscard]] virtual const char* displayName() const noexcept = 0;
     [[nodiscard]] virtual RuntimeCapabilities capabilities() const noexcept = 0;
+
+    [[nodiscard]] virtual std::vector<RuntimeChannelBinding> systemChannelBindings() const {
+        return {};
+    }
 
     [[nodiscard]] virtual RuntimePackageReport packageProject(
         const RuntimePackageRequest& request) = 0;
