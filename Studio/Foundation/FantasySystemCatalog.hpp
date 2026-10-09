@@ -77,6 +77,12 @@ public:
         return ordered;
     }
 
+    // UI-facing compatibility name. Keep authoring surfaces descriptive while
+    // the canonical dependency algorithm remains executionOrder().
+    [[nodiscard]] std::vector<std::string> orderedSystemIds() const {
+        return executionOrder();
+    }
+
     [[nodiscard]] std::set<std::string> requiredChannels() const {
         std::set<std::string> channels;
         for (const auto& [id, definition] : systems_) {
