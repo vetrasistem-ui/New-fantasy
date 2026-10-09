@@ -1,10 +1,10 @@
 # Vanilla TFS 1.4.2 / 10.98 Runtime Homologation
 
-**Status:** PASS for Fantasy OTBM load, TFS startup, 10.98 login, character entry and movement.
+**Status:** PASS for Fantasy OTBM load, TFS startup, protocol 10.98 login/game entry/movement, real MariaDB bootstrap and save/restart/relogin persistence.
 
 ## Target runtime
 
-The validation used the official upstream release package:
+The validation uses the official upstream release package:
 
 - project: `otland/forgottenserver`;
 - release: `v1.4.2`;
@@ -12,11 +12,11 @@ The validation used the official upstream release package:
 - official artifact: `tfs-v1.4.2-ubuntu-gcc.tar.gz`;
 - protocol line: 10.98.
 
-The package was downloaded from the official GitHub release by the repository workflow `TFS 1.4.2 Homologation Tool`. The TFS executable was not rebuilt or patched.
+The TFS executable is not rebuilt or patched for these homologation gates.
 
 ## Fantasy output under test
 
-The tested map was the OTBM written by Fantasy from the pinned real 10.98 `global_dash` project:
+The real-map gate used the OTBM written by Fantasy from the pinned 10.98 `global_dash` project:
 
 ```text
 source canonical tiles: 6,106,271
@@ -26,21 +26,7 @@ output bytes:            64,919,912
 SHA-256: ae640e8b3a27b8ef108de56673c5b991ac99de5d6cfacb7516479ea2cbf74bed
 ```
 
-Runtime companions were the pinned 10.98 `items.otb`, `map-house.xml` and `map-spawn.xml`. The source OTBM was never overwritten.
-
-## Database fixture boundary
-
-The execution container did not provide MariaDB/MySQL. TFS requires a MySQL connection before map and login services become available, so homologation used a minimal MySQL-protocol fixture.
-
-For the map-load gate it returned startup/config responses and empty persistence results. For the login gate it additionally exposed one deterministic account/player fixture:
-
-```text
-account:   fantasy
-character: Fantasy Test
-position:  714,787,7
-```
-
-The fixture does not parse OTBM/OTB, create tiles, move creatures or implement the Tibia protocol. Those paths are executed by the unmodified TFS 1.4.2 binary. This proves runtime/protocol compatibility, not production database persistence behavior.
+Runtime companions were the matching 10.98 `items.otb`, `map-house.xml` and `map-spawn.xml`. The source OTBM was never overwritten.
 
 ## Vanilla TFS OTBM result — PASS
 
@@ -73,98 +59,176 @@ The real project is a PokéTibia map while the vanilla TFS datapack does not def
 
 These are datapack content gaps, not Writer/OTBM failures. They also prove TFS accepted the OTBM and proceeded to parse the external spawn definitions.
 
-## 10.98 login server — PASS
+## 10.98 protocol gate — PASS
 
-A headless 10.98 compatibility client reproduced the normal protocol stack used by OTClient/Tibia 10.x:
+The initial protocol homologation used a deterministic MySQL-protocol fixture only for persistence rows. The unmodified TFS executable still performed RSA, Adler, XTEA, authentication, player placement and movement.
 
-- 10.98 login packet;
-- RSA login blocks using the runtime public key;
-- Adler checksum framing;
-- XTEA session encryption;
-- account/password authentication;
-- session-key response;
-- character-list response.
-
-Observed result:
+Observed login-server result:
 
 ```text
 MOTD 31
-Welcome to The Forgotten Server!
-
-SESSION_KEY 'fantasy\nfantasy\n\n...'
+SESSION_KEY received
 CHAR_LIST [('Fantasy Test', ('Forgotten', '127.0.0.1', 7172, 0))]
 LOGIN_SERVER_PASS
 ```
 
-## 10.98 game entry — PASS
-
-The same client connected to the game service on port 7172, parsed the TFS challenge (`0x1F`), sent `ClientPendingGame` with the session key, completed RSA/XTEA negotiation and received the encrypted game startup payload.
-
-Observed startup packet began with normal 10.98 login-success/game data:
+Observed gameworld result:
 
 ```text
-GAME_CHALLENGE <timestamp> <random>
+GAME_CHALLENGE received
 GAME_PAYLOAD 13130 bytes
 first opcode: 0x17 (GameServerLoginSuccess)
 ```
 
-The player was loaded at the real exported-map position:
-
-```text
-714,787,7
-```
-
-## 10.98 movement — PASS
-
-The compatibility client sent the normal north-walk opcode:
+Movement proof:
 
 ```text
 ClientWalkNorth = 0x65
-```
-
-TFS responded with:
-
-```text
 GameServerMoveCreature = 0x6D
+714,787,7 -> 714,786,7
 ```
 
-The response decodes to the exact coordinate transition:
+This proves the basic Fantasy-written-map / vanilla-TFS / 10.98 protocol boundary independently from production persistence.
+
+## Real MariaDB bootstrap — PASS
+
+A second gate replaced the database fixture with a real `mariadb:10.11` service and the official TFS v1.4.2 `schema.sql`.
+
+Workflow:
 
 ```text
-before: 714,787,7
-after:  714,786,7
+.github/workflows/tfs142-mariadb-homologation.yml
 ```
 
-The same response also included the expected map-row update following the movement packet.
+The workflow is now `workflow_dispatch` only. It was temporarily triggered through the PR solely to collect the initial homologation evidence, then returned to manual-only mode.
 
-This proves that the unmodified TFS 1.4.2 runtime accepted the Fantasy-written map, authenticated a 10.98 client, instantiated a player on that map and executed movement over it.
+Bootstrap procedure:
+
+1. start MariaDB 10.11;
+2. import official `schema.sql`;
+3. seed account `fantasy` and player `Fantasy Test`;
+4. insert a stale `players_online` row;
+5. start the official TFS 1.4.2 binary;
+6. require `Forgotten Server Online!`;
+7. require the stale online row to be cleared by TFS;
+8. verify the database migration executed by TFS.
+
+Observed result:
+
+```text
+players_online_after_start=0
+db_version_after_start=30
+TFS142_MARIADB_BOOTSTRAP PASS
+
+The Forgotten Server - Version v1.4.2
+> Updating database to version 29 (account storages)
+> Database has been updated to version 30.
+>> Loading map
+> Map size: 2048x2048.
+>> Forgotten Server Online!
+```
+
+The official schema begins at database version 29 for this package and the runtime itself performs the `29 -> 30` migration during startup. That migration is part of the PASS evidence, not a mismatch.
+
+## Real MariaDB 10.98 save/restart/relogin — PASS
+
+A reusable homologation probe now lives at:
+
+```text
+Tools/Tfs1098/tfs1098_protocol_probe.py
+```
+
+It is intentionally a minimal compatibility probe rather than a game client. It uses the normal TFS gameworld protocol boundary:
+
+- server challenge `0x1F`;
+- protocol/client version 1098;
+- RSA login block;
+- Adler framing;
+- XTEA encryption;
+- real account/password authentication against MariaDB;
+- `GameServerLoginSuccess` (`0x17`);
+- `ClientLogout` (`0x14`).
+
+The persistence workflow performed two independent player sessions separated by a full TFS process restart.
+
+Initial database state:
+
+```text
+initial_state=100,100,7|0|0
+```
+
+Cycle 1:
+
+```text
+cycle1_players_online_during_session=1
+GAME_CHALLENGE timestamp=1791544061 random=10
+GAME_PACKET opcode=0x17 bytes=11378
+GAME_LOGIN PASS
+GAME_LOGOUT PASS
+cycle1_players_online_after_logout=0
+state_after_cycle1=95,117,7|1791544061|1791544065
+```
+
+TFS then stopped completely and was started again against the same MariaDB database.
+
+Cycle 2:
+
+```text
+cycle2_players_online_during_session=1
+GAME_CHALLENGE timestamp=1791544071 random=91
+GAME_PACKET opcode=0x17 bytes=11078
+GAME_LOGIN PASS
+GAME_LOGOUT PASS
+cycle2_players_online_after_logout=0
+state_after_cycle2=95,117,7|1791544071|1791544075
+```
+
+Final gate:
+
+```text
+TFS1098_MARIADB_PERSISTENCE PASS
+persisted_position=95,117,7
+lastlogin=1791544061->1791544071
+lastlogout=1791544065->1791544075
+```
+
+The seeded position `100,100,7` was not a valid player placement for the vanilla map. TFS placed the character at a valid runtime location `95,117,7`, saved that position on logout, and after a complete process restart the second session reused the same persisted location. The database also recorded distinct login/logout timestamps and `players_online` transitioned `0 -> 1 -> 0` in both sessions.
+
+Therefore this gate proves real persistence through the official TFS + MariaDB path rather than a mocked query layer.
 
 ## Gate conclusion
 
 ```text
-Fantasy canonical MapDocument          PASS
+Fantasy canonical MapDocument                 PASS
         ↓
-Fantasy OTBM v3 Writer                 PASS
+Fantasy OTBM v3 Writer                        PASS
         ↓
-Fantasy semantic reopen                PASS
+Fantasy semantic reopen                       PASS
         ↓
-vanilla TFS 1.4.2 IOMap load           PASS
+vanilla TFS 1.4.2 IOMap load                  PASS
         ↓
-TFS server startup / Online             PASS
+TFS server startup / Online                    PASS
         ↓
-10.98 login + session + char list       PASS
+10.98 login / game entry / movement            PASS
         ↓
-10.98 enter exported map                PASS
+real MariaDB 10.11 + official schema           PASS
         ↓
-10.98 walk 714,787,7 → 714,786,7        PASS
+TFS schema migration 29 -> 30                  PASS
+        ↓
+real account/player login                      PASS
+        ↓
+players_online lifecycle                       PASS
+        ↓
+logout/save -> TFS restart -> relogin          PASS
+        ↓
+persisted position + login/logout timestamps   PASS
 ```
 
 ## Remaining integration work
 
-The compatibility foundation is proven. Remaining work is product/runtime integration rather than proving the basic file/protocol boundary:
+The file, runtime, protocol and persistence foundations are now proven. Remaining work is primarily product acceptance and higher-level runtime integration:
 
-1. wire the proven export/start/stop flow into `Tfs1098 RuntimeBackend`;
-2. use a real MariaDB fixture for persistence lifecycle tests;
-3. repeat login/movement with the selected full Windows/OTClient 10.98 UI build;
-4. surface runtime logs/status inside Fantasy Studio;
-5. package server/client deployment workflow for local/VPS use.
+1. selected full Windows/OTClient 10.98 visual acceptance;
+2. expose/manage database/runtime configuration cleanly through the Studio/VPS deployment path;
+3. package server/client deployment for local and 24/7 VPS operation;
+4. begin mapping advanced PokéTibia runtime capabilities into Fantasy-owned generic systems without copying the reference fork into Fantasy Core.
