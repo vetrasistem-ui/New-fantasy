@@ -202,6 +202,20 @@ void testTfsBackend(const fs::path& selfExecutable) {
     assert(!rejectedDeployment.success);
     assert(!rejectedDeployment.errors.empty());
 
+    Tfs1098DeploymentBundleRequest childOutput = deployment;
+    childOutput.outputDirectory = output / "unsafe-bundle";
+    const auto rejectedChildOutput = Tfs1098DeploymentBundle::build(childOutput);
+    assert(!rejectedChildOutput.success);
+    assert(!rejectedChildOutput.errors.empty());
+    assert(fs::exists(output / "config.lua"));
+
+    Tfs1098DeploymentBundleRequest parentOutput = deployment;
+    parentOutput.outputDirectory = root;
+    const auto rejectedParentOutput = Tfs1098DeploymentBundle::build(parentOutput);
+    assert(!rejectedParentOutput.success);
+    assert(!rejectedParentOutput.errors.empty());
+    assert(fs::exists(output / "config.lua"));
+
     const fs::path logFile = output / "runtime-test.log";
     RuntimeLaunchRequest launch;
     launch.runtimeDirectory = output;
