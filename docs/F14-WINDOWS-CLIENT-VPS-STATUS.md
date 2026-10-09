@@ -83,7 +83,13 @@ Studio/Runtime/Tfs1098DeploymentBundle.hpp
 Tools/Tfs1098/build_vps_bundle.py
 ```
 
-The V5 Server workspace also exposes the C++ bundle builder through **Build VPS bundle**.
+The C++ builder is also exercised directly by a standalone cross-platform contract:
+
+```text
+Tools/Tfs1098/DeploymentBundleContract/
+```
+
+The V5 Server workspace exposes the C++ bundle builder through **Build VPS bundle**.
 
 An already-packaged Linux TFS1098 runtime is converted into:
 
@@ -117,15 +123,17 @@ Validation workflow:
 Verified matrix:
 
 ```text
-Ubuntu:   build lifecycle bundle                PASS
-Ubuntu:   reject unsafe output containment      PASS
-Ubuntu:   reject unsafe backup root             PASS
-Windows:  build lifecycle bundle                PASS
-Windows:  reject unsafe output containment      PASS
-Windows:  reject unsafe backup root             PASS
+Ubuntu:   compile/run C++ deployment contract   PASS
+Ubuntu:   build Python lifecycle bundle          PASS
+Ubuntu:   reject unsafe output containment       PASS
+Ubuntu:   reject unsafe backup root              PASS
+Windows:  compile/run C++ deployment contract   PASS
+Windows:  build Python lifecycle bundle          PASS
+Windows:  reject unsafe output containment       PASS
+Windows:  reject unsafe backup root              PASS
 ```
 
-The tests verify that:
+The C++ and Python tests verify that:
 
 - the source runtime is left intact;
 - systemd uses restart and NOFILE policies;
@@ -137,7 +145,8 @@ The tests verify that:
 - a failed health check follows the automatic rollback path;
 - `rollback.sh` can restore the most recent or an explicitly selected backup;
 - `release-policy.json` records backup/rollback policy;
-- the manifest advertises health/update/rollback support.
+- the manifest advertises health/update/rollback support;
+- unsafe source/output containment and invalid deployment paths are rejected.
 
 ## VPS lifecycle contract
 
@@ -233,8 +242,8 @@ OTCv8 Linux graphical acceptance             PASS
 OTCv8 Windows clean package                  PASS
 TFS1098 Windows protocol/runtime smoke       PASS
 OTCv8 Windows interactive graphical test     EXTERNAL / PENDING
-VPS lifecycle bundle contract (Linux)        PASS
-VPS lifecycle bundle contract (Windows)      PASS
+C++ VPS lifecycle contract (Linux/Windows)   PASS
+Python VPS lifecycle contract (Linux/Windows) PASS
 V5 Build VPS bundle integration              PASS
 Real remote VPS install/login/persistence    EXTERNAL / PENDING
 Real remote VPS update/rollback               EXTERNAL / PENDING
@@ -245,5 +254,7 @@ The exact Codex/local acceptance sequence is frozen in:
 ```text
 docs/CODEX-HANDOFF-FOUNDATION-V2.md
 ```
+
+**Validated implementation SHA:** `c72772d7bd755f7cd4b673044b116425a46e0524`
 
 Headless architecture and deployment contracts are complete; the remaining items require a real interactive Windows desktop, user-owned real assets, or a real remote Linux VPS.
