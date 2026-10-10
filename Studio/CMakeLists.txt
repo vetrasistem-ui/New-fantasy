@@ -88,6 +88,18 @@ add_library(fantasy-asset-registry
     ../Shared/Assets/Legacy/OtbReader.cpp
 )
 
+# High-level AI/Codex map commands stay above the canonical Map Core. They
+# resolve semantic Asset Catalog entries and compile them into the same
+# MapCommand batches used by the graphical editor.
+add_library(fantasy-map-generation
+    MapEngine/Generation/FantasyMapCommandsV1.cpp
+)
+target_link_libraries(fantasy-map-generation PUBLIC
+    fantasy-map-core
+    fantasy-foundation
+    fantasy-asset-registry
+)
+
 # OTBM and its external XML files stay isolated from the canonical map core.
 # Small fixtures may still materialize a neutral LegacyMapImportModel; large
 # projects use OtbmStreamReader so the full nodal tree/model is never retained.
@@ -125,7 +137,7 @@ add_library(fantasy-runtime
     Runtime/Tfs1098RuntimeBackend.cpp
 )
 
-foreach(target fantasy-studio-project fantasy-map-core fantasy-asset-registry fantasy-legacy-import fantasy-map-legacy-bridge fantasy-legacy-rendering fantasy-runtime)
+foreach(target fantasy-studio-project fantasy-map-core fantasy-asset-registry fantasy-map-generation fantasy-legacy-import fantasy-map-legacy-bridge fantasy-legacy-rendering fantasy-runtime)
     target_include_directories(${target} PUBLIC
         ${CMAKE_CURRENT_SOURCE_DIR}
         ${CMAKE_CURRENT_SOURCE_DIR}/..
@@ -176,6 +188,7 @@ target_link_libraries(fantasy-studio-gui PRIVATE
     fantasy-studio-project
     fantasy-map-core
     fantasy-asset-registry
+    fantasy-map-generation
     fantasy-map-legacy-bridge
     fantasy-legacy-rendering
     fantasy-runtime
@@ -269,6 +282,14 @@ add_executable(fantasy-brush-engine-tests
 )
 target_link_libraries(fantasy-brush-engine-tests PRIVATE fantasy-map-core)
 
+add_executable(fantasy-map-generation-v1-tests
+    MapEngine/Generation/FantasyMapCommandsV1Tests.cpp
+)
+target_link_libraries(fantasy-map-generation-v1-tests PRIVATE
+    fantasy-map-generation
+    fantasy-legacy-import
+)
+
 add_executable(fantasy-map-legacy-adapter-tests
     MapEngine/Import/LegacyMapAdapterTests.cpp
 )
@@ -358,7 +379,7 @@ target_include_directories(fantasy-tfs1098-workflow-tests PRIVATE
 )
 target_link_libraries(fantasy-tfs1098-workflow-tests PRIVATE fantasy-runtime fantasy-map-core)
 
-foreach(target fantasy-asset-registry-tests fantasy-legacy-binary-readers-tests fantasy-legacy-texture-cache-tests fantasy-otbm-reader-tests fantasy-legacy-aux-xml-tests fantasy-map-core-v1-tests fantasy-map-clipboard-tests fantasy-brush-engine-tests fantasy-map-legacy-adapter-tests fantasy-map-project-loader-tests fantasy-runtime-backend-tests fantasy-foundation-persistence-tests fantasy-authoring-repository-tests fantasy-build-pipeline-tests fantasy-extended-foundation-tests fantasy-tfs1098-workflow-tests)
+foreach(target fantasy-asset-registry-tests fantasy-legacy-binary-readers-tests fantasy-legacy-texture-cache-tests fantasy-otbm-reader-tests fantasy-legacy-aux-xml-tests fantasy-map-core-v1-tests fantasy-map-clipboard-tests fantasy-brush-engine-tests fantasy-map-generation-v1-tests fantasy-map-legacy-adapter-tests fantasy-map-project-loader-tests fantasy-runtime-backend-tests fantasy-foundation-persistence-tests fantasy-authoring-repository-tests fantasy-build-pipeline-tests fantasy-extended-foundation-tests fantasy-tfs1098-workflow-tests)
     if(MSVC)
         target_compile_options(${target} PRIVATE /W4 /permissive-)
     else()
@@ -373,6 +394,7 @@ add_test(NAME fantasy-editor-operations-tests COMMAND fantasy-editor-operations-
 add_test(NAME fantasy-map-core-v1-tests COMMAND fantasy-map-core-v1-tests)
 add_test(NAME fantasy-map-clipboard-tests COMMAND fantasy-map-clipboard-tests)
 add_test(NAME fantasy-brush-engine-tests COMMAND fantasy-brush-engine-tests)
+add_test(NAME fantasy-map-generation-v1-tests COMMAND fantasy-map-generation-v1-tests)
 add_test(NAME fantasy-map-legacy-adapter-tests COMMAND fantasy-map-legacy-adapter-tests)
 add_test(NAME fantasy-map-project-loader-tests COMMAND fantasy-map-project-loader-tests)
 add_test(NAME fantasy-asset-registry-tests COMMAND fantasy-asset-registry-tests)
