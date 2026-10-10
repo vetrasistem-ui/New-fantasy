@@ -7,8 +7,10 @@
 #include "Shared/Assets/Legacy/SprReader.hpp"
 #include "Shared/Assets/LegacyAssetRegistryBuilder.hpp"
 
+#include <cstdlib>
 #include <filesystem>
 #include <fstream>
+#include <iomanip>
 #include <iostream>
 #include <sstream>
 #include <stdexcept>
