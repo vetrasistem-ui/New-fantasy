@@ -13,6 +13,7 @@
 #include <filesystem>
 #include <fstream>
 #include <iostream>
+#include <memory>
 #include <stdexcept>
 #include <string>
 #include <unordered_map>
@@ -39,13 +40,14 @@ void usage() {
     std::cout
         << "Fantasy real asset candidate scanner\n\n"
         << "Usage:\n"
-        << "  fantasy-asset-candidates --dat <Tibia.dat> --spr <Tibia.spr> --otb <items.otb>\\\n"
+        << "  fantasy-asset-candidates --dat <Tibia.dat> [--spr <Tibia.spr>] --otb <items.otb>\\\n"
         << "      --otbm <global_dash.otbm> --output <asset-candidates.json>\\\n"
         << "      [--preview-dir <asset-previews>] [--profile pokefans1098]\\\n"
         << "      [--top-grounds 80] [--top-objects 160]\n\n"
         << "The scanner streams the real OTBM and ranks actually-used server IDs.\n"
         << "Each candidate includes serverId, clientId, kind, spriteIds and usage count.\n"
-        << "When --preview-dir is set, the first real sprite is exported as a 32x32 BMP.\n";
+        << "--spr is optional for structural scan; required for sprite validation/previews.\n"
+        << "With SPR and --preview-dir, the first real sprite is exported as a 32x32 BMP.\n";
 }
 
 std::size_t parseSize(const std::string& value, const char* label) {
@@ -84,8 +86,8 @@ Arguments parse(int argc, char** argv) {
         }
     }
 
-    if (args.dat.empty() || args.spr.empty() || args.otb.empty() || args.otbm.empty() || args.output.empty()) {
-        throw std::invalid_argument("--dat, --spr, --otb, --otbm and --output are required");
+    if (args.dat.empty() || args.otb.empty() || args.otbm.empty() || args.output.empty()) {
+        throw std::invalid_argument("--dat, --otb, --otbm and --output are required");
     }
     return args;
 }
@@ -169,7 +171,7 @@ void writeSpriteBmp(const fs::path& path, const fantasy::assets::legacy::SpriteR
 nlohmann::json ranked(
     const std::unordered_map<std::uint32_t, std::uint64_t>& counts,
     const fantasy::assets::FantasyAssetRegistry& registry,
-    const fantasy::assets::legacy::SprReader& spr,
+    const fantasy::assets::legacy::SprReader* spr,
     std::size_t limit,
     const fs::path& previewDir,
     const std::string& prefix) {
@@ -193,23 +195,27 @@ nlohmann::json ranked(
             row["kind"] = kindId(record->kind);
             row["spriteIds"] = record->spriteIds;
 
-            bool spritesValid = !record->spriteIds.empty();
-            for (const auto spriteId : record->spriteIds) {
-                if (spriteId == 0U || !spr.hasSprite(spriteId)) {
-                    spritesValid = false;
-                    break;
+            if (spr != nullptr) {
+                bool spritesValid = !record->spriteIds.empty();
+                for (const auto spriteId : record->spriteIds) {
+                    if (spriteId == 0U || !spr->hasSprite(spriteId)) {
+                        spritesValid = false;
+                        break;
+                    }
                 }
+                row["spritesValid"] = spritesValid;
+            } else {
+                row["spritesValidation"] = "not_checked";
             }
-            row["spritesValid"] = spritesValid;
 
-            if (!previewDir.empty() && !record->spriteIds.empty()) {
+            if (spr != nullptr && !previewDir.empty() && !record->spriteIds.empty()) {
                 const auto spriteId = record->spriteIds.front();
-                if (spriteId != 0U && spr.hasSprite(spriteId)) {
+                if (spriteId != 0U && spr->hasSprite(spriteId)) {
                     const auto filename = prefix + "-server-" + std::to_string(serverId) +
                         "-client-" + std::to_string(record->clientId) +
                         "-sprite-" + std::to_string(spriteId) + ".bmp";
                     const auto previewPath = previewDir / filename;
-                    writeSpriteBmp(previewPath, spr.readSprite(spriteId));
+                    writeSpriteBmp(previewPath, spr->readSprite(spriteId));
                     row["preview"] = previewPath.generic_string();
                 }
             }
@@ -227,7 +233,9 @@ int main(int argc, char** argv) {
     try {
         const auto args = parse(argc, argv);
         const fantasy::assets::legacy::DatReader1057 dat(args.dat);
-        const fantasy::assets::legacy::SprReader spr(args.spr);
+        std::unique_ptr<fantasy::assets::legacy::SprReader> spr;
+        if (!args.spr.empty()) spr = std::make_unique<fantasy::assets::legacy::SprReader>(args.spr);
+        if (!spr && !args.previewDir.empty()) std::cout << "PREVIEW_SKIPPED no SPR supplied\n";
         const fantasy::assets::legacy::OtbReader otb(args.otb);
         const auto registry = fantasy::assets::LegacyAssetRegistryBuilder{}.build(args.profile, otb, dat);
         if (registry.registry.size() == 0U) throw std::runtime_error("real legacy registry is empty");
@@ -255,14 +263,20 @@ int main(int argc, char** argv) {
                 {"items", map.result().diagnostics.itemCount},
                 {"assetRegistry", registry.registry.size()},
                 {"datSignature", dat.header().signature},
-                {"sprSignature", spr.info().signature},
-                {"sprCount", spr.info().spriteCount},
                 {"otbMajor", otb.version().major},
                 {"otbMinor", otb.version().minor},
             }},
-            {"grounds", ranked(grounds, registry.registry, spr, args.topGrounds, args.previewDir, "ground")},
-            {"objects", ranked(objects, registry.registry, spr, args.topObjects, args.previewDir, "object")},
+            {"grounds", ranked(grounds, registry.registry, spr.get(), args.topGrounds, args.previewDir, "ground")},
+            {"objects", ranked(objects, registry.registry, spr.get(), args.topObjects, args.previewDir, "object")},
         };
+        if (spr) {
+            report["source"]["sprSignature"] = spr->info().signature;
+            report["source"]["sprCount"] = spr->info().spriteCount;
+        } else {
+            report["source"]["spriteSource"] = "not_provided";
+        }
+        report["source"]["uniqueGrounds"] = grounds.size();
+        report["source"]["uniqueObjects"] = objects.size();
 
         if (args.output.has_parent_path()) fs::create_directories(args.output.parent_path());
         std::ofstream out(args.output, std::ios::binary | std::ios::trunc);
@@ -275,7 +289,7 @@ int main(int argc, char** argv) {
                   << " unique_grounds=" << grounds.size()
                   << " unique_objects=" << objects.size()
                   << " output=\"" << args.output.string() << "\"";
-        if (!args.previewDir.empty()) std::cout << " previews=\"" << args.previewDir.string() << "\"";
+        if (spr && !args.previewDir.empty()) std::cout << " previews=\"" << args.previewDir.string() << "\"";
         std::cout << '\n';
         return 0;
     } catch (const std::exception& error) {

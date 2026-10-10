@@ -12,6 +12,7 @@
 #include <fstream>
 #include <iomanip>
 #include <iostream>
+#include <memory>
 #include <sstream>
 #include <stdexcept>
 #include <string>
@@ -35,11 +36,13 @@ void usage() {
     std::cout
         << "Fantasy real-asset map generator\n\n"
         << "Usage:\n"
-        << "  fantasy-map-generate --dat <Tibia.dat> --spr <Tibia.spr> --otb <items.otb>\\\n"
+        << "  fantasy-map-generate --dat <Tibia.dat> [--spr <Tibia.spr>] --otb <items.otb>\\\n"
         << "      --bindings <real-asset-bindings.json> --script <map.fmapcmd>\\\n"
         << "      --output-root <project-dir> [--profile pokefans1098] [--catalog-out <asset-catalog.json>]\n\n"
         << "The bindings file maps semantic ids such as terrain.grass to REAL legacy serverIds.\n"
-        << "The tool validates serverId -> clientId -> spriteIds against DAT/OTB/SPR before generation.\n";
+        << "The tool validates serverId -> clientId -> spriteIds against DAT/OTB before generation.\n"
+        << "--spr is optional for structural generation; physical sprite validation requires SPR.\n"
+        << "Without SPR the generated map is not visually validated.\n";
 }
 
 Arguments parse(int argc, char** argv) {
@@ -67,9 +70,9 @@ Arguments parse(int argc, char** argv) {
         }
     }
 
-    if (args.dat.empty() || args.spr.empty() || args.otb.empty() || args.bindings.empty() ||
+    if (args.dat.empty() || args.otb.empty() || args.bindings.empty() ||
         args.script.empty() || args.outputRoot.empty()) {
-        throw std::invalid_argument("--dat, --spr, --otb, --bindings, --script and --output-root are required");
+        throw std::invalid_argument("--dat, --otb, --bindings, --script and --output-root are required");
     }
     return args;
 }
@@ -89,7 +92,9 @@ int main(int argc, char** argv) {
         const auto args = parse(argc, argv);
 
         const fantasy::assets::legacy::DatReader1057 dat(args.dat);
-        const fantasy::assets::legacy::SprReader spr(args.spr);
+        std::unique_ptr<fantasy::assets::legacy::SprReader> spr;
+        if (!args.spr.empty()) spr = std::make_unique<fantasy::assets::legacy::SprReader>(args.spr);
+        else std::cout << "SPR_VALIDATION SKIPPED reason=no_spr_supplied\n";
         const fantasy::assets::legacy::OtbReader otb(args.otb);
 
         const auto registryResult = fantasy::assets::LegacyAssetRegistryBuilder{}.build(args.profile, otb, dat);
@@ -104,13 +109,15 @@ int main(int argc, char** argv) {
         }
 
         const auto binding = fantasy::studio::mapgen::FantasyRealAssetBinder::bind(
-            manifest, registryResult.registry, &spr);
+            manifest, registryResult.registry, spr.get());
 
         std::cout << "REAL_ASSET_REGISTRY profile=" << args.profile
                   << " registered=" << registryResult.registry.size()
                   << " dat_signature=0x" << std::hex << dat.header().signature
-                  << " spr_signature=0x" << spr.info().signature << std::dec
-                  << " spr_count=" << spr.info().spriteCount
+                  << std::dec;
+        if (spr) std::cout << " spr_signature=0x" << std::hex << spr->info().signature << std::dec
+                          << " spr_count=" << spr->info().spriteCount;
+        std::cout
                   << " otb=" << otb.version().major << '.' << otb.version().minor
                   << '\n';
 

@@ -62,3 +62,14 @@ Game/Imports/Legacy/*
 .DS_Store
 Thumbs.db
 desktop.ini
+
+# Historical local distribution archives (F00-CLOSE; exact paths only)
+/fantasy-real-asset-poc-windows.zip
+/fantasy-studio-windows.zip
+/item editor/ItemEditor-0.5.1.tar.gz
+/item editor/ItemEditor-0.5.1.zip
+/item editor/ItemEditor.zip
+/item editor/sprites_transparentes.rar
+
+# Existing generated cache exposed after preserving the local upstream ignore file
+/item editor/ItemEditor-0.5.1/ItemEditor-0.5.1/Source/PluginTwo/StyleCop.Cache

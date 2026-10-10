@@ -8,6 +8,7 @@
 #include "Shared/Assets/Legacy/OtbReader.hpp"
 #include "Shared/Assets/Legacy/SprReader.hpp"
 #include "Shared/Formats/Legacy/OtbmReader.hpp"
+#include "Tools/MapAtlas/MapAtlasExporter.hpp"
 
 #include <array>
 #include <filesystem>
@@ -34,6 +35,7 @@ void printUsage() {
               << "  fantasy-legacy-inspect --project --otbm <map.otbm> --otb <items.otb> --dat <Tibia.dat> --spr <Tibia.spr>\n"
               << "      [--house <map-house.xml>] [--spawn <map-spawn.xml>] [--profile <id>]\n"
               << "      [--edit-smoke] [--write-otbm <new-map.otbm>]\n"
+              << "      [--atlas-export <empty-directory>] read-only derived CSV index\n"
               << "  --write-otbm always writes a new file, then reopens and verifies it.\n"
               << "  options may be combined to inspect a matching legacy pack\n";
 }
@@ -335,6 +337,7 @@ int main(int argc, char** argv) {
         fs::path housePath;
         fs::path spawnPath;
         fs::path writeOtbmPath;
+        fs::path atlasExportPath;
         std::string profileId = "pokefans1098";
         std::uint32_t itemId = 0;
         std::uint32_t spriteId = 0;
@@ -346,6 +349,7 @@ int main(int argc, char** argv) {
             if (arg == "--project") projectMode = true;
             else if (arg == "--edit-smoke") editSmoke = true;
             else if (arg == "--write-otbm" && i + 1 < argc) writeOtbmPath = argv[++i];
+            else if (arg == "--atlas-export" && i + 1 < argc) atlasExportPath = argv[++i];
             else if (arg == "--dat" && i + 1 < argc) datPath = argv[++i];
             else if (arg == "--spr" && i + 1 < argc) sprPath = argv[++i];
             else if (arg == "--otb" && i + 1 < argc) otbPath = argv[++i];
@@ -359,6 +363,9 @@ int main(int argc, char** argv) {
         }
 
         if (editSmoke || !writeOtbmPath.empty()) projectMode = true;
+        if (!atlasExportPath.empty() && (!projectMode || editSmoke || !writeOtbmPath.empty())) {
+            throw std::runtime_error("--atlas-export requires --project and cannot combine with edit/write modes");
+        }
         if (projectMode) {
             if (otbmPath.empty() || otbPath.empty() || datPath.empty() || sprPath.empty()) {
                 throw std::runtime_error("--project requires --otbm, --otb, --dat and --spr");
@@ -382,6 +389,11 @@ int main(int argc, char** argv) {
             MapDocument document;
             const auto result = LegacyMapProjectLoader{}.load(document, config);
             printProjectReport(document, result);
+            if (result.report.success && !atlasExportPath.empty()) {
+                const auto atlas = fantasy::atlas::MapAtlasExporter{}.exportMap(document, result.assets, config, atlasExportPath);
+                std::cout << "ATLAS_EXPORT PASS tiles=" << atlas.tiles << " items=" << atlas.items
+                          << " assets=" << atlas.assets << '\n';
+            }
             return result.report.success ? 0 : 1;
         }
 

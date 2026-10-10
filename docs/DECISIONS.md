@@ -1,5 +1,15 @@
 # Architecture Decisions
 
+## Atlas V1 — Read-only derived structural index (2026-10-10)
+
+The owner authorized a CSV/SQLite Atlas over the existing LegacyMapProjectLoader,
+MapDocument and homologated asset registry. This is a disposable analysis index,
+not a runtime/persistence change or a replacement for OTBM/FMAP. No new OTBM parser
+or items.xml semantic authority is introduced. Sources remain immutable and paths
+in generated manifests are relative. Small-map export/SQL acceptance must pass
+before the real map is indexed. See `docs/FANTASY-MAP-ATLAS-V1.md` for definitions.
+
+
 ## ADR-001 — Runtime 10.98 is reference, not destination
 
 **Status:** supersedes the previous decision that made TFS 1.4.2 / 10.98 the final runtime.

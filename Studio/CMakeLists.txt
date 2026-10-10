@@ -8,6 +8,9 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 
 include(FetchContent)
 
+option(FANTASY_BUILD_GUI "Build Fantasy Studio graphical targets" ON)
+
+if(FANTASY_BUILD_GUI)
 # Native 2D baseline: SDL3 for platform/input, SDL_Renderer3 for rendering,
 # Dear ImGui for editor tooling. Exact dependency pins are in docs/UPSTREAMS.md.
 set(SDL_SHARED OFF CACHE BOOL "" FORCE)
@@ -16,9 +19,6 @@ set(SDL_TEST_LIBRARY OFF CACHE BOOL "" FORCE)
 set(SDL_TESTS OFF CACHE BOOL "" FORCE)
 set(SDL_EXAMPLES OFF CACHE BOOL "" FORCE)
 set(SDL_INSTALL OFF CACHE BOOL "" FORCE)
-set(PUGIXML_INSTALL OFF CACHE BOOL "" FORCE)
-set(PUGIXML_BUILD_TESTS OFF CACHE BOOL "" FORCE)
-set(JSON_BuildTests OFF CACHE INTERNAL "" FORCE)
 
 FetchContent_Declare(
     sdl3
@@ -33,6 +33,11 @@ FetchContent_Declare(
     GIT_TAG v1.92.9b
     GIT_SHALLOW TRUE
 )
+endif()
+
+set(PUGIXML_INSTALL OFF CACHE BOOL "" FORCE)
+set(PUGIXML_BUILD_TESTS OFF CACHE BOOL "" FORCE)
+set(JSON_BuildTests OFF CACHE INTERNAL "" FORCE)
 
 FetchContent_Declare(
     pugixml
@@ -48,7 +53,10 @@ FetchContent_Declare(
     GIT_SHALLOW TRUE
 )
 
-FetchContent_MakeAvailable(sdl3 imgui pugixml nlohmann_json)
+if(FANTASY_BUILD_GUI)
+    FetchContent_MakeAvailable(sdl3 imgui)
+endif()
+FetchContent_MakeAvailable(pugixml nlohmann_json)
 
 # Foundation V2 authoring/persistence contracts are runtime-neutral. The
 # interface target centralizes include paths and the pinned JSON dependency so
@@ -122,6 +130,7 @@ target_link_libraries(fantasy-map-legacy-bridge PUBLIC
     fantasy-legacy-import
 )
 
+if(FANTASY_BUILD_GUI)
 add_library(fantasy-legacy-rendering
     Rendering/LegacySpriteTextureCache.cpp
 )
@@ -130,6 +139,7 @@ target_link_libraries(fantasy-legacy-rendering PUBLIC
     fantasy-asset-registry
     SDL3::SDL3
 )
+endif()
 
 # Runtime backends remain outside Fantasy Map Core. TFS 1.4.2 / 10.98 is the
 # first external backend and is staged/launched through this neutral boundary.
@@ -138,6 +148,9 @@ add_library(fantasy-runtime
 )
 
 foreach(target fantasy-studio-project fantasy-map-core fantasy-asset-registry fantasy-map-generation fantasy-legacy-import fantasy-map-legacy-bridge fantasy-legacy-rendering fantasy-runtime)
+    if(NOT TARGET ${target})
+        continue()
+    endif()
     target_include_directories(${target} PUBLIC
         ${CMAKE_CURRENT_SOURCE_DIR}
         ${CMAKE_CURRENT_SOURCE_DIR}/..
@@ -150,6 +163,7 @@ foreach(target fantasy-studio-project fantasy-map-core fantasy-asset-registry fa
     endif()
 endforeach()
 
+if(FANTASY_BUILD_GUI)
 add_library(fantasy-imgui STATIC
     ${imgui_SOURCE_DIR}/imgui.cpp
     ${imgui_SOURCE_DIR}/imgui_draw.cpp
@@ -170,6 +184,7 @@ if(MSVC)
 else()
     target_compile_options(fantasy-imgui PRIVATE -Wall -Wextra)
 endif()
+endif()
 
 add_executable(fantasy-studio
     Core/main.cpp
@@ -179,6 +194,7 @@ target_link_libraries(fantasy-studio PRIVATE fantasy-studio-project fantasy-map-
 # V5 keeps the accepted shell as the visual source. The runtime-enabled entry
 # layers the real 10.98 map + Server workspace over that shell while preserving
 # the earlier StudioAppV5Entry.cpp as a rollback/reference point.
+if(FANTASY_BUILD_GUI)
 add_executable(fantasy-studio-gui
     UI/StudioAppV5RuntimeEntry.cpp
     UI/StudioTheme.cpp
@@ -211,15 +227,23 @@ add_custom_target(fantasy-studio-presentation
         "$<TARGET_FILE_DIR:fantasy-studio-gui>/StudioVisual"
 )
 add_dependencies(fantasy-studio-gui fantasy-studio-presentation)
+endif()
 
 add_executable(fantasy-legacy-inspect
     ../Tools/LegacyInspect/main.cpp
+    ../Tools/MapAtlas/MapAtlasExporter.cpp
 )
 target_include_directories(fantasy-legacy-inspect PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}
     ${CMAKE_CURRENT_SOURCE_DIR}/..
 )
-target_link_libraries(fantasy-legacy-inspect PRIVATE fantasy-map-legacy-bridge)
+target_link_libraries(fantasy-legacy-inspect PRIVATE fantasy-map-legacy-bridge nlohmann_json::nlohmann_json)
+add_executable(fantasy-map-atlas-test
+    ../Tools/MapAtlas/MapAtlasExporterTest.cpp
+    ../Tools/MapAtlas/MapAtlasExporter.cpp
+)
+target_include_directories(fantasy-map-atlas-test PRIVATE ${CMAKE_CURRENT_SOURCE_DIR} ${CMAKE_CURRENT_SOURCE_DIR}/..)
+target_link_libraries(fantasy-map-atlas-test PRIVATE fantasy-map-legacy-bridge nlohmann_json::nlohmann_json)
 if(MSVC)
     target_compile_options(fantasy-legacy-inspect PRIVATE /W4 /permissive-)
 else()
@@ -242,6 +266,7 @@ else()
     target_compile_options(fantasy-map-generate PRIVATE -Wall -Wextra -Wpedantic)
 endif()
 
+if(FANTASY_BUILD_GUI)
 add_executable(fantasy-legacy-preview
     UI/LegacyPreviewApp.cpp
     UI/StudioTheme.cpp
@@ -257,6 +282,7 @@ if(MSVC)
     target_compile_options(fantasy-legacy-preview PRIVATE /W4 /permissive-)
 else()
     target_compile_options(fantasy-legacy-preview PRIVATE -Wall -Wextra -Wpedantic)
+endif()
 endif()
 
 add_executable(fantasy-studio-project-tests
@@ -339,10 +365,12 @@ target_include_directories(fantasy-legacy-binary-readers-tests PRIVATE
 )
 target_link_libraries(fantasy-legacy-binary-readers-tests PRIVATE fantasy-asset-registry)
 
+if(FANTASY_BUILD_GUI)
 add_executable(fantasy-legacy-texture-cache-tests
     Rendering/LegacySpriteTextureCacheTests.cpp
 )
 target_link_libraries(fantasy-legacy-texture-cache-tests PRIVATE fantasy-legacy-rendering)
+endif()
 
 add_executable(fantasy-otbm-reader-tests
     ../Shared/Formats/Legacy/OtbmReaderTests.cpp
@@ -401,6 +429,9 @@ target_include_directories(fantasy-tfs1098-workflow-tests PRIVATE
 target_link_libraries(fantasy-tfs1098-workflow-tests PRIVATE fantasy-runtime fantasy-map-core)
 
 foreach(target fantasy-asset-registry-tests fantasy-legacy-binary-readers-tests fantasy-legacy-texture-cache-tests fantasy-otbm-reader-tests fantasy-legacy-aux-xml-tests fantasy-map-core-v1-tests fantasy-map-clipboard-tests fantasy-brush-engine-tests fantasy-map-generation-v1-tests fantasy-real-asset-binding-tests fantasy-map-legacy-adapter-tests fantasy-map-project-loader-tests fantasy-runtime-backend-tests fantasy-foundation-persistence-tests fantasy-authoring-repository-tests fantasy-build-pipeline-tests fantasy-extended-foundation-tests fantasy-tfs1098-workflow-tests)
+    if(NOT TARGET ${target})
+        continue()
+    endif()
     if(MSVC)
         target_compile_options(${target} PRIVATE /W4 /permissive-)
     else()
@@ -421,7 +452,9 @@ add_test(NAME fantasy-map-legacy-adapter-tests COMMAND fantasy-map-legacy-adapte
 add_test(NAME fantasy-map-project-loader-tests COMMAND fantasy-map-project-loader-tests)
 add_test(NAME fantasy-asset-registry-tests COMMAND fantasy-asset-registry-tests)
 add_test(NAME fantasy-legacy-binary-readers-tests COMMAND fantasy-legacy-binary-readers-tests)
-add_test(NAME fantasy-legacy-texture-cache-tests COMMAND fantasy-legacy-texture-cache-tests)
+if(FANTASY_BUILD_GUI)
+    add_test(NAME fantasy-legacy-texture-cache-tests COMMAND fantasy-legacy-texture-cache-tests)
+endif()
 add_test(NAME fantasy-otbm-reader-tests COMMAND fantasy-otbm-reader-tests)
 add_test(NAME fantasy-legacy-aux-xml-tests COMMAND fantasy-legacy-aux-xml-tests)
 add_test(NAME fantasy-runtime-backend-tests COMMAND fantasy-runtime-backend-tests)
