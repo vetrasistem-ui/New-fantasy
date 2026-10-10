@@ -65,6 +65,7 @@ jobs:
             build/studio/Release/FantasyStudio.exe
             build/studio/Release/fantasy-legacy-inspect.exe
             build/studio/Release/fantasy-legacy-preview.exe
+            build/studio/Release/fantasy-map-generate.exe
             build/studio/Release/StudioVisual/
 
       - name: Configure Fantasy Server
