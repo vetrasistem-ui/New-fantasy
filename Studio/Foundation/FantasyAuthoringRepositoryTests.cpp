@@ -74,6 +74,56 @@ void testModernAssetAndBrushCrud(FantasyAuthoringRepository& repository) {
     require(repository.removeModernAsset(asset.id), "modern asset remove must report success");
 }
 
+void testAssetCatalogCrudAndSemanticQueries(FantasyAuthoringRepository& repository) {
+    FantasyAssetCatalog catalog;
+    catalog.profileId = "assets.1098.test";
+    catalog.families = {
+        {"terrain.sand.basic", "Basic Sand", {"terrain", "sand", "ground"}, "brush.terrain.sand"},
+        {"terrain.water.basic", "Basic Water", {"terrain", "water", "ground"}, "brush.terrain.water"},
+        {"structure.wall.stone", "Stone Wall", {"structure", "wall", "stone"}, "brush.wall.stone"},
+    };
+    catalog.entries = {
+        {"terrain.sand.center.a", AssetCatalogSourceKind::LegacyRegistry, "legacy.test.item.4526",
+            "terrain.sand.basic", "center", {"terrain", "sand", "ground", "desert", "beach"}, 1},
+        {"terrain.sand.center.b", AssetCatalogSourceKind::LegacyRegistry, "legacy.test.item.4527",
+            "terrain.sand.basic", "center", {"terrain", "sand", "ground", "desert", "beach"}, 3},
+        {"terrain.water.center", AssetCatalogSourceKind::LegacyRegistry, "legacy.test.item.4608",
+            "terrain.water.basic", "center", {"terrain", "water", "ground"}, 1},
+        {"structure.wall.stone.segment", AssetCatalogSourceKind::LegacyRegistry, "legacy.test.item.1029",
+            "structure.wall.stone", "segment", {"structure", "wall", "stone"}, 1},
+    };
+
+    repository.saveAssetCatalog(catalog);
+    require(repository.hasAssetCatalog(), "saved semantic asset catalog must be discoverable");
+
+    const auto loaded = repository.loadAssetCatalog();
+    require(loaded.profileId == catalog.profileId, "asset catalog profile must survive repository roundtrip");
+    require(loaded.families.size() == 3U && loaded.entries.size() == 4U,
+        "asset catalog families and entries must survive repository roundtrip");
+    require(loaded.findByTags({"terrain", "sand"}).size() == 2U,
+        "semantic tag query must find both sand variants");
+    require(loaded.familyMembers("terrain.sand.basic", "center").size() == 2U,
+        "family role query must find both sand center variants");
+
+    const auto* selectedA = loaded.chooseFamilyMember("terrain.sand.basic", "center", 12345U);
+    const auto* selectedB = loaded.chooseFamilyMember("terrain.sand.basic", "center", 12345U);
+    require(selectedA != nullptr && selectedB != nullptr && selectedA->id == selectedB->id,
+        "semantic family selection must be deterministic for the same seed");
+
+    auto invalid = catalog;
+    invalid.entries.front().familyId = "terrain.family.missing";
+    bool rejectedMissingFamily = false;
+    try {
+        invalid.validate();
+    } catch (const std::invalid_argument&) {
+        rejectedMissingFamily = true;
+    }
+    require(rejectedMissingFamily, "asset catalog must reject entries that reference a missing family");
+
+    require(repository.removeAssetCatalog(), "asset catalog remove must report success");
+    require(!repository.hasAssetCatalog(), "asset catalog must disappear after remove");
+}
+
 void testSortedListing(FantasyAuthoringRepository& repository) {
     for (const std::string id : {"item.zeta", "item.alpha", "item.middle"}) {
         ItemDefinition item;
@@ -96,6 +146,7 @@ int main() {
         FantasyAuthoringRepository repository(root);
         testZoneAndItemCrud(repository);
         testModernAssetAndBrushCrud(repository);
+        testAssetCatalogCrudAndSemanticQueries(repository);
         testSortedListing(repository);
         fs::remove_all(root, ignored);
         std::cout << "FANTASY_AUTHORING_REPOSITORY PASS\n";
