@@ -6,6 +6,7 @@
 #include "Project/ProjectManager.hpp"
 #include "Runtime/Tfs1098RuntimeProfile.hpp"
 
+#include <algorithm>
 #include <filesystem>
 #include <string>
 
@@ -84,7 +85,8 @@ public:
 private:
     template <typename AddIssue>
     static void validateRepository(const FantasyAuthoringRepository& repository, AddIssue&& add) {
-        if (repository.assetProfiles().empty()) {
+        const auto assetProfileIds = repository.assetProfiles();
+        if (assetProfileIds.empty()) {
             add(HealthSeverity::Error, "assets.profile.missing", "At least one Fantasy asset profile is required");
         }
 
@@ -96,8 +98,33 @@ private:
         validateCollection("class", repository.classes(), [&](const std::string& id) { (void)repository.loadClass(id); }, add);
         validateCollection("brush", repository.brushes(), [&](const std::string& id) { (void)repository.loadBrush(id); }, add);
         validateCollection("modern_asset", repository.modernAssets(), [&](const std::string& id) { (void)repository.loadModernAsset(id); }, add);
-        validateCollection("asset_profile", repository.assetProfiles(), [&](const std::string& id) { (void)repository.loadAssetProfile(id); }, add);
+        validateCollection("asset_profile", assetProfileIds, [&](const std::string& id) { (void)repository.loadAssetProfile(id); }, add);
         validateCollection("migration", repository.migrations(), [&](const std::string& id) { (void)repository.loadMigration(id); }, add);
+
+        if (repository.hasAssetCatalog()) {
+            try {
+                const auto catalog = repository.loadAssetCatalog();
+                if (std::find(assetProfileIds.begin(), assetProfileIds.end(), catalog.profileId) == assetProfileIds.end()) {
+                    add(
+                        HealthSeverity::Error,
+                        "asset_catalog.profile.missing",
+                        "Semantic asset catalog references missing asset profile: " + catalog.profileId);
+                }
+
+                const auto brushIds = repository.brushes();
+                for (const auto& family : catalog.families) {
+                    if (!family.brushRef.has_value()) continue;
+                    if (std::find(brushIds.begin(), brushIds.end(), *family.brushRef) == brushIds.end()) {
+                        add(
+                            HealthSeverity::Error,
+                            "asset_catalog.brush.missing",
+                            family.id + ": missing brush " + *family.brushRef);
+                    }
+                }
+            } catch (const std::exception& error) {
+                add(HealthSeverity::Error, "asset_catalog.invalid", error.what());
+            }
+        }
 
         FantasySystemCatalog systems;
         for (const auto& id : repository.systems()) {
