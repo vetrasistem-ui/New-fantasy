@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Foundation/FantasyFoundationV2.hpp"
+#include "Foundation/FantasyJsonOptional.hpp"
 #include "Shared/Assets/LegacyAssetRegistry.hpp"
 
 #include <nlohmann/json.hpp>
@@ -13,6 +14,7 @@
 #include <set>
 #include <stdexcept>
 #include <string>
+#include <utility>
 #include <vector>
 
 namespace fantasy::studio::foundation {
