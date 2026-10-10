@@ -63,11 +63,11 @@ $Otbm = Pick-File $Otbm ".otbm" "global_dash.otbm" "OTBM"
 
 $candidatesPath = Join-Path $OutputDir "asset-candidates.json"
 $previewDir = Join-Path $OutputDir "asset-previews"
-$bindingsPath = Join-Path $OutputDir "real-asset-bindings.smoke.json"
-$scriptPath = Join-Path $OutputDir "real-assets-smoke.fmapcmd"
-$catalogPath = Join-Path $OutputDir "asset-catalog.smoke.json"
-$summaryPath = Join-Path $OutputDir "selected-assets.smoke.json"
-$mapPath = Join-Path $OutputDir "real-assets-smoke.otbm"
+$bindingsPath = Join-Path $OutputDir "real-asset-bindings.first-map.json"
+$scriptPath = Join-Path $OutputDir "fantasy-first-region.fmapcmd"
+$catalogPath = Join-Path $OutputDir "asset-catalog.first-map.json"
+$summaryPath = Join-Path $OutputDir "selected-assets.first-map.json"
+$mapPath = Join-Path $OutputDir "fantasy-first-region.otbm"
 
 Write-Host ""
 Write-Host "[1/3] Scanning real DAT/SPR/OTB/OTBM assets..."
@@ -103,7 +103,7 @@ if ($objects.Count -lt 3) {
 $selected = [ordered]@{
     schemaVersion = 1
     profileId = $Profile
-    note = "Automatic smoke selection from the most-used real assets. These aliases prove the real pipeline; classify the previews later before assigning names such as grass/water/tree/wall/door."
+    note = "Automatic technical selection from the most-used real assets. These aliases generate the first real Fantasy map, but their visual meaning must be confirmed from BMP previews before renaming them grass/water/tree/wall/door."
     assets = @(
         [ordered]@{ id = "terrain.primary"; serverId = [uint32]$grounds[0].serverId; clientId = [uint32]$grounds[0].clientId; uses = [uint64]$grounds[0].uses; preview = $grounds[0].preview },
         [ordered]@{ id = "terrain.secondary"; serverId = [uint32]$grounds[1].serverId; clientId = [uint32]$grounds[1].clientId; uses = [uint64]$grounds[1].uses; preview = $grounds[1].preview },
@@ -128,20 +128,34 @@ $bindings = [ordered]@{
 $bindings | ConvertTo-Json -Depth 8 | Set-Content -LiteralPath $bindingsPath -Encoding UTF8
 
 $mapCommands = @"
-# Automatic real-asset smoke map. OTBM stays the output/source compatibility format.
-# Aliases are intentionally generic until the generated BMP previews are classified.
-NEW_REGION real_asset_smoke 64 64 7 terrain.primary
-SET_TERRAIN 8 8 18 12 7 terrain.secondary
-PLACE_FOREST 2 2 60 60 7 object.primary 8 1098
-PLACE_BUILDING 24 24 16 12 7 terrain.secondary object.secondary object.tertiary
-CONNECT 4 48 58 48 7 3 terrain.secondary
+# Fantasy Studio - First Generated Map
+# 160x160 floor 7 with a starter settlement, vegetation, south terrain band and roads.
+# Generic aliases are bound only to VALIDATED real assets from this exact 10.98 pack.
+NEW_REGION fantasy_first_region 160 160 7 terrain.primary
+PLACE_WATER 0 136 160 24 7 terrain.secondary
+PLACE_FOREST 5 8 46 52 7 object.primary 24 1098
+PLACE_FOREST 110 8 44 52 7 object.primary 24 2098
+PLACE_FOREST 8 92 34 34 7 object.primary 18 3098
+PLACE_FOREST 118 92 34 34 7 object.primary 18 4098
+PLACE_BUILDING 68 48 14 10 7 terrain.primary object.secondary object.tertiary
+PLACE_BUILDING 44 68 12 10 7 terrain.primary object.secondary object.tertiary
+PLACE_BUILDING 72 72 16 12 7 terrain.primary object.secondary object.tertiary
+PLACE_BUILDING 104 68 12 10 7 terrain.primary object.secondary object.tertiary
+PLACE_BUILDING 72 100 16 12 7 terrain.primary object.secondary object.tertiary
+CONNECT 79 24 79 135 7 5 terrain.secondary
+CONNECT 36 78 124 78 7 5 terrain.secondary
+CONNECT 75 57 79 78 7 3 terrain.secondary
+CONNECT 50 77 50 78 7 3 terrain.secondary
+CONNECT 80 83 80 78 7 3 terrain.secondary
+CONNECT 110 77 110 78 7 3 terrain.secondary
+CONNECT 80 111 80 78 7 3 terrain.secondary
 VALIDATE
-SAVE real-assets-smoke.otbm
+SAVE fantasy-first-region.otbm
 "@
 Set-Content -LiteralPath $scriptPath -Value $mapCommands -Encoding UTF8
 
 Write-Host ""
-Write-Host "[2/3] Binding selected aliases to real serverId/clientId/sprites..."
+Write-Host "[2/3] Binding first-map aliases to real serverId/clientId/sprites..."
 Write-Host "  terrain.primary   serverId=$($grounds[0].serverId) clientId=$($grounds[0].clientId)"
 Write-Host "  terrain.secondary serverId=$($grounds[1].serverId) clientId=$($grounds[1].clientId)"
 Write-Host "  object.primary    serverId=$($objects[0].serverId) clientId=$($objects[0].clientId)"
@@ -149,7 +163,7 @@ Write-Host "  object.secondary  serverId=$($objects[1].serverId) clientId=$($obj
 Write-Host "  object.tertiary   serverId=$($objects[2].serverId) clientId=$($objects[2].clientId)"
 
 Write-Host ""
-Write-Host "[3/3] Generating an OTBM using only validated real assets..."
+Write-Host "[3/3] Generating the first Fantasy OTBM using only validated real assets..."
 $generatorArgs = @(
     "--dat", $Dat,
     "--spr", $Spr,
@@ -170,13 +184,14 @@ if (-not (Test-Path -LiteralPath $mapPath -PathType Leaf)) {
 }
 
 Write-Host ""
-Write-Host "REAL ASSET POC PASS"
+Write-Host "FIRST FANTASY MAP PASS"
 Write-Host "Map:        $mapPath"
+Write-Host "Script:     $scriptPath"
 Write-Host "Candidates: $candidatesPath"
 Write-Host "Previews:   $previewDir"
 Write-Host "Bindings:   $bindingsPath"
 Write-Host "Catalog:    $catalogPath"
 Write-Host "Selection:  $summaryPath"
 Write-Host ""
-Write-Host "This smoke map proves the real DAT/SPR/OTB -> semantic binding -> Fantasy commands -> OTBM path."
-Write-Host "Next, inspect the BMP previews and replace generic aliases with curated names such as terrain.grass, terrain.water and nature.tree."
+Write-Host "The OTBM is real and uses assets validated against this exact DAT/SPR/OTB pack."
+Write-Host "The automatic aliases are still technical: inspect BMP previews before assigning semantic names such as grass, water, tree, wall and door."
