@@ -1,5 +1,6 @@
 #pragma once
 
+#include "Foundation/FantasyAssetCatalog.hpp"
 #include "Foundation/FantasyPersistence.hpp"
 #include "Foundation/FantasyProjectLayoutV2.hpp"
 
@@ -34,6 +35,9 @@ public:
     void saveMigration(const std::string& migrationId, const AssetMigrationPlan& value) const {
         FantasyPersistence::saveMigration(FantasyProjectLayoutV2::migrationPath(root_, migrationId), value);
     }
+    void saveAssetCatalog(const FantasyAssetCatalog& value) const {
+        FantasyAssetCatalogStore::save(FantasyProjectLayoutV2::assetCatalogPath(root_), value);
+    }
 
     [[nodiscard]] ZoneDefinition loadZone(const std::string& id) const { return FantasyPersistence::loadZone(FantasyProjectLayoutV2::zonePath(root_, id)); }
     [[nodiscard]] AppearanceDefinition loadAppearance(const std::string& id) const { return FantasyPersistence::loadAppearance(FantasyProjectLayoutV2::appearancePath(root_, id)); }
@@ -46,6 +50,9 @@ public:
     [[nodiscard]] ModernAssetDefinition loadModernAsset(const std::string& id) const { return FantasyPersistence::loadModernAsset(FantasyProjectLayoutV2::modernAssetPath(root_, id)); }
     [[nodiscard]] BrushDefinition loadBrush(const std::string& id) const { return FantasyPersistence::loadBrush(FantasyProjectLayoutV2::brushPath(root_, id)); }
     [[nodiscard]] AssetMigrationPlan loadMigration(const std::string& id) const { return FantasyPersistence::loadMigration(FantasyProjectLayoutV2::migrationPath(root_, id)); }
+    [[nodiscard]] FantasyAssetCatalog loadAssetCatalog() const {
+        return FantasyAssetCatalogStore::load(FantasyProjectLayoutV2::assetCatalogPath(root_));
+    }
 
     [[nodiscard]] std::vector<std::string> zones() const { return listIds(FantasyProjectLayoutV2::zonesDirectory(root_), ".zone.json"); }
     [[nodiscard]] std::vector<std::string> appearances() const { return listIds(FantasyProjectLayoutV2::appearancesDirectory(root_), ".appearance.json"); }
@@ -58,6 +65,9 @@ public:
     [[nodiscard]] std::vector<std::string> assetProfiles() const { return listIds(FantasyProjectLayoutV2::assetProfilesDirectory(root_), ".asset-profile.json"); }
     [[nodiscard]] std::vector<std::string> modernAssets() const { return listIds(FantasyProjectLayoutV2::modernAssetsDirectory(root_), ".asset.json"); }
     [[nodiscard]] std::vector<std::string> migrations() const { return listIds(FantasyProjectLayoutV2::migrationsDirectory(root_), ".asset-migration.json"); }
+    [[nodiscard]] bool hasAssetCatalog() const {
+        return std::filesystem::is_regular_file(FantasyProjectLayoutV2::assetCatalogPath(root_));
+    }
 
     bool removeZone(const std::string& id) const { return remove(FantasyProjectLayoutV2::zonePath(root_, id)); }
     bool removeAppearance(const std::string& id) const { return remove(FantasyProjectLayoutV2::appearancePath(root_, id)); }
@@ -68,6 +78,7 @@ public:
     bool removeSystem(const std::string& id) const { return remove(FantasyProjectLayoutV2::systemPath(root_, id)); }
     bool removeBrush(const std::string& id) const { return remove(FantasyProjectLayoutV2::brushPath(root_, id)); }
     bool removeModernAsset(const std::string& id) const { return remove(FantasyProjectLayoutV2::modernAssetPath(root_, id)); }
+    bool removeAssetCatalog() const { return remove(FantasyProjectLayoutV2::assetCatalogPath(root_)); }
 
 private:
     [[nodiscard]] static std::vector<std::string> listIds(
