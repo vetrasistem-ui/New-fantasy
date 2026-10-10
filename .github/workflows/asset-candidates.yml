@@ -20,23 +20,44 @@ jobs:
       - name: Build scanner
         run: cmake --build build/asset-candidates --config Release --parallel 2
 
-      - name: Smoke help
+      - name: Configure map generator Windows
+        if: runner.os == 'Windows'
+        run: cmake -S Studio -B build/studio-poc
+
+      - name: Build map generator Windows
+        if: runner.os == 'Windows'
+        run: cmake --build build/studio-poc --config Release --target fantasy-map-generate --parallel 2
+
+      - name: Smoke scanner help Linux
         shell: bash
         if: runner.os != 'Windows'
         run: ./build/asset-candidates/fantasy-asset-candidates --help
 
-      - name: Smoke help Windows
+      - name: Smoke Windows tools
         shell: pwsh
         if: runner.os == 'Windows'
-        run: ./build/asset-candidates/Release/fantasy-asset-candidates.exe --help
+        run: |
+          ./build/asset-candidates/Release/fantasy-asset-candidates.exe --help
+          if ($LASTEXITCODE -ne 0) { throw "asset candidate scanner smoke failed" }
+          ./build/studio-poc/Release/fantasy-map-generate.exe --help
+          if ($LASTEXITCODE -ne 0) { throw "map generator smoke failed" }
 
-      - name: Upload scanner Windows
+      - name: Stage Windows real asset POC
+        shell: pwsh
+        if: runner.os == 'Windows'
+        run: |
+          New-Item -ItemType Directory -Force build/real-asset-poc | Out-Null
+          Copy-Item build/asset-candidates/Release/fantasy-asset-candidates.exe build/real-asset-poc/
+          Copy-Item build/studio-poc/Release/fantasy-map-generate.exe build/real-asset-poc/
+          Copy-Item Tools/RealAssetPoc/run-real-asset-poc.ps1 build/real-asset-poc/
+
+      - name: Upload Windows real asset POC
         if: runner.os == 'Windows'
         uses: actions/upload-artifact@v4
         with:
-          name: fantasy-asset-candidates-windows-${{ github.sha }}
+          name: fantasy-real-asset-poc-windows-${{ github.sha }}
           if-no-files-found: error
-          path: build/asset-candidates/Release/fantasy-asset-candidates.exe
+          path: build/real-asset-poc/
 
       - name: Upload scanner Linux
         if: runner.os == 'Linux'
