@@ -53,6 +53,14 @@ public:
         return root / "Assets" / "Migrations";
     }
 
+    [[nodiscard]] static std::filesystem::path assetCatalogDirectory(const std::filesystem::path& root) {
+        return root / "Assets" / "Catalog";
+    }
+
+    [[nodiscard]] static std::filesystem::path assetCatalogPath(const std::filesystem::path& root) {
+        return assetCatalogDirectory(root) / "asset-catalog.json";
+    }
+
     [[nodiscard]] static std::filesystem::path buildDirectory(const std::filesystem::path& root) {
         return root / "build";
     }
@@ -114,6 +122,7 @@ public:
         std::filesystem::create_directories(assetProfilesDirectory(root));
         std::filesystem::create_directories(modernAssetsDirectory(root));
         std::filesystem::create_directories(migrationsDirectory(root));
+        std::filesystem::create_directories(assetCatalogDirectory(root));
         std::filesystem::create_directories(buildDirectory(root));
     }
 
