@@ -1,7 +1,6 @@
 #pragma once
 
 #include "../Core/MapDocument.hpp"
-#include "../Export/LegacyOtbmWriter.hpp"
 #include "../../Foundation/FantasyAssetCatalog.hpp"
 #include "../../../Shared/Assets/LegacyAssetRegistry.hpp"
 
@@ -33,8 +32,7 @@ public:
         std::string_view script,
         const foundation::FantasyAssetCatalog& catalog,
         const fantasy::assets::FantasyAssetRegistry& registry,
-        const std::filesystem::path& outputRoot,
-        mapcore::LegacyOtbmWriterConfig writerConfig = {}) const;
+        const std::filesystem::path& outputRoot) const;
 };
 
 } // namespace fantasy::studio::mapgen
