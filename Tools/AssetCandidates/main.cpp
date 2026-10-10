@@ -7,6 +7,7 @@
 #include <nlohmann/json.hpp>
 
 #include <algorithm>
+#include <array>
 #include <cstdint>
 #include <cstdlib>
 #include <filesystem>
@@ -28,6 +29,7 @@ struct Arguments {
     fs::path otb;
     fs::path otbm;
     fs::path output;
+    fs::path previewDir;
     std::string profile = "pokefans1098";
     std::size_t topGrounds = 80;
     std::size_t topObjects = 160;
@@ -39,9 +41,11 @@ void usage() {
         << "Usage:\n"
         << "  fantasy-asset-candidates --dat <Tibia.dat> --spr <Tibia.spr> --otb <items.otb>\\\n"
         << "      --otbm <global_dash.otbm> --output <asset-candidates.json>\\\n"
-        << "      [--profile pokefans1098] [--top-grounds 80] [--top-objects 160]\n\n"
+        << "      [--preview-dir <asset-previews>] [--profile pokefans1098]\\\n"
+        << "      [--top-grounds 80] [--top-objects 160]\n\n"
         << "The scanner streams the real OTBM and ranks actually-used server IDs.\n"
-        << "Each candidate includes serverId, clientId, kind, spriteIds and usage count.\n";
+        << "Each candidate includes serverId, clientId, kind, spriteIds and usage count.\n"
+        << "When --preview-dir is set, the first real sprite is exported as a 32x32 BMP.\n";
 }
 
 std::size_t parseSize(const std::string& value, const char* label) {
@@ -68,6 +72,7 @@ Arguments parse(int argc, char** argv) {
         else if (key == "--otb") args.otb = value();
         else if (key == "--otbm") args.otbm = value();
         else if (key == "--output") args.output = value();
+        else if (key == "--preview-dir") args.previewDir = value();
         else if (key == "--profile") args.profile = value();
         else if (key == "--top-grounds") args.topGrounds = parseSize(value(), "top-grounds");
         else if (key == "--top-objects") args.topObjects = parseSize(value(), "top-objects");
@@ -101,11 +106,73 @@ std::string kindId(fantasy::assets::LegacyAssetKind kind) {
     }
 }
 
+void writeU16(std::ostream& out, std::uint16_t value) {
+    const std::array<char, 2> bytes{
+        static_cast<char>(value & 0xffU),
+        static_cast<char>((value >> 8U) & 0xffU)};
+    out.write(bytes.data(), static_cast<std::streamsize>(bytes.size()));
+}
+
+void writeU32(std::ostream& out, std::uint32_t value) {
+    const std::array<char, 4> bytes{
+        static_cast<char>(value & 0xffU),
+        static_cast<char>((value >> 8U) & 0xffU),
+        static_cast<char>((value >> 16U) & 0xffU),
+        static_cast<char>((value >> 24U) & 0xffU)};
+    out.write(bytes.data(), static_cast<std::streamsize>(bytes.size()));
+}
+
+void writeSpriteBmp(const fs::path& path, const fantasy::assets::legacy::SpriteRgba& sprite) {
+    constexpr std::uint32_t width = fantasy::assets::legacy::SpriteRgba::Width;
+    constexpr std::uint32_t height = fantasy::assets::legacy::SpriteRgba::Height;
+    constexpr std::uint32_t rowBytes = width * 3U;
+    constexpr std::uint32_t imageBytes = rowBytes * height;
+    constexpr std::uint32_t headerBytes = 54U;
+
+    if (path.has_parent_path()) fs::create_directories(path.parent_path());
+    std::ofstream out(path, std::ios::binary | std::ios::trunc);
+    if (!out.good()) throw std::runtime_error("unable to create sprite BMP preview: " + path.string());
+
+    out.put('B');
+    out.put('M');
+    writeU32(out, headerBytes + imageBytes);
+    writeU16(out, 0U);
+    writeU16(out, 0U);
+    writeU32(out, headerBytes);
+    writeU32(out, 40U);
+    writeU32(out, width);
+    writeU32(out, height);
+    writeU16(out, 1U);
+    writeU16(out, 24U);
+    writeU32(out, 0U);
+    writeU32(out, imageBytes);
+    writeU32(out, 2835U);
+    writeU32(out, 2835U);
+    writeU32(out, 0U);
+    writeU32(out, 0U);
+
+    for (std::int32_t y = static_cast<std::int32_t>(height) - 1; y >= 0; --y) {
+        for (std::uint32_t x = 0; x < width; ++x) {
+            const std::size_t index = (static_cast<std::size_t>(y) * width + x) * 4U;
+            const std::uint8_t alpha = sprite.pixels[index + 3U];
+            const std::uint8_t red = alpha == 0U ? 255U : sprite.pixels[index + 0U];
+            const std::uint8_t green = alpha == 0U ? 255U : sprite.pixels[index + 1U];
+            const std::uint8_t blue = alpha == 0U ? 255U : sprite.pixels[index + 2U];
+            out.put(static_cast<char>(blue));
+            out.put(static_cast<char>(green));
+            out.put(static_cast<char>(red));
+        }
+    }
+    if (!out.good()) throw std::runtime_error("failed while writing sprite BMP preview: " + path.string());
+}
+
 nlohmann::json ranked(
     const std::unordered_map<std::uint32_t, std::uint64_t>& counts,
     const fantasy::assets::FantasyAssetRegistry& registry,
     const fantasy::assets::legacy::SprReader& spr,
-    std::size_t limit) {
+    std::size_t limit,
+    const fs::path& previewDir,
+    const std::string& prefix) {
 
     std::vector<std::pair<std::uint32_t, std::uint64_t>> values(counts.begin(), counts.end());
     std::sort(values.begin(), values.end(), [](const auto& left, const auto& right) {
@@ -134,6 +201,18 @@ nlohmann::json ranked(
                 }
             }
             row["spritesValid"] = spritesValid;
+
+            if (!previewDir.empty() && !record->spriteIds.empty()) {
+                const auto spriteId = record->spriteIds.front();
+                if (spriteId != 0U && spr.hasSprite(spriteId)) {
+                    const auto filename = prefix + "-server-" + std::to_string(serverId) +
+                        "-client-" + std::to_string(record->clientId) +
+                        "-sprite-" + std::to_string(spriteId) + ".bmp";
+                    const auto previewPath = previewDir / filename;
+                    writeSpriteBmp(previewPath, spr.readSprite(spriteId));
+                    row["preview"] = previewPath.generic_string();
+                }
+            }
         } else {
             row["registryMissing"] = true;
         }
@@ -181,8 +260,8 @@ int main(int argc, char** argv) {
                 {"otbMajor", otb.version().major},
                 {"otbMinor", otb.version().minor},
             }},
-            {"grounds", ranked(grounds, registry.registry, spr, args.topGrounds)},
-            {"objects", ranked(objects, registry.registry, spr, args.topObjects)},
+            {"grounds", ranked(grounds, registry.registry, spr, args.topGrounds, args.previewDir, "ground")},
+            {"objects", ranked(objects, registry.registry, spr, args.topObjects, args.previewDir, "object")},
         };
 
         if (args.output.has_parent_path()) fs::create_directories(args.output.parent_path());
@@ -195,7 +274,9 @@ int main(int argc, char** argv) {
                   << " tiles=" << map.result().diagnostics.tileCount
                   << " unique_grounds=" << grounds.size()
                   << " unique_objects=" << objects.size()
-                  << " output=\"" << args.output.string() << "\"\n";
+                  << " output=\"" << args.output.string() << "\"";
+        if (!args.previewDir.empty()) std::cout << " previews=\"" << args.previewDir.string() << "\"";
+        std::cout << '\n';
         return 0;
     } catch (const std::exception& error) {
         std::cerr << "REAL_ASSET_CANDIDATES FAIL: " << error.what() << '\n';
