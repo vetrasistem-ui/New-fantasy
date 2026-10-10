@@ -50,6 +50,7 @@ jobs:
           Copy-Item build/asset-candidates/Release/fantasy-asset-candidates.exe build/real-asset-poc/
           Copy-Item build/studio-poc/Release/fantasy-map-generate.exe build/real-asset-poc/
           Copy-Item Tools/RealAssetPoc/run-real-asset-poc.ps1 build/real-asset-poc/
+          Copy-Item Tools/RealAssetPoc/INICIAR-POC.bat build/real-asset-poc/
 
       - name: Upload Windows real asset POC
         if: runner.os == 'Windows'
