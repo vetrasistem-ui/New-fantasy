@@ -62,7 +62,10 @@ jobs:
           if-no-files-found: error
           path: |
             build/studio/Release/fantasy-studio.exe
-            build/studio/Release/fantasy-studio-gui.exe
+            build/studio/Release/FantasyStudio.exe
+            build/studio/Release/fantasy-legacy-inspect.exe
+            build/studio/Release/fantasy-legacy-preview.exe
+            build/studio/Release/fantasy-map-generate.exe
             build/studio/Release/StudioVisual/
 
       - name: Configure Fantasy Server
@@ -102,3 +105,27 @@ jobs:
             build/server/Release/fantasy-server.exe
             build/client/Release/fantasy-client.exe
             build/client/Release/fantasy-client-gui.exe
+
+  legacy-tool-linux:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Configure legacy tools and runtime backend
+        run: cmake -S Studio -B build/studio -DCMAKE_BUILD_TYPE=Release -DSDL_UNIX_CONSOLE_BUILD=ON
+
+      - name: Build Linux legacy tools and TFS1098 workflow tests
+        run: cmake --build build/studio --target fantasy-legacy-inspect fantasy-legacy-preview fantasy-runtime-backend-tests fantasy-tfs1098-workflow-tests --parallel 2
+
+      - name: Test TFS1098 runtime workflows on Linux
+        run: ctest --test-dir build/studio -R '^fantasy-(runtime-backend|tfs1098-workflow)-tests$' --output-on-failure
+
+      - name: Upload Linux legacy tools
+        uses: actions/upload-artifact@v4
+        with:
+          name: fantasy-legacy-tools-linux-${{ github.sha }}
+          if-no-files-found: error
+          path: |
+            build/studio/fantasy-legacy-inspect
+            build/studio/fantasy-legacy-preview

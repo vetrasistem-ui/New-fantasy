@@ -1,0 +1,110 @@
+name: OTCv8 Visual Homologation Client
+
+on:
+  workflow_dispatch:
+  pull_request:
+    branches:
+      - main
+    paths:
+      - .github/workflows/otcv8-visual-homologation.yml
+      - Tools/Tfs1098/package_otcv8_windows_client.ps1
+      - Tools/Tfs1098/tfs1098_protocol_probe.py
+      - Tools/Tfs1098/tfs1098_mysql_fixture.py
+      - Tools/Tfs1098/tfs1098_windows_protocol_smoke.ps1
+
+jobs:
+  stage-linux-client:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download clean public OTCv8 package
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl -fL --retry 3 --retry-delay 2 \
+            -o otcv8.zip \
+            https://github.com/OTCv8/otclientv8/archive/refs/heads/master.zip
+          unzip -q otcv8.zip
+          CLIENT_DIR="$(find . -maxdepth 1 -type d -name 'otclientv8-*' | head -n1)"
+          test -n "${CLIENT_DIR}"
+          test -f "${CLIENT_DIR}/otclient_linux"
+          test -d "${CLIENT_DIR}/modules"
+          test -d "${CLIENT_DIR}/data"
+          rm -rf "${CLIENT_DIR}/data/things" || true
+          mkdir -p staged-client
+          cp "${CLIENT_DIR}/otclient_linux" staged-client/
+          cp "${CLIENT_DIR}/init.lua" staged-client/
+          cp -a "${CLIENT_DIR}/modules" staged-client/
+          cp -a "${CLIENT_DIR}/mods" staged-client/ 2>/dev/null || true
+          cp -a "${CLIENT_DIR}/data" staged-client/
+          cp -a "${CLIENT_DIR}/layouts" staged-client/ 2>/dev/null || true
+          chmod +x staged-client/otclient_linux
+          printf 'source=https://github.com/OTCv8/otclientv8\nbranch=master\nplatform=linux\n' > staged-client/HOMOLOGATION-SOURCE.txt
+          cat > staged-client/ASSETS-REQUIRED.txt <<'EOF'
+          This public homologation client intentionally contains no Tibia DAT/SPR assets.
+          For Fantasy 10.98 acceptance, place the matching user-owned files at:
+            data/things/1098/Tibia.dat
+            data/things/1098/Tibia.spr
+          Keep the matching OTFI/OTML profile used by the project when required.
+          EOF
+
+      - name: Upload Linux homologation client
+        uses: actions/upload-artifact@v4
+        with:
+          name: otcv8-linux-visual-homologation-${{ github.sha }}
+          path: staged-client
+          if-no-files-found: error
+
+  stage-windows-client:
+    runs-on: windows-latest
+    steps:
+      - name: Checkout Fantasy packaging tool
+        uses: actions/checkout@v4
+
+      - name: Download clean public OTCv8 package
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          Invoke-WebRequest -Uri 'https://github.com/OTCv8/otclientv8/archive/refs/heads/master.zip' -OutFile 'otcv8.zip'
+          Expand-Archive -Path 'otcv8.zip' -DestinationPath '.' -Force
+          $client = Get-ChildItem -Directory -Filter 'otclientv8-*' | Select-Object -First 1
+          if (-not $client) { throw 'OTCv8 extracted directory was not found' }
+
+          ./Tools/Tfs1098/package_otcv8_windows_client.ps1 `
+            -SourceRoot $client.FullName `
+            -OutputRoot 'staged-client-windows'
+
+          $manifest = Get-Content 'staged-client-windows\fantasy-client-manifest.json' -Raw | ConvertFrom-Json
+          if ($manifest.protocol -ne 1098) { throw 'Unexpected client protocol in manifest' }
+          if ($manifest.assetsIncluded -ne $false) { throw 'CI package must not contain Tibia DAT/SPR assets' }
+          if (-not (Test-Path 'staged-client-windows\ASSETS-REQUIRED.txt')) { throw 'Missing asset handoff instructions' }
+
+      - name: Upload Windows homologation client
+        uses: actions/upload-artifact@v4
+        with:
+          name: otcv8-windows-visual-homologation-${{ github.sha }}
+          path: staged-client-windows
+          if-no-files-found: error
+
+      - name: Post Checkout Fantasy packaging tool
+        if: always()
+        run: echo "checkout cleanup handled by action"
+
+  windows-tfs-protocol-smoke:
+    runs-on: windows-latest
+    steps:
+      - name: Checkout Fantasy homologation tools
+        uses: actions/checkout@v4
+
+      - name: Run official Windows TFS 1.4.2 protocol smoke
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          ./Tools/Tfs1098/tfs1098_windows_protocol_smoke.ps1
+
+      - name: Upload Windows runtime smoke logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: tfs1098-windows-protocol-smoke-${{ github.sha }}
+          path: build/tfs1098-windows-smoke/*.log
+          if-no-files-found: warn

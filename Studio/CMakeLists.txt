@@ -16,6 +16,9 @@ set(SDL_TEST_LIBRARY OFF CACHE BOOL "" FORCE)
 set(SDL_TESTS OFF CACHE BOOL "" FORCE)
 set(SDL_EXAMPLES OFF CACHE BOOL "" FORCE)
 set(SDL_INSTALL OFF CACHE BOOL "" FORCE)
+set(PUGIXML_INSTALL OFF CACHE BOOL "" FORCE)
+set(PUGIXML_BUILD_TESTS OFF CACHE BOOL "" FORCE)
+set(JSON_BuildTests OFF CACHE INTERNAL "" FORCE)
 
 FetchContent_Declare(
     sdl3
@@ -31,7 +34,31 @@ FetchContent_Declare(
     GIT_SHALLOW TRUE
 )
 
-FetchContent_MakeAvailable(sdl3 imgui)
+FetchContent_Declare(
+    pugixml
+    GIT_REPOSITORY https://github.com/zeux/pugixml.git
+    GIT_TAG v1.16
+    GIT_SHALLOW TRUE
+)
+
+FetchContent_Declare(
+    nlohmann_json
+    GIT_REPOSITORY https://github.com/nlohmann/json.git
+    GIT_TAG v3.11.3
+    GIT_SHALLOW TRUE
+)
+
+FetchContent_MakeAvailable(sdl3 imgui pugixml nlohmann_json)
+
+# Foundation V2 authoring/persistence contracts are runtime-neutral. The
+# interface target centralizes include paths and the pinned JSON dependency so
+# Studio editors and tests consume the same schema implementation.
+add_library(fantasy-foundation INTERFACE)
+target_include_directories(fantasy-foundation INTERFACE
+    ${CMAKE_CURRENT_SOURCE_DIR}
+    ${CMAKE_CURRENT_SOURCE_DIR}/..
+)
+target_link_libraries(fantasy-foundation INTERFACE nlohmann_json::nlohmann_json)
 
 add_library(fantasy-studio-project
     Project/ProjectManager.cpp
@@ -40,9 +67,77 @@ add_library(fantasy-studio-project
 add_library(fantasy-map-core
     ../Shared/Formats/FMAP/FmapCore.cpp
     MapEngine/EditorOperations.cpp
+    MapEngine/Core/MapStorage.cpp
+    MapEngine/Core/SelectionModel.cpp
+    MapEngine/Core/ActionHistory.cpp
+    MapEngine/Core/MapDocument.cpp
+    MapEngine/Commands/CommandValidator.cpp
+    MapEngine/Commands/CommandExecutor.cpp
+    MapEngine/Clipboard/MapClipboard.cpp
+    MapEngine/Brushes/BrushEngine.cpp
+    MapEngine/Query/MapQueryService.cpp
 )
 
-foreach(target fantasy-studio-project fantasy-map-core)
+# F05.5 neutral asset contract plus isolated legacy binary readers. The readers
+# feed the shared registry; no DAT/SPR/OTB type leaks into the canonical map core.
+add_library(fantasy-asset-registry
+    ../Shared/Assets/LegacyAssetRegistry.cpp
+    ../Shared/Assets/LegacyAssetRegistryBuilder.cpp
+    ../Shared/Assets/Legacy/DatReader.cpp
+    ../Shared/Assets/Legacy/SprReader.cpp
+    ../Shared/Assets/Legacy/OtbReader.cpp
+)
+
+# High-level AI/Codex map commands stay above the canonical Map Core. They
+# resolve semantic Asset Catalog entries and compile them into the same
+# MapCommand batches used by the graphical editor.
+add_library(fantasy-map-generation
+    MapEngine/Generation/FantasyMapCommandsV1.cpp
+)
+target_link_libraries(fantasy-map-generation PUBLIC
+    fantasy-map-core
+    fantasy-foundation
+    fantasy-asset-registry
+)
+
+# OTBM and its external XML files stay isolated from the canonical map core.
+# Small fixtures may still materialize a neutral LegacyMapImportModel; large
+# projects use OtbmStreamReader so the full nodal tree/model is never retained.
+add_library(fantasy-legacy-import
+    ../Shared/Formats/Legacy/OtbmReader.cpp
+    ../Shared/Formats/Legacy/OtbmStreamReader.cpp
+    ../Shared/Formats/Legacy/LegacyAuxXmlReader.cpp
+)
+target_link_libraries(fantasy-legacy-import PUBLIC pugixml::pugixml)
+
+add_library(fantasy-map-legacy-bridge
+    MapEngine/Import/LegacyMapAdapter.cpp
+    MapEngine/Import/LegacyCanonicalMapBuilder.cpp
+    MapEngine/Import/LegacyMapProjectLoader.cpp
+    MapEngine/Import/LegacyWorkspaceSession.cpp
+)
+target_link_libraries(fantasy-map-legacy-bridge PUBLIC
+    fantasy-map-core
+    fantasy-asset-registry
+    fantasy-legacy-import
+)
+
+add_library(fantasy-legacy-rendering
+    Rendering/LegacySpriteTextureCache.cpp
+)
+target_link_libraries(fantasy-legacy-rendering PUBLIC
+    fantasy-map-core
+    fantasy-asset-registry
+    SDL3::SDL3
+)
+
+# Runtime backends remain outside Fantasy Map Core. TFS 1.4.2 / 10.98 is the
+# first external backend and is staged/launched through this neutral boundary.
+add_library(fantasy-runtime
+    Runtime/Tfs1098RuntimeBackend.cpp
+)
+
+foreach(target fantasy-studio-project fantasy-map-core fantasy-asset-registry fantasy-map-generation fantasy-legacy-import fantasy-map-legacy-bridge fantasy-legacy-rendering fantasy-runtime)
     target_include_directories(${target} PUBLIC
         ${CMAKE_CURRENT_SOURCE_DIR}
         ${CMAKE_CURRENT_SOURCE_DIR}/..
@@ -81,17 +176,29 @@ add_executable(fantasy-studio
 )
 target_link_libraries(fantasy-studio PRIVATE fantasy-studio-project fantasy-map-core)
 
-# V5 implements the approved visual shell. Earlier revisions remain in Git history.
+# V5 keeps the accepted shell as the visual source. The runtime-enabled entry
+# layers the real 10.98 map + Server workspace over that shell while preserving
+# the earlier StudioAppV5Entry.cpp as a rollback/reference point.
 add_executable(fantasy-studio-gui
-    UI/StudioAppV5.cpp
+    UI/StudioAppV5RuntimeEntry.cpp
     UI/StudioTheme.cpp
+    UI/LegacyMapCanvasRenderer.cpp
 )
 target_link_libraries(fantasy-studio-gui PRIVATE
     fantasy-studio-project
     fantasy-map-core
+    fantasy-asset-registry
+    fantasy-map-generation
+    fantasy-map-legacy-bridge
+    fantasy-legacy-rendering
+    fantasy-runtime
+    fantasy-foundation
     fantasy-imgui
     SDL3::SDL3
 )
+# Give users a product-facing executable instead of an internal target name.
+# The CMake target stays stable so existing build/test wiring does not change.
+set_target_properties(fantasy-studio-gui PROPERTIES OUTPUT_NAME "FantasyStudio")
 if(WIN32)
     target_link_libraries(fantasy-studio-gui PRIVATE dwmapi)
 endif()
@@ -104,6 +211,53 @@ add_custom_target(fantasy-studio-presentation
         "$<TARGET_FILE_DIR:fantasy-studio-gui>/StudioVisual"
 )
 add_dependencies(fantasy-studio-gui fantasy-studio-presentation)
+
+add_executable(fantasy-legacy-inspect
+    ../Tools/LegacyInspect/main.cpp
+)
+target_include_directories(fantasy-legacy-inspect PRIVATE
+    ${CMAKE_CURRENT_SOURCE_DIR}
+    ${CMAKE_CURRENT_SOURCE_DIR}/..
+)
+target_link_libraries(fantasy-legacy-inspect PRIVATE fantasy-map-legacy-bridge)
+if(MSVC)
+    target_compile_options(fantasy-legacy-inspect PRIVATE /W4 /permissive-)
+else()
+    target_compile_options(fantasy-legacy-inspect PRIVATE -Wall -Wextra -Wpedantic)
+endif()
+
+# Command-line bridge used by Codex/AI and by local acceptance to generate a
+# real OTBM directly from user-owned DAT/SPR/OTB assets plus semantic bindings.
+add_executable(fantasy-map-generate
+    ../Tools/MapGenerate/main.cpp
+)
+target_include_directories(fantasy-map-generate PRIVATE
+    ${CMAKE_CURRENT_SOURCE_DIR}
+    ${CMAKE_CURRENT_SOURCE_DIR}/..
+)
+target_link_libraries(fantasy-map-generate PRIVATE fantasy-map-generation)
+if(MSVC)
+    target_compile_options(fantasy-map-generate PRIVATE /W4 /permissive-)
+else()
+    target_compile_options(fantasy-map-generate PRIVATE -Wall -Wextra -Wpedantic)
+endif()
+
+add_executable(fantasy-legacy-preview
+    UI/LegacyPreviewApp.cpp
+    UI/StudioTheme.cpp
+    UI/LegacyMapCanvasRenderer.cpp
+)
+target_link_libraries(fantasy-legacy-preview PRIVATE
+    fantasy-map-legacy-bridge
+    fantasy-legacy-rendering
+    fantasy-imgui
+    SDL3::SDL3
+)
+if(MSVC)
+    target_compile_options(fantasy-legacy-preview PRIVATE /W4 /permissive-)
+else()
+    target_compile_options(fantasy-legacy-preview PRIVATE -Wall -Wextra -Wpedantic)
+endif()
 
 add_executable(fantasy-studio-project-tests
     Project/ProjectManagerTests.cpp
@@ -129,10 +283,153 @@ target_compile_definitions(fantasy-editor-operations-tests PRIVATE
     FANTASY_REPO_ROOT="${CMAKE_CURRENT_SOURCE_DIR}/.."
 )
 
+add_executable(fantasy-map-core-v1-tests
+    MapEngine/Core/MapCoreV1Tests.cpp
+)
+target_link_libraries(fantasy-map-core-v1-tests PRIVATE fantasy-map-core)
+
+add_executable(fantasy-map-clipboard-tests
+    MapEngine/Clipboard/MapClipboardTests.cpp
+)
+target_link_libraries(fantasy-map-clipboard-tests PRIVATE fantasy-map-core)
+
+add_executable(fantasy-brush-engine-tests
+    MapEngine/Brushes/BrushEngineTests.cpp
+)
+target_link_libraries(fantasy-brush-engine-tests PRIVATE fantasy-map-core)
+
+add_executable(fantasy-map-generation-v1-tests
+    MapEngine/Generation/FantasyMapCommandsV1Tests.cpp
+)
+target_link_libraries(fantasy-map-generation-v1-tests PRIVATE
+    fantasy-map-generation
+    fantasy-legacy-import
+)
+
+add_executable(fantasy-real-asset-binding-tests
+    MapEngine/Generation/FantasyRealAssetBindingTests.cpp
+)
+target_link_libraries(fantasy-real-asset-binding-tests PRIVATE fantasy-map-generation)
+
+add_executable(fantasy-map-legacy-adapter-tests
+    MapEngine/Import/LegacyMapAdapterTests.cpp
+)
+target_link_libraries(fantasy-map-legacy-adapter-tests PRIVATE fantasy-map-legacy-bridge)
+
+add_executable(fantasy-map-project-loader-tests
+    MapEngine/Import/LegacyMapProjectLoaderTests.cpp
+)
+target_link_libraries(fantasy-map-project-loader-tests PRIVATE fantasy-map-legacy-bridge)
+
+add_executable(fantasy-asset-registry-tests
+    ../Shared/Assets/LegacyAssetRegistryTests.cpp
+)
+target_include_directories(fantasy-asset-registry-tests PRIVATE
+    ${CMAKE_CURRENT_SOURCE_DIR}
+    ${CMAKE_CURRENT_SOURCE_DIR}/..
+)
+target_link_libraries(fantasy-asset-registry-tests PRIVATE fantasy-asset-registry)
+
+add_executable(fantasy-legacy-binary-readers-tests
+    ../Shared/Assets/Legacy/LegacyBinaryReadersTests.cpp
+)
+target_include_directories(fantasy-legacy-binary-readers-tests PRIVATE
+    ${CMAKE_CURRENT_SOURCE_DIR}
+    ${CMAKE_CURRENT_SOURCE_DIR}/..
+)
+target_link_libraries(fantasy-legacy-binary-readers-tests PRIVATE fantasy-asset-registry)
+
+add_executable(fantasy-legacy-texture-cache-tests
+    Rendering/LegacySpriteTextureCacheTests.cpp
+)
+target_link_libraries(fantasy-legacy-texture-cache-tests PRIVATE fantasy-legacy-rendering)
+
+add_executable(fantasy-otbm-reader-tests
+    ../Shared/Formats/Legacy/OtbmReaderTests.cpp
+)
+target_include_directories(fantasy-otbm-reader-tests PRIVATE
+    ${CMAKE_CURRENT_SOURCE_DIR}
+    ${CMAKE_CURRENT_SOURCE_DIR}/..
+)
+target_link_libraries(fantasy-otbm-reader-tests PRIVATE fantasy-legacy-import)
+
+add_executable(fantasy-legacy-aux-xml-tests
+    ../Shared/Formats/Legacy/LegacyAuxXmlReaderTests.cpp
+)
+target_include_directories(fantasy-legacy-aux-xml-tests PRIVATE
+    ${CMAKE_CURRENT_SOURCE_DIR}
+    ${CMAKE_CURRENT_SOURCE_DIR}/..
+)
+target_link_libraries(fantasy-legacy-aux-xml-tests PRIVATE fantasy-legacy-import)
+
+add_executable(fantasy-runtime-backend-tests
+    Runtime/RuntimeBackendTests.cpp
+)
+target_include_directories(fantasy-runtime-backend-tests PRIVATE
+    ${CMAKE_CURRENT_SOURCE_DIR}
+    ${CMAKE_CURRENT_SOURCE_DIR}/..
+)
+target_link_libraries(fantasy-runtime-backend-tests PRIVATE fantasy-runtime fantasy-foundation)
+
+add_executable(fantasy-foundation-persistence-tests
+    Foundation/FantasyPersistenceTests.cpp
+)
+target_link_libraries(fantasy-foundation-persistence-tests PRIVATE fantasy-foundation)
+
+add_executable(fantasy-authoring-repository-tests
+    Foundation/FantasyAuthoringRepositoryTests.cpp
+)
+target_link_libraries(fantasy-authoring-repository-tests PRIVATE fantasy-foundation)
+
+add_executable(fantasy-build-pipeline-tests
+    Foundation/FantasyBuildPipelineTests.cpp
+)
+target_link_libraries(fantasy-build-pipeline-tests PRIVATE fantasy-foundation fantasy-runtime)
+
+add_executable(fantasy-extended-foundation-tests
+    Foundation/FantasyExtendedFoundationTests.cpp
+)
+target_link_libraries(fantasy-extended-foundation-tests PRIVATE fantasy-foundation)
+
+add_executable(fantasy-tfs1098-workflow-tests
+    Runtime/Tfs1098ServerWorkflowTests.cpp
+)
+target_include_directories(fantasy-tfs1098-workflow-tests PRIVATE
+    ${CMAKE_CURRENT_SOURCE_DIR}
+    ${CMAKE_CURRENT_SOURCE_DIR}/..
+)
+target_link_libraries(fantasy-tfs1098-workflow-tests PRIVATE fantasy-runtime fantasy-map-core)
+
+foreach(target fantasy-asset-registry-tests fantasy-legacy-binary-readers-tests fantasy-legacy-texture-cache-tests fantasy-otbm-reader-tests fantasy-legacy-aux-xml-tests fantasy-map-core-v1-tests fantasy-map-clipboard-tests fantasy-brush-engine-tests fantasy-map-generation-v1-tests fantasy-real-asset-binding-tests fantasy-map-legacy-adapter-tests fantasy-map-project-loader-tests fantasy-runtime-backend-tests fantasy-foundation-persistence-tests fantasy-authoring-repository-tests fantasy-build-pipeline-tests fantasy-extended-foundation-tests fantasy-tfs1098-workflow-tests)
+    if(MSVC)
+        target_compile_options(${target} PRIVATE /W4 /permissive-)
+    else()
+        target_compile_options(${target} PRIVATE -Wall -Wextra -Wpedantic)
+    endif()
+endforeach()
+
 enable_testing()
 add_test(NAME fantasy-studio-project-tests COMMAND fantasy-studio-project-tests)
 add_test(NAME fantasy-map-core-tests COMMAND fantasy-map-core-tests)
 add_test(NAME fantasy-editor-operations-tests COMMAND fantasy-editor-operations-tests)
+add_test(NAME fantasy-map-core-v1-tests COMMAND fantasy-map-core-v1-tests)
+add_test(NAME fantasy-map-clipboard-tests COMMAND fantasy-map-clipboard-tests)
+add_test(NAME fantasy-brush-engine-tests COMMAND fantasy-brush-engine-tests)
+add_test(NAME fantasy-map-generation-v1-tests COMMAND fantasy-map-generation-v1-tests)
+add_test(NAME fantasy-real-asset-binding-tests COMMAND fantasy-real-asset-binding-tests)
+add_test(NAME fantasy-map-legacy-adapter-tests COMMAND fantasy-map-legacy-adapter-tests)
+add_test(NAME fantasy-map-project-loader-tests COMMAND fantasy-map-project-loader-tests)
+add_test(NAME fantasy-asset-registry-tests COMMAND fantasy-asset-registry-tests)
+add_test(NAME fantasy-legacy-binary-readers-tests COMMAND fantasy-legacy-binary-readers-tests)
+add_test(NAME fantasy-legacy-texture-cache-tests COMMAND fantasy-legacy-texture-cache-tests)
+add_test(NAME fantasy-otbm-reader-tests COMMAND fantasy-otbm-reader-tests)
+add_test(NAME fantasy-legacy-aux-xml-tests COMMAND fantasy-legacy-aux-xml-tests)
+add_test(NAME fantasy-runtime-backend-tests COMMAND fantasy-runtime-backend-tests)
+add_test(NAME fantasy-foundation-persistence-tests COMMAND fantasy-foundation-persistence-tests)
+add_test(NAME fantasy-authoring-repository-tests COMMAND fantasy-authoring-repository-tests)
+add_test(NAME fantasy-build-pipeline-tests COMMAND fantasy-build-pipeline-tests)
+add_test(NAME fantasy-extended-foundation-tests COMMAND fantasy-extended-foundation-tests)
+add_test(NAME fantasy-tfs1098-workflow-tests COMMAND fantasy-tfs1098-workflow-tests)
 add_test(
     NAME fantasy-studio-open-project
     COMMAND fantasy-studio --open-project "${CMAKE_CURRENT_SOURCE_DIR}/.."

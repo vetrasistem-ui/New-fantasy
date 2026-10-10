@@ -1,32 +1,45 @@
 # Upstreams — References and approved dependencies
 
-Este documento registra projetos externos usados como referência técnica, comparação de comportamento, fallback de desenvolvimento ou dependência explicitamente aprovada por ADR.
+Este documento registra projetos externos usados como baseline, referência técnica, comparação de comportamento ou dependência explicitamente aprovada.
 
-## TFS reference
+## TFS 1.4.2 — baseline de runtime atual
 
 - Repository: `otland/forgottenserver`
 - Release: `v1.4.2`
 - Commit: `31d6e85de2a86fb3f0e36c63509fba75b855b8bd`
 - Protocol family: `10.98`
-- Role: server behavior oracle / fallback
-- Status: **REFERENCE ONLY**
+- Role: **runtime/server baseline e fonte de verdade de compatibilidade**
+- Status: **ACTIVE BASELINE**
 
-## RME reference
+O primeiro gate do Map Engine deve produzir mapas que carreguem no TFS 1.4.2 vanilla sem depender de extensões do BlackTek Server.
+
+## BlackTek MapEditor — principal referência do editor 10.98
+
+- Repository: `Black-Tek/BlackTek-MapEditor`
+- Branch: `master`
+- Commit pinado para a auditoria: `d429c7a4334774983c652bf21764edb396a03c02`
+- Map family: `10.98 / OTBM v3`
+- Role: **principal oráculo comportamental para OTBM, DAT/SPR/OTB, brushes, houses, spawns, palettes e Undo/Redo**
+- Status: **REFERENCE ONLY — NO SOURCE COPY**
+
+Observação de licença: os arquivos-fonte auditados carregam cabeçalho GPLv3-or-later, enquanto o `LICENSE.rtf` da raiz contém uma EULA antiga e conflitante. Até decisão explícita de licença, o código é usado somente como referência técnica/comportamental. Extensões específicas do BlackTek, como Zone IDs/TOML e attribute-map 128, não entram automaticamente na baseline TFS 1.4.2.
+
+## RME 3.7 — referência secundária
 
 - Repository: `hampusborgos/rme`
 - Release: `v3.7`
 - Commit: `6aceb3c6a311e6e1c0b24a0bf06cf383fb152766`
-- Legacy map family: 10.98 / OTBM v3
-- Role: map-editing behavior oracle and future legacy import/export validation
+- Legacy map family: `10.98 / OTBM v3`
+- Role: referência histórica/secundária de comportamento e comparação
 - Status: **REFERENCE ONLY**
 
-## Client reference
+## Client 10.98 reference
 
 - Repository: `opentibiabr/otclient`
 - Commit: `396f0b396741bdd4469f27cf9376103930712cff`
-- Known compatibility: TFS 1.4.2 / 10.98
-- Role: client/protocol behavior oracle and temporary fallback
-- Status: **REFERENCE ONLY**
+- Known compatibility: `TFS 1.4.2 / 10.98`
+- Role: client/protocol behavior oracle e base candidata para homologação
+- Status: **REFERENCE / CLIENT CANDIDATE**
 
 ## SDL3 — approved visual/platform dependency
 
@@ -34,43 +47,59 @@ Este documento registra projetos externos usados como referência técnica, comp
 - Release: `release-3.4.18`
 - Commit: `829a65d769d935c4852f8159e964312c0957260a`
 - License: zlib
-- Role: window/input/platform layer and SDL_GPU graphics abstraction for Fantasy Studio and the F05 native visual Client
-- Status: **APPROVED DEPENDENCY — ADR-012 / ADR-017**
+- Role: window/input/platform layer do Fantasy Studio
+- Status: **APPROVED DEPENDENCY**
 
-## Dear ImGui — approved tooling/first-play UI dependency
+## Dear ImGui — approved Studio UI dependency
 
 - Repository: `ocornut/imgui`
 - Release: `v1.92.9b`
 - Commit: `f1cc2ae15e53a861a874c3034aae6798fde194ab`
 - License: MIT
-- Role: Studio editor panels and the F05 diagnostic/first-play Client UI using official SDL3 + SDL_GPU backends
-- Status: **APPROVED DEPENDENCY — ADR-012 / ADR-017**
+- Role: Studio editor panels/tooling UI
+- Status: **APPROVED DEPENDENCY**
+
+## pugixml — approved legacy XML compatibility dependency
+
+- Repository: `zeux/pugixml`
+- Release: `v1.16`
+- Published: 2026-06-16
+- License: MIT
+- Role: leitura/escrita robusta dos arquivos XML externos de houses/spawns usados pela baseline TFS 1.4.2/10.98
+- Boundary: somente a camada `Shared/Formats/Legacy`; o `Fantasy Map Core` permanece independente de XML
+- Status: **APPROVED DEPENDENCY**
 
 ## Cinzel — Studio V5 branding font
 
-- Source: [Google Fonts — Cinzel](https://github.com/google/fonts/tree/main/ofl/cinzel).
-- License: SIL Open Font License 1.1; original copyright and complete license retained in `Studio/UI/Assets/Fonts/OFL-Cinzel.txt`.
-- File: `Studio/UI/Assets/Fonts/Cinzel.ttf`, unmodified `Cinzel[wght].ttf` downloaded from the official source; no system installation.
-- Font SHA-256: `f4d83d34d1f6c741193e4acf4b3dff9531e5a67b6aa65228d00a7db72a4e0f34`.
-- License SHA-256: `f2b3029aba64c378bf0963b62945eee15e564fe4330b934c8f2eb058282b5e83`.
-- Role: Fantasy Studio V5 branding; neutral UI typography continues to use the system UI font. No core code or gameplay/map/protocol dependency.
-- Status: **PRESENTATION ASSET — owner-requested V5 visual reconstruction**. Full source URLs and verification: `docs/design/STUDIO-VISUAL-V5/ART-PROVENANCE.md`.
+- Source: Google Fonts / `google/fonts`, `ofl/cinzel`
+- License: SIL Open Font License 1.1
+- File: `Studio/UI/Assets/Fonts/Cinzel.ttf`
+- Font SHA-256: `f4d83d34d1f6c741193e4acf4b3dff9531e5a67b6aa65228d00a7db72a4e0f34`
+- License SHA-256: `f2b3029aba64c378bf0963b62945eee15e564fe4330b934c8f2eb058282b5e83`
+- Role: Fantasy Studio V5 branding
+- Status: **PRESENTATION ASSET**
 
 ## Boundary rule
 
-Reference-only clones may live locally under `.upstream/` and remain ignored by Git.
+Reference-only clones podem viver localmente em `.upstream/` e permanecem ignorados pelo Git.
 
-Approved dependencies are pinned explicitly and may be consumed by build tooling, but their source is not silently copied into the Fantasy core. License notices must remain preserved according to their licenses.
+Não copiar source de BlackTek/RME para `Studio/`, `Shared/`, `Server/` ou `Client/` sem decisão explícita de licença e proveniência. Implementações próprias devem manter rastreabilidade de comportamento estudado.
 
-Do not copy source from reference-only repositories into `Studio/`, `Server/`, `Client/` or `Shared/` unless a later ADR explicitly approves that dependency and its licensing obligations.
-
-The native gameplay path remains:
+O caminho operacional atual é:
 
 ```text
-FMAP → Fantasy Server → Fantasy Protocol → Fantasy Client
+Fantasy Studio V5
+      ↓
+OTBM v3 + DAT/SPR/OTB + houses/spawns XML
+      ↓
+TFS 1.4.2
+      ↓
+Protocol 10.98
+      ↓
+Client 10.98
 ```
 
-Visual/platform dependencies do not define the map/server/protocol data model.
+FMAP, Fantasy Server e Fantasy Protocol próprios permanecem preservados como experimentos técnicos anteriores, mas não definem a baseline operacional atual.
 
 ## Update rule
 
@@ -79,4 +108,4 @@ Changing a pinned reference/dependency SHA requires:
 1. documented reason;
 2. comparison/build rerun if relevant;
 3. update to this file;
-4. ADR update if the change affects architecture rather than routine dependency maintenance.
+4. architecture decision update if the change affects the active baseline.

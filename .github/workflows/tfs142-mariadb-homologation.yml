@@ -1,0 +1,282 @@
+name: TFS 1.4.2 MariaDB Homologation
+
+on:
+  workflow_dispatch:
+
+jobs:
+  tfs142-mariadb-bootstrap:
+    runs-on: ubuntu-latest
+    services:
+      mariadb:
+        image: mariadb:10.11
+        env:
+          MARIADB_ROOT_PASSWORD: fantasy-root
+          MARIADB_DATABASE: forgottenserver
+          MARIADB_USER: forgottenserver
+          MARIADB_PASSWORD: fantasy-ci
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="healthcheck.sh --connect --innodb_initialized"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=10
+
+    steps:
+      - name: Checkout Fantasy
+        uses: actions/checkout@v4
+
+      - name: Install MariaDB client and TFS runtime dependency
+        shell: bash
+        run: |
+          set -euo pipefail
+          sudo apt-get update
+          sudo apt-get install -y mariadb-client libluajit-5.1-2
+
+      - name: Download official TFS 1.4.2 runtime and schema
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl -fL --retry 3 --retry-delay 2 \
+            -o tfs-v1.4.2-ubuntu-gcc.tar.gz \
+            https://github.com/otland/forgottenserver/releases/download/v1.4.2/tfs-v1.4.2-ubuntu-gcc.tar.gz
+          curl -fL --retry 3 --retry-delay 2 \
+            -o schema.sql \
+            https://raw.githubusercontent.com/otland/forgottenserver/v1.4.2/schema.sql
+          tar -xzf tfs-v1.4.2-ubuntu-gcc.tar.gz
+          test -x forgottenserver/tfs
+          test -f forgottenserver/config.lua.dist
+          sha256sum tfs-v1.4.2-ubuntu-gcc.tar.gz
+
+      - name: Import official schema and seed account/player
+        shell: bash
+        env:
+          MYSQL_PWD: fantasy-ci
+        run: |
+          set -euo pipefail
+          mariadb -h127.0.0.1 -P3306 -uforgottenserver forgottenserver < schema.sql
+          mariadb -h127.0.0.1 -P3306 -uforgottenserver forgottenserver <<'SQL'
+          INSERT INTO `accounts` (`id`, `name`, `password`, `type`)
+          VALUES (1, 'fantasy', 'ec1e111db30c9cca1cca2958af3711a899cee873', 1);
+
+          INSERT INTO `players`
+            (`id`, `name`, `group_id`, `account_id`, `level`, `vocation`, `health`, `healthmax`,
+             `looktype`, `town_id`, `posx`, `posy`, `posz`, `cap`, `sex`)
+          VALUES
+            (1, 'Fantasy Test', 1, 1, 8, 0, 150, 150, 136, 1, 100, 100, 7, 400, 1);
+
+          INSERT INTO `players_online` (`player_id`) VALUES (1);
+          SQL
+
+          test "$(mariadb -N -B -h127.0.0.1 -P3306 -uforgottenserver forgottenserver -e "SELECT value FROM server_config WHERE config='db_version'")" = "29"
+          test "$(mariadb -N -B -h127.0.0.1 -P3306 -uforgottenserver forgottenserver -e "SELECT COUNT(*) FROM accounts WHERE name='fantasy'")" = "1"
+          test "$(mariadb -N -B -h127.0.0.1 -P3306 -uforgottenserver forgottenserver -e "SELECT COUNT(*) FROM players WHERE name='Fantasy Test'")" = "1"
+          test "$(mariadb -N -B -h127.0.0.1 -P3306 -uforgottenserver forgottenserver -e "SELECT COUNT(*) FROM players_online WHERE player_id=1")" = "1"
+
+      - name: Configure official TFS for real MariaDB
+        shell: bash
+        run: |
+          set -euo pipefail
+          cp forgottenserver/config.lua.dist forgottenserver/config.lua
+          python3 - <<'PY'
+          from pathlib import Path
+          path = Path('forgottenserver/config.lua')
+          text = path.read_text()
+          replacements = {
+              'mysqlHost = "127.0.0.1"': 'mysqlHost = "127.0.0.1"',
+              'mysqlUser = "forgottenserver"': 'mysqlUser = "forgottenserver"',
+              'mysqlPass = ""': 'mysqlPass = "fantasy-ci"',
+              'mysqlDatabase = "forgottenserver"': 'mysqlDatabase = "forgottenserver"',
+              'mysqlPort = 3306': 'mysqlPort = 3306',
+              'ip = "127.0.0.1"': 'ip = "127.0.0.1"',
+          }
+          for old, new in replacements.items():
+              if old not in text:
+                  raise SystemExit(f'missing config field: {old}')
+              text = text.replace(old, new, 1)
+          path.write_text(text)
+          PY
+
+      - name: Start official TFS against MariaDB and prove startup write
+        shell: bash
+        env:
+          MYSQL_PWD: fantasy-ci
+          LD_LIBRARY_PATH: /usr/lib/x86_64-linux-gnu
+        run: |
+          set -euo pipefail
+          cd forgottenserver
+          ./tfs > ../tfs-mariadb.log 2>&1 &
+          TFS_PID=$!
+          trap 'kill -TERM ${TFS_PID} 2>/dev/null || true' EXIT
+
+          online=0
+          for _ in $(seq 1 90); do
+            if grep -q "Forgotten Server Online!" ../tfs-mariadb.log; then
+              online=1
+              break
+            fi
+            if ! kill -0 "${TFS_PID}" 2>/dev/null; then
+              echo "TFS exited before reaching Online"
+              cat ../tfs-mariadb.log
+              exit 1
+            fi
+            sleep 1
+          done
+
+          if [ "${online}" != "1" ]; then
+            echo "TFS did not reach Online within the startup gate"
+            cat ../tfs-mariadb.log
+            exit 1
+          fi
+
+          cd ..
+          ONLINE_ROWS="$(mariadb -N -B -h127.0.0.1 -P3306 -uforgottenserver forgottenserver -e "SELECT COUNT(*) FROM players_online WHERE player_id=1")"
+          DB_VERSION="$(mariadb -N -B -h127.0.0.1 -P3306 -uforgottenserver forgottenserver -e "SELECT value FROM server_config WHERE config='db_version'")"
+          echo "players_online_after_start=${ONLINE_ROWS}"
+          echo "db_version_after_start=${DB_VERSION}"
+          test "${ONLINE_ROWS}" = "0"
+          test "${DB_VERSION}" = "30"
+
+          echo "TFS142_MARIADB_BOOTSTRAP PASS"
+          grep -E "The Forgotten Server|Updating database|Database has been updated|Loading map|Map size|Forgotten Server Online" tfs-mariadb.log || true
+
+          kill -TERM "${TFS_PID}" 2>/dev/null || true
+          wait "${TFS_PID}" || true
+          trap - EXIT
+
+      - name: Prove 10.98 login save restart relogin persistence
+        shell: bash
+        env:
+          MYSQL_PWD: fantasy-ci
+          LD_LIBRARY_PATH: /usr/lib/x86_64-linux-gnu
+        run: |
+          set -euo pipefail
+
+          db_scalar() {
+            mariadb -N -B -h127.0.0.1 -P3306 -uforgottenserver forgottenserver -e "$1"
+          }
+
+          start_tfs() {
+            local log_file="$1"
+            rm -f "${log_file}"
+            pushd forgottenserver >/dev/null
+            ./tfs > "../${log_file}" 2>&1 &
+            TFS_PID=$!
+            popd >/dev/null
+
+            local online=0
+            for _ in $(seq 1 90); do
+              if grep -q "Forgotten Server Online!" "${log_file}"; then
+                online=1
+                break
+              fi
+              if ! kill -0 "${TFS_PID}" 2>/dev/null; then
+                echo "TFS exited before Online"
+                cat "${log_file}"
+                exit 1
+              fi
+              sleep 1
+            done
+            test "${online}" = "1"
+          }
+
+          stop_tfs() {
+            kill -TERM "${TFS_PID}" 2>/dev/null || true
+            wait "${TFS_PID}" || true
+          }
+
+          run_probe() {
+            local cycle="$1"
+            local ready_file="protocol-cycle${cycle}.ready"
+            local protocol_log="protocol-cycle${cycle}.log"
+            rm -f "${ready_file}" "${protocol_log}"
+
+            python3 Tools/Tfs1098/tfs1098_protocol_probe.py \
+              --host 127.0.0.1 \
+              --port 7172 \
+              --key forgottenserver/key.pem \
+              --account fantasy \
+              --password fantasy \
+              --character "Fantasy Test" \
+              --ready-file "${ready_file}" \
+              --hold-seconds 4 \
+              > "${protocol_log}" 2>&1 &
+            PROBE_PID=$!
+
+            local ready=0
+            for _ in $(seq 1 50); do
+              if [ -f "${ready_file}" ]; then
+                ready=1
+                break
+              fi
+              if ! kill -0 "${PROBE_PID}" 2>/dev/null; then
+                echo "Protocol probe exited before login became ready"
+                cat "${protocol_log}"
+                exit 1
+              fi
+              sleep 0.2
+            done
+            test "${ready}" = "1"
+
+            local online_rows
+            online_rows="$(db_scalar "SELECT COUNT(*) FROM players_online WHERE player_id=1")"
+            echo "cycle${cycle}_players_online_during_session=${online_rows}"
+            test "${online_rows}" = "1"
+
+            wait "${PROBE_PID}"
+            cat "${protocol_log}"
+
+            for _ in $(seq 1 50); do
+              online_rows="$(db_scalar "SELECT COUNT(*) FROM players_online WHERE player_id=1")"
+              if [ "${online_rows}" = "0" ]; then
+                break
+              fi
+              sleep 0.2
+            done
+            echo "cycle${cycle}_players_online_after_logout=${online_rows}"
+            test "${online_rows}" = "0"
+          }
+
+          INITIAL_STATE="$(db_scalar "SELECT CONCAT(posx,',',posy,',',posz,'|',lastlogin,'|',lastlogout) FROM players WHERE id=1")"
+          echo "initial_state=${INITIAL_STATE}"
+
+          start_tfs tfs-persistence-cycle1.log
+          run_probe 1
+          STATE1="$(db_scalar "SELECT CONCAT(posx,',',posy,',',posz,'|',lastlogin,'|',lastlogout) FROM players WHERE id=1")"
+          echo "state_after_cycle1=${STATE1}"
+          stop_tfs
+
+          IFS='|' read -r POS1 LOGIN1 LOGOUT1 <<< "${STATE1}"
+          test -n "${POS1}"
+          test "${LOGIN1}" -gt 0
+          test "${LOGOUT1}" -gt 0
+
+          sleep 2
+
+          start_tfs tfs-persistence-cycle2.log
+          run_probe 2
+          STATE2="$(db_scalar "SELECT CONCAT(posx,',',posy,',',posz,'|',lastlogin,'|',lastlogout) FROM players WHERE id=1")"
+          echo "state_after_cycle2=${STATE2}"
+          stop_tfs
+
+          IFS='|' read -r POS2 LOGIN2 LOGOUT2 <<< "${STATE2}"
+          test "${POS2}" = "${POS1}"
+          test "${LOGIN2}" -gt "${LOGIN1}"
+          test "${LOGOUT2}" -ge "${LOGOUT1}"
+          test "$(db_scalar "SELECT value FROM server_config WHERE config='db_version'")" = "30"
+
+          echo "TFS1098_MARIADB_PERSISTENCE PASS"
+          echo "persisted_position=${POS2}"
+          echo "lastlogin=${LOGIN1}->${LOGIN2}"
+          echo "lastlogout=${LOGOUT1}->${LOGOUT2}"
+
+      - name: Upload MariaDB homologation logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: tfs142-mariadb-homologation-${{ github.sha }}
+          if-no-files-found: warn
+          path: |
+            tfs-mariadb.log
+            tfs-persistence-cycle*.log
+            protocol-cycle*.log

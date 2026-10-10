@@ -1,0 +1,38 @@
+name: TFS 1.4.2 Homologation Tool
+
+on:
+  workflow_dispatch:
+
+jobs:
+  fetch-official-tfs142-linux:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download official TFS 1.4.2 Ubuntu GCC release
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl -fL --retry 3 --retry-delay 2 \
+            -o tfs-v1.4.2-ubuntu-gcc.tar.gz \
+            https://github.com/otland/forgottenserver/releases/download/v1.4.2/tfs-v1.4.2-ubuntu-gcc.tar.gz
+          sha256sum tfs-v1.4.2-ubuntu-gcc.tar.gz
+          tar -xzf tfs-v1.4.2-ubuntu-gcc.tar.gz
+          tar -tzf tfs-v1.4.2-ubuntu-gcc.tar.gz | sed -n '1,120p'
+
+      - name: Bundle Ubuntu LuaJIT runtime used by official binary
+        shell: bash
+        run: |
+          set -euo pipefail
+          sudo apt-get update
+          sudo apt-get install -y libluajit-5.1-2
+          mkdir -p tfs142-runtime-libs
+          cp -L /usr/lib/x86_64-linux-gnu/libluajit-5.1.so.2 tfs142-runtime-libs/
+          ldd forgottenserver/tfs
+
+      - name: Upload official TFS 1.4.2 Linux package
+        uses: actions/upload-artifact@v4
+        with:
+          name: official-tfs-v1.4.2-ubuntu-gcc
+          if-no-files-found: error
+          path: |
+            tfs-v1.4.2-ubuntu-gcc.tar.gz
+            tfs142-runtime-libs/libluajit-5.1.so.2

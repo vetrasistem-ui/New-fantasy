@@ -11,6 +11,9 @@ $BuildDir = Join-Path $Root 'build/studio'
 Push-Location $Root
 try {
     $Candidates = @(
+        (Join-Path $BuildDir "$Configuration/FantasyStudio.exe"),
+        (Join-Path $BuildDir 'FantasyStudio.exe'),
+        # Backward-compatible fallback for old build directories.
         (Join-Path $BuildDir "$Configuration/fantasy-studio-gui.exe"),
         (Join-Path $BuildDir 'fantasy-studio-gui.exe')
     )
@@ -29,23 +32,25 @@ try {
     }
 
     if (-not $Gui) {
-        throw 'fantasy-studio-gui.exe was not found after build.'
+        throw 'FantasyStudio.exe was not found after build.'
     }
 
-    Write-Host "Launching Fantasy Studio visual target from: $Gui"
-    Write-Host 'Check Home, Sidebar, Topbar, Map and Items & Assets against docs/STUDIO-VISUAL-TARGET-V1.md.'
+    Write-Host "Launching Fantasy Studio from: $Gui"
     & $Gui $Root
 
     if ($LASTEXITCODE -ne 0) {
-        throw "Fantasy Studio GUI exited with code $LASTEXITCODE"
+        throw "Fantasy Studio exited with code $LASTEXITCODE"
     }
 
-    $Orphan = Get-Process fantasy-studio-gui -ErrorAction SilentlyContinue
-    if ($Orphan) {
-        throw 'Fantasy Studio GUI left an orphan process after close.'
+    $Orphans = @(
+        Get-Process FantasyStudio -ErrorAction SilentlyContinue
+        Get-Process fantasy-studio-gui -ErrorAction SilentlyContinue
+    ) | Where-Object { $_ }
+    if ($Orphans) {
+        throw 'Fantasy Studio left an orphan process after close.'
     }
 
-    Write-Host 'Fantasy Studio visual launch/close gate PASS.'
+    Write-Host 'Fantasy Studio launch/close gate PASS.'
 }
 finally {
     Pop-Location
