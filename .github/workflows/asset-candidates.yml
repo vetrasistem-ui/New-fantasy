@@ -1,0 +1,47 @@
+name: Real Asset Candidate Scanner
+
+on:
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  build:
+    strategy:
+      matrix:
+        os: [windows-latest, ubuntu-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Configure scanner
+        run: cmake -S Tools/AssetCandidates -B build/asset-candidates -DCMAKE_BUILD_TYPE=Release
+
+      - name: Build scanner
+        run: cmake --build build/asset-candidates --config Release --parallel 2
+
+      - name: Smoke help
+        shell: bash
+        if: runner.os != 'Windows'
+        run: ./build/asset-candidates/fantasy-asset-candidates --help
+
+      - name: Smoke help Windows
+        shell: pwsh
+        if: runner.os == 'Windows'
+        run: ./build/asset-candidates/Release/fantasy-asset-candidates.exe --help
+
+      - name: Upload scanner Windows
+        if: runner.os == 'Windows'
+        uses: actions/upload-artifact@v4
+        with:
+          name: fantasy-asset-candidates-windows-${{ github.sha }}
+          if-no-files-found: error
+          path: build/asset-candidates/Release/fantasy-asset-candidates.exe
+
+      - name: Upload scanner Linux
+        if: runner.os == 'Linux'
+        uses: actions/upload-artifact@v4
+        with:
+          name: fantasy-asset-candidates-linux-${{ github.sha }}
+          if-no-files-found: error
+          path: build/asset-candidates/fantasy-asset-candidates
