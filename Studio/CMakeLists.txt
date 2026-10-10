@@ -226,6 +226,22 @@ else()
     target_compile_options(fantasy-legacy-inspect PRIVATE -Wall -Wextra -Wpedantic)
 endif()
 
+# Command-line bridge used by Codex/AI and by local acceptance to generate a
+# real OTBM directly from user-owned DAT/SPR/OTB assets plus semantic bindings.
+add_executable(fantasy-map-generate
+    ../Tools/MapGenerate/main.cpp
+)
+target_include_directories(fantasy-map-generate PRIVATE
+    ${CMAKE_CURRENT_SOURCE_DIR}
+    ${CMAKE_CURRENT_SOURCE_DIR}/..
+)
+target_link_libraries(fantasy-map-generate PRIVATE fantasy-map-generation)
+if(MSVC)
+    target_compile_options(fantasy-map-generate PRIVATE /W4 /permissive-)
+else()
+    target_compile_options(fantasy-map-generate PRIVATE -Wall -Wextra -Wpedantic)
+endif()
+
 add_executable(fantasy-legacy-preview
     UI/LegacyPreviewApp.cpp
     UI/StudioTheme.cpp
@@ -289,6 +305,11 @@ target_link_libraries(fantasy-map-generation-v1-tests PRIVATE
     fantasy-map-generation
     fantasy-legacy-import
 )
+
+add_executable(fantasy-real-asset-binding-tests
+    MapEngine/Generation/FantasyRealAssetBindingTests.cpp
+)
+target_link_libraries(fantasy-real-asset-binding-tests PRIVATE fantasy-map-generation)
 
 add_executable(fantasy-map-legacy-adapter-tests
     MapEngine/Import/LegacyMapAdapterTests.cpp
@@ -379,7 +400,7 @@ target_include_directories(fantasy-tfs1098-workflow-tests PRIVATE
 )
 target_link_libraries(fantasy-tfs1098-workflow-tests PRIVATE fantasy-runtime fantasy-map-core)
 
-foreach(target fantasy-asset-registry-tests fantasy-legacy-binary-readers-tests fantasy-legacy-texture-cache-tests fantasy-otbm-reader-tests fantasy-legacy-aux-xml-tests fantasy-map-core-v1-tests fantasy-map-clipboard-tests fantasy-brush-engine-tests fantasy-map-generation-v1-tests fantasy-map-legacy-adapter-tests fantasy-map-project-loader-tests fantasy-runtime-backend-tests fantasy-foundation-persistence-tests fantasy-authoring-repository-tests fantasy-build-pipeline-tests fantasy-extended-foundation-tests fantasy-tfs1098-workflow-tests)
+foreach(target fantasy-asset-registry-tests fantasy-legacy-binary-readers-tests fantasy-legacy-texture-cache-tests fantasy-otbm-reader-tests fantasy-legacy-aux-xml-tests fantasy-map-core-v1-tests fantasy-map-clipboard-tests fantasy-brush-engine-tests fantasy-map-generation-v1-tests fantasy-real-asset-binding-tests fantasy-map-legacy-adapter-tests fantasy-map-project-loader-tests fantasy-runtime-backend-tests fantasy-foundation-persistence-tests fantasy-authoring-repository-tests fantasy-build-pipeline-tests fantasy-extended-foundation-tests fantasy-tfs1098-workflow-tests)
     if(MSVC)
         target_compile_options(${target} PRIVATE /W4 /permissive-)
     else()
@@ -395,6 +416,7 @@ add_test(NAME fantasy-map-core-v1-tests COMMAND fantasy-map-core-v1-tests)
 add_test(NAME fantasy-map-clipboard-tests COMMAND fantasy-map-clipboard-tests)
 add_test(NAME fantasy-brush-engine-tests COMMAND fantasy-brush-engine-tests)
 add_test(NAME fantasy-map-generation-v1-tests COMMAND fantasy-map-generation-v1-tests)
+add_test(NAME fantasy-real-asset-binding-tests COMMAND fantasy-real-asset-binding-tests)
 add_test(NAME fantasy-map-legacy-adapter-tests COMMAND fantasy-map-legacy-adapter-tests)
 add_test(NAME fantasy-map-project-loader-tests COMMAND fantasy-map-project-loader-tests)
 add_test(NAME fantasy-asset-registry-tests COMMAND fantasy-asset-registry-tests)
