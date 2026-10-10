@@ -71,16 +71,18 @@ $mapPath = Join-Path $OutputDir "real-assets-smoke.otbm"
 
 Write-Host ""
 Write-Host "[1/3] Scanning real DAT/SPR/OTB/OTBM assets..."
-& $Scanner \
-    --dat $Dat \
-    --spr $Spr \
-    --otb $Otb \
-    --otbm $Otbm \
-    --output $candidatesPath \
-    --preview-dir $previewDir \
-    --profile $Profile \
-    --top-grounds 200 \
-    --top-objects 500
+$scannerArgs = @(
+    "--dat", $Dat,
+    "--spr", $Spr,
+    "--otb", $Otb,
+    "--otbm", $Otbm,
+    "--output", $candidatesPath,
+    "--preview-dir", $previewDir,
+    "--profile", $Profile,
+    "--top-grounds", "200",
+    "--top-objects", "500"
+)
+& $Scanner @scannerArgs
 if ($LASTEXITCODE -ne 0) {
     throw "Real asset scanner failed with exit code $LASTEXITCODE"
 }
@@ -148,15 +150,17 @@ Write-Host "  object.tertiary   serverId=$($objects[2].serverId) clientId=$($obj
 
 Write-Host ""
 Write-Host "[3/3] Generating an OTBM using only validated real assets..."
-& $Generator \
-    --dat $Dat \
-    --spr $Spr \
-    --otb $Otb \
-    --bindings $bindingsPath \
-    --script $scriptPath \
-    --output-root $OutputDir \
-    --profile $Profile \
-    --catalog-out $catalogPath
+$generatorArgs = @(
+    "--dat", $Dat,
+    "--spr", $Spr,
+    "--otb", $Otb,
+    "--bindings", $bindingsPath,
+    "--script", $scriptPath,
+    "--output-root", $OutputDir,
+    "--profile", $Profile,
+    "--catalog-out", $catalogPath
+)
+& $Generator @generatorArgs
 if ($LASTEXITCODE -ne 0) {
     throw "Real map generator failed with exit code $LASTEXITCODE"
 }
